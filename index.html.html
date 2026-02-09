@@ -555,6 +555,326 @@
             letter-spacing: 0.5px;
         }
 
+        /* Notification Inbox */
+        .notification-inbox {
+            background: linear-gradient(135deg, rgba(229, 185, 92, 0.1) 0%, rgba(44, 95, 111, 0.1) 100%);
+            border: 2px solid var(--color-gold);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification-inbox:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(229, 185, 92, 0.3);
+            border-color: var(--color-gold);
+        }
+
+        .notification-inbox-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .notification-inbox-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .notification-bell {
+            font-size: 2.5rem;
+            position: relative;
+            animation: bellRing 2s ease-in-out infinite;
+        }
+
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0deg); }
+            10%, 30% { transform: rotate(-10deg); }
+            20%, 40% { transform: rotate(10deg); }
+            50%, 90% { transform: rotate(0deg); }
+        }
+
+        .notification-bell-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--color-error);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .notification-bell-badge.hidden {
+            display: none;
+        }
+
+        .notification-inbox-info h3 {
+            color: var(--color-gold);
+            font-size: 1.3rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .notification-inbox-info p {
+            color: var(--color-text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .notification-summary {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .notification-type {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .notification-type-icon {
+            font-size: 1.2rem;
+        }
+
+        .notification-type-count {
+            color: var(--color-gold);
+            font-weight: 700;
+            font-family: var(--font-mono);
+        }
+
+        .notification-type-label {
+            color: var(--color-text-secondary);
+        }
+
+        /* Notification Modal */
+        .notification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .notification-modal.active {
+            display: flex;
+        }
+
+        .notification-modal-content {
+            background: var(--color-bg-dark);
+            border: 2px solid var(--color-gold);
+            border-radius: 24px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 2rem;
+            animation: scaleIn 0.3s ease-out;
+        }
+
+        .notification-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .notification-modal-header h2 {
+            color: var(--color-gold);
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .notification-modal-close {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            font-size: 2rem;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .notification-modal-close:hover {
+            background: var(--color-bg-medium);
+            color: var(--color-text-primary);
+        }
+
+        .notification-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .notification-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--color-bg-medium);
+            border: 2px solid var(--color-border);
+            border-radius: 12px;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification-tab:hover {
+            border-color: var(--color-gold);
+            color: var(--color-text-primary);
+        }
+
+        .notification-tab.active {
+            background: linear-gradient(135deg, var(--color-gold) 0%, #d4a84e 100%);
+            border-color: var(--color-gold);
+            color: var(--color-teal-dark);
+        }
+
+        .notification-tab-badge {
+            background: var(--color-error);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .notification-tab.active .notification-tab-badge {
+            background: var(--color-teal-dark);
+            color: var(--color-gold);
+        }
+
+        .notification-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .notification-item {
+            background: var(--color-bg-card);
+            border: 2px solid var(--color-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .notification-item:hover {
+            border-color: var(--color-gold);
+            transform: translateX(4px);
+        }
+
+        .notification-item.unread {
+            border-left: 4px solid var(--color-gold);
+            background: linear-gradient(90deg, rgba(229, 185, 92, 0.1) 0%, var(--color-bg-card) 100%);
+        }
+
+        .notification-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .notification-item-title {
+            color: var(--color-gold);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .notification-item-time {
+            color: var(--color-text-secondary);
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+        }
+
+        .notification-item-content {
+            color: var(--color-text-primary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+        }
+
+        .notification-item-footer {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .notification-item-action {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .notification-item-action.primary {
+            background: var(--color-gold);
+            color: var(--color-teal-dark);
+        }
+
+        .notification-item-action.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(229, 185, 92, 0.4);
+        }
+
+        .notification-item-action.secondary {
+            background: transparent;
+            border: 2px solid var(--color-border);
+            color: var(--color-text-secondary);
+        }
+
+        .notification-item-action.secondary:hover {
+            border-color: var(--color-gold);
+            color: var(--color-gold);
+        }
+
+        .notification-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--color-text-secondary);
+        }
+
+        .notification-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
         /* Auth Modal */
         .auth-modal {
             position: fixed;
@@ -1895,6 +2215,60 @@
             .active-nodes-label-header {
                 font-size: 0.7rem;
             }
+
+            .notification-inbox {
+                padding: 1rem;
+            }
+
+            .notification-inbox-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .notification-summary {
+                width: 100%;
+                justify-content: space-around;
+            }
+
+            .notification-type {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.25rem;
+            }
+
+            .notification-bell {
+                font-size: 2rem;
+            }
+
+            .notification-inbox-info h3 {
+                font-size: 1.1rem;
+            }
+
+            .notification-modal-content {
+                padding: 1.5rem;
+                margin: 0.5rem;
+            }
+
+            .notification-tabs {
+                gap: 0.25rem;
+            }
+
+            .notification-tab {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+
+            .notification-item {
+                padding: 1rem;
+            }
+
+            .notification-item-footer {
+                flex-direction: column;
+            }
+
+            .notification-item-action {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -2049,6 +2423,39 @@
         <section class="section" id="mainMenuSection">
             <div class="main-menu">
                 <h2>Selecciona una Aplicación</h2>
+                
+                <!-- Notification Inbox -->
+                <div class="notification-inbox" onclick="openNotificationCenter()">
+                    <div class="notification-inbox-header">
+                        <div class="notification-inbox-left">
+                            <div class="notification-bell">
+                                🔔
+                                <span class="notification-bell-badge hidden" id="totalNotificationsBadge">0</span>
+                            </div>
+                            <div class="notification-inbox-info">
+                                <h3>Centro de Notificaciones</h3>
+                                <p>Mensajes, propuestas y actividad de la comunidad</p>
+                            </div>
+                        </div>
+                        <div class="notification-summary">
+                            <div class="notification-type" id="notif-messages">
+                                <span class="notification-type-icon">💬</span>
+                                <span class="notification-type-count" id="notifCountMessages">0</span>
+                                <span class="notification-type-label">Mensajes</span>
+                            </div>
+                            <div class="notification-type" id="notif-governance">
+                                <span class="notification-type-icon">🏛️</span>
+                                <span class="notification-type-count" id="notifCountGovernance">0</span>
+                                <span class="notification-type-label">Gobernanza</span>
+                            </div>
+                            <div class="notification-type" id="notif-merits">
+                                <span class="notification-type-icon">🏅</span>
+                                <span class="notification-type-count" id="notifCountMerits">0</span>
+                                <span class="notification-type-label">Méritos</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="apps-grid">
                     <!-- 1. Networking -->
@@ -3476,6 +3883,7 @@
             activeNodesInterval = setInterval(updateActiveNodesCounter, 30000);
             initializeUserProfile();
             updateAllBadges(); // Update notification badges
+            loadAllNotifications(); // Load notification center
         }
 
         async function updateAllBadges() {
@@ -4314,6 +4722,223 @@ ${currentUser.privateKey}
 
         console.log('✅ LiberBit World Listo');
 
+        // ========== NOTIFICATION CENTER FUNCTIONS ==========
+
+        let allNotifications = [];
+        let currentNotificationFilter = 'all';
+
+        function openNotificationCenter() {
+            document.getElementById('notificationModal').classList.add('active');
+            loadAllNotifications();
+        }
+
+        function closeNotificationCenter() {
+            document.getElementById('notificationModal').classList.remove('active');
+        }
+
+        async function loadAllNotifications() {
+            allNotifications = [];
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+
+            try {
+                // 1. Load unread messages (usando recipient_id y sender_id)
+                const { data: messages, error: msgError } = await supabaseClient
+                    .from('direct_messages')
+                    .select('*')
+                    .eq('recipient_id', pubKey)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (messages) {
+                    const lastVisitDM = parseInt(localStorage.getItem('lastVisit_dm') || '0');
+                    messages.forEach(msg => {
+                        const msgTime = new Date(msg.created_at).getTime();
+                        if (msgTime > lastVisitDM) {
+                            allNotifications.push({
+                                id: msg.id,
+                                type: 'messages',
+                                title: `Mensaje de ${msg.sender_name || 'Usuario'}`,
+                                content: msg.content,
+                                timestamp: msgTime,
+                                unread: true,
+                                action: () => {
+                                    closeNotificationCenter();
+                                    startDirectMessage(msg.sender_id, msg.sender_name);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // 2. Load new governance proposals
+                const { data: proposals, error: propError } = await supabaseClient
+                    .from('proposals')
+                    .select('*')
+                    .eq('status', 'active')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                if (proposals) {
+                    const lastVisitGov = parseInt(localStorage.getItem('lastVisit_governance') || '0');
+                    proposals.forEach(prop => {
+                        const propTime = new Date(prop.created_at).getTime();
+                        if (propTime > lastVisitGov) {
+                            allNotifications.push({
+                                id: prop.id,
+                                type: 'governance',
+                                title: `Nueva propuesta: ${prop.title}`,
+                                content: prop.description.substring(0, 100) + '...',
+                                timestamp: propTime,
+                                unread: true,
+                                action: () => {
+                                    closeNotificationCenter();
+                                    openApp('gobernanza');
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // 3. Load merit notifications (placeholder - adapt to your merit system)
+                // This is a placeholder - you'll need to implement based on your merit tracking
+                const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
+                meritNotifs.forEach(notif => {
+                    if (!notif.read) {
+                        allNotifications.push({
+                            id: notif.id,
+                            type: 'merits',
+                            title: notif.title,
+                            content: notif.content,
+                            timestamp: notif.timestamp,
+                            unread: true,
+                            action: () => {
+                                closeNotificationCenter();
+                                openSubApp('merits');
+                            }
+                        });
+                    }
+                });
+
+                // Sort by timestamp
+                allNotifications.sort((a, b) => b.timestamp - a.timestamp);
+
+                updateNotificationBadges();
+                displayNotifications();
+
+            } catch (err) {
+                console.error('Error loading notifications:', err);
+            }
+        }
+
+        function updateNotificationBadges() {
+            const messageCount = allNotifications.filter(n => n.type === 'messages').length;
+            const governanceCount = allNotifications.filter(n => n.type === 'governance').length;
+            const meritsCount = allNotifications.filter(n => n.type === 'merits').length;
+            const totalCount = allNotifications.length;
+
+            // Update inbox summary
+            document.getElementById('notifCountMessages').textContent = messageCount;
+            document.getElementById('notifCountGovernance').textContent = governanceCount;
+            document.getElementById('notifCountMerits').textContent = meritsCount;
+
+            // Update bell badge
+            const bellBadge = document.getElementById('totalNotificationsBadge');
+            if (totalCount > 0) {
+                bellBadge.textContent = totalCount;
+                bellBadge.classList.remove('hidden');
+            } else {
+                bellBadge.classList.add('hidden');
+            }
+
+            // Update modal tabs
+            document.getElementById('tabBadgeAll').textContent = totalCount;
+            document.getElementById('tabBadgeMessages').textContent = messageCount;
+            document.getElementById('tabBadgeGovernance').textContent = governanceCount;
+            document.getElementById('tabBadgeMerits').textContent = meritsCount;
+        }
+
+        function filterNotifications(filter) {
+            currentNotificationFilter = filter;
+            
+            // Update active tab
+            document.querySelectorAll('.notification-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            
+            displayNotifications();
+        }
+
+        function displayNotifications() {
+            const container = document.getElementById('notificationList');
+            
+            let filteredNotifications = allNotifications;
+            if (currentNotificationFilter !== 'all') {
+                filteredNotifications = allNotifications.filter(n => n.type === currentNotificationFilter);
+            }
+
+            if (filteredNotifications.length === 0) {
+                container.innerHTML = `
+                    <div class="notification-empty">
+                        <div class="notification-empty-icon">📭</div>
+                        <h3>No hay notificaciones</h3>
+                        <p>Cuando recibas mensajes o propuestas aparecerán aquí</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredNotifications.map(notif => {
+                const icon = notif.type === 'messages' ? '💬' : 
+                            notif.type === 'governance' ? '🏛️' : '🏅';
+                
+                return `
+                    <div class="notification-item ${notif.unread ? 'unread' : ''}" onclick="handleNotificationClick('${notif.id}')">
+                        <div class="notification-item-header">
+                            <div class="notification-item-title">${icon} ${escapeHtml(notif.title)}</div>
+                            <div class="notification-item-time">${timeAgo(notif.timestamp)}</div>
+                        </div>
+                        <div class="notification-item-content">${escapeHtml(notif.content)}</div>
+                        <div class="notification-item-footer">
+                            <button class="notification-item-action primary" onclick="event.stopPropagation(); handleNotificationAction('${notif.id}')">
+                                Ver
+                            </button>
+                            <button class="notification-item-action secondary" onclick="event.stopPropagation(); dismissNotification('${notif.id}')">
+                                Descartar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleNotificationClick(notifId) {
+            const notif = allNotifications.find(n => n.id === notifId);
+            if (notif && notif.action) {
+                notif.action();
+            }
+        }
+
+        function handleNotificationAction(notifId) {
+            const notif = allNotifications.find(n => n.id === notifId);
+            if (notif && notif.action) {
+                notif.action();
+            }
+        }
+
+        function dismissNotification(notifId) {
+            allNotifications = allNotifications.filter(n => n.id !== notifId);
+            updateNotificationBadges();
+            displayNotifications();
+        }
+
+        // Update notification center when returning to main menu
+        const originalBackToMenu = backToMenu;
+        backToMenu = function() {
+            originalBackToMenu();
+            loadAllNotifications();
+        };
+
         // ========== DIRECT MESSAGES FUNCTIONS ==========
 
         function startDirectMessage(recipientId, recipientName) {
@@ -4350,101 +4975,131 @@ ${currentUser.privateKey}
             loadConversationsList();
         }
 
-        function loadConversationsList() {
-            const saved = localStorage.getItem('liberbit_dms');
-            if (saved) allDirectMessages = JSON.parse(saved);
-
-            // Get unique conversations
-            const conversations = new Map();
+        async function loadConversationsList() {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
             
-            allDirectMessages.forEach(msg => {
-                const otherUserId = msg.from === currentUser.publicKey ? msg.to : msg.from;
-                const otherUserName = msg.from === currentUser.publicKey ? msg.toName : msg.fromName;
+            try {
+                // Load all messages involving the current user (usando sender_id y recipient_id)
+                const { data, error } = await supabaseClient
+                    .from('direct_messages')
+                    .select('*')
+                    .or(`sender_id.eq.${pubKey},recipient_id.eq.${pubKey}`)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error loading conversations:', error);
+                    return;
+                }
+
+                // Get unique conversations
+                const conversations = new Map();
                 
-                if (!conversations.has(otherUserId)) {
-                    conversations.set(otherUserId, {
-                        userId: otherUserId,
-                        userName: otherUserName,
-                        lastMessage: msg.content,
-                        timestamp: msg.timestamp
-                    });
-                } else {
-                    const existing = conversations.get(otherUserId);
-                    if (msg.timestamp > existing.timestamp) {
+                (data || []).forEach(msg => {
+                    const otherUserId = msg.sender_id === pubKey ? msg.recipient_id : msg.sender_id;
+                    const otherUserName = msg.sender_id === pubKey ? msg.recipient_name : msg.sender_name;
+                    const timestamp = new Date(msg.created_at).getTime();
+                    
+                    if (!conversations.has(otherUserId)) {
                         conversations.set(otherUserId, {
                             userId: otherUserId,
                             userName: otherUserName,
                             lastMessage: msg.content,
-                            timestamp: msg.timestamp
+                            timestamp: timestamp
                         });
+                    } else {
+                        const existing = conversations.get(otherUserId);
+                        if (timestamp > existing.timestamp) {
+                            conversations.set(otherUserId, {
+                                userId: otherUserId,
+                                userName: otherUserName,
+                                lastMessage: msg.content,
+                                timestamp: timestamp
+                            });
+                        }
                     }
-                }
-            });
+                });
 
-            const container = document.getElementById('conversationsList');
-            
-            if (conversations.size === 0) {
-                container.innerHTML = `
-                    <div class="placeholder">
-                        <h3>📭 No tienes conversaciones</h3>
-                        <p>Contacta con alguien desde el Networking para empezar</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const sortedConversations = Array.from(conversations.values())
-                .sort((a, b) => b.timestamp - a.timestamp);
-
-            container.innerHTML = sortedConversations.map(conv => `
-                <div class="conversation-item" onclick="openChatWith('${conv.userId}', '${escapeHtml(conv.userName)}')">
-                    <div class="conversation-info">
-                        <div class="conversation-name">${escapeHtml(conv.userName)}</div>
-                        <div class="conversation-preview">${escapeHtml(conv.lastMessage.substring(0, 60))}${conv.lastMessage.length > 60 ? '...' : ''}</div>
-                    </div>
-                    <div class="conversation-time">${timeAgo(conv.timestamp)}</div>
-                </div>
-            `).join('');
-        }
-
-        function loadDirectMessages(userId) {
-            const saved = localStorage.getItem('liberbit_dms');
-            if (saved) allDirectMessages = JSON.parse(saved);
-
-            const conversation = allDirectMessages.filter(msg => 
-                (msg.from === currentUser.publicKey && msg.to === userId) ||
-                (msg.from === userId && msg.to === currentUser.publicKey)
-            ).sort((a, b) => a.timestamp - b.timestamp);
-
-            const container = document.getElementById('chatMessages');
-            
-            if (conversation.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 3rem; color: var(--color-text-secondary);">
-                        <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">💬 Inicia la conversación</p>
-                        <p style="font-size: 0.9rem;">Envía el primer mensaje</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = conversation.map(msg => {
-                const isMine = msg.from === currentUser.publicKey;
-                return `
-                    <div class="dm-message ${isMine ? 'mine' : 'theirs'}">
-                        <div class="dm-bubble">
-                            ${escapeHtml(msg.content)}
+                const container = document.getElementById('conversationsList');
+                
+                if (conversations.size === 0) {
+                    container.innerHTML = `
+                        <div class="placeholder">
+                            <h3>📭 No tienes conversaciones</h3>
+                            <p>Contacta con alguien desde el Networking para empezar</p>
                         </div>
-                        <div class="dm-time">${new Date(msg.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                    return;
+                }
 
-            // Scroll to bottom
-            container.scrollTop = container.scrollHeight;
+                const sortedConversations = Array.from(conversations.values())
+                    .sort((a, b) => b.timestamp - a.timestamp);
+
+                container.innerHTML = sortedConversations.map(conv => `
+                    <div class="conversation-item" onclick="openChatWith('${conv.userId}', '${escapeHtml(conv.userName)}')">
+                        <div class="conversation-info">
+                            <div class="conversation-name">${escapeHtml(conv.userName)}</div>
+                            <div class="conversation-preview">${escapeHtml(conv.lastMessage.substring(0, 60))}${conv.lastMessage.length > 60 ? '...' : ''}</div>
+                        </div>
+                        <div class="conversation-time">${timeAgo(conv.timestamp)}</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading conversations:', err);
+            }
         }
 
-        function sendDirectMessage() {
+        async function loadDirectMessages(userId) {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            
+            try {
+                // Load from Supabase (usando sender_id y recipient_id)
+                const { data, error } = await supabaseClient
+                    .from('direct_messages')
+                    .select('*')
+                    .or(`and(sender_id.eq.${pubKey},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${pubKey})`)
+                    .order('created_at', { ascending: true });
+
+                if (error) {
+                    console.error('Error loading messages:', error);
+                    showNotification('Error al cargar mensajes', 'error');
+                    return;
+                }
+
+                const conversation = data || [];
+                const container = document.getElementById('chatMessages');
+                
+                if (conversation.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 3rem; color: var(--color-text-secondary);">
+                            <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">💬 Inicia la conversación</p>
+                            <p style="font-size: 0.9rem;">Envía el primer mensaje</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = conversation.map(msg => {
+                    const isMine = msg.sender_id === pubKey;
+                    const timestamp = new Date(msg.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div class="dm-message ${isMine ? 'mine' : 'theirs'}">
+                            <div class="dm-bubble">
+                                ${escapeHtml(msg.content)}
+                            </div>
+                            <div class="dm-time">${timestamp}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            } catch (err) {
+                console.error('Error loading messages:', err);
+                showNotification('Error al cargar mensajes', 'error');
+            }
+        }
+
+        async function sendDirectMessage() {
             if (!currentChatWith) return;
 
             const content = document.getElementById('dmContent').value.trim();
@@ -4453,22 +5108,34 @@ ${currentUser.privateKey}
                 return;
             }
 
-            const message = {
-                id: Date.now(),
-                from: currentUser.publicKey,
-                fromName: currentUser.name,
-                to: currentChatWith.id,
-                toName: currentChatWith.name,
-                content: content,
-                timestamp: Date.now()
-            };
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
 
-            allDirectMessages.push(message);
-            localStorage.setItem('liberbit_dms', JSON.stringify(allDirectMessages));
+            try {
+                // Save to Supabase (usando sender_id y recipient_id)
+                const { data, error } = await supabaseClient
+                    .from('direct_messages')
+                    .insert([{
+                        sender_id: pubKey,
+                        sender_name: currentUser.name,
+                        recipient_id: currentChatWith.id,
+                        recipient_name: currentChatWith.name,
+                        content: content
+                    }])
+                    .select();
 
-            document.getElementById('dmContent').value = '';
-            loadDirectMessages(currentChatWith.id);
-            showNotification('Mensaje enviado ✅');
+                if (error) {
+                    console.error('Error sending message:', error);
+                    showNotification('Error al enviar mensaje: ' + error.message, 'error');
+                    return;
+                }
+
+                document.getElementById('dmContent').value = '';
+                await loadDirectMessages(currentChatWith.id);
+                showNotification('Mensaje enviado ✅');
+            } catch (err) {
+                console.error('Error sending message:', err);
+                showNotification('Error al enviar mensaje', 'error');
+            }
         }
 
         // ========== GOVERNANCE FUNCTIONS ==========
@@ -6481,6 +7148,43 @@ ${currentUser.privateKey}
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="closeStakeVerification()">Cancelar</button>
                 <button class="btn btn-primary" onclick="submitStakeVerification()" id="stakeBtn">Bloquear 100 LBWM</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Center Modal -->
+    <div class="notification-modal" id="notificationModal">
+        <div class="notification-modal-content">
+            <div class="notification-modal-header">
+                <h2>🔔 Centro de Notificaciones</h2>
+                <button class="notification-modal-close" onclick="closeNotificationCenter()">✕</button>
+            </div>
+
+            <div class="notification-tabs">
+                <div class="notification-tab active" onclick="filterNotifications('all')" data-filter="all">
+                    <span>📋 Todas</span>
+                    <span class="notification-tab-badge" id="tabBadgeAll">0</span>
+                </div>
+                <div class="notification-tab" onclick="filterNotifications('messages')" data-filter="messages">
+                    <span>💬 Mensajes</span>
+                    <span class="notification-tab-badge" id="tabBadgeMessages">0</span>
+                </div>
+                <div class="notification-tab" onclick="filterNotifications('governance')" data-filter="governance">
+                    <span>🏛️ Gobernanza</span>
+                    <span class="notification-tab-badge" id="tabBadgeGovernance">0</span>
+                </div>
+                <div class="notification-tab" onclick="filterNotifications('merits')" data-filter="merits">
+                    <span>🏅 Méritos</span>
+                    <span class="notification-tab-badge" id="tabBadgeMerits">0</span>
+                </div>
+            </div>
+
+            <div class="notification-list" id="notificationList">
+                <div class="notification-empty">
+                    <div class="notification-empty-icon">📭</div>
+                    <h3>No hay notificaciones</h3>
+                    <p>Cuando recibas mensajes o propuestas aparecerán aquí</p>
+                </div>
             </div>
         </div>
     </div>
