@@ -695,12 +695,44 @@
             flex-direction: column;
             align-items: center;
             gap: 1rem;
+            position: relative;
         }
 
         .app-card:hover {
             transform: translateY(-8px);
             border-color: var(--color-gold);
             box-shadow: 0 12px 40px rgba(229, 185, 92, 0.3);
+        }
+
+        .app-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, #FF4444, #CC0000);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            min-width: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .app-badge.hidden {
+            display: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 6px 16px rgba(255, 68, 68, 0.6);
+            }
         }
 
         .app-icon {
@@ -799,9 +831,36 @@
         .post-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 0.75rem;
             padding-bottom: 0.75rem;
             border-bottom: 1px solid var(--color-border);
+        }
+
+        .post-author-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .post-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--color-gold);
+        }
+
+        .post-avatar-placeholder {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--color-bg-dark);
+            border: 2px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
         }
 
         .post-author {
@@ -816,6 +875,54 @@
 
         .post-content {
             line-height: 1.6;
+        }
+
+        .post-footer {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .like-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: transparent;
+            border: 1px solid var(--color-border);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .like-btn:hover {
+            border-color: #ff6b9d;
+            background: rgba(255, 107, 157, 0.1);
+            transform: scale(1.05);
+        }
+
+        .like-btn.liked {
+            border-color: #ff6b9d;
+            background: rgba(255, 107, 157, 0.1);
+            color: #ff6b9d;
+        }
+
+        .like-icon {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .like-count {
+            font-weight: 600;
+            min-width: 1.5rem;
+            text-align: center;
         }
 
         .placeholder {
@@ -969,6 +1076,32 @@
             color: var(--color-gold);
         }
 
+        .offer-author-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .offer-author-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--color-gold);
+        }
+
+        .offer-author-avatar-placeholder {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--color-bg-dark);
+            border: 2px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
         .offer-author {
             font-size: 0.8rem;
             color: var(--color-text-secondary);
@@ -1037,6 +1170,60 @@
             cursor: pointer;
             font-size: 1.2rem;
             font-weight: bold;
+        }
+
+        .form-section {
+            background: var(--color-bg-dark);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .form-section h3 {
+            margin-bottom: 1rem;
+        }
+
+        .currency-btn {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .currency-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .currency-btn.active {
+            background: var(--color-gold);
+            border-color: var(--color-gold);
+            color: var(--color-teal-dark);
+        }
+
+        .verification-option {
+            background: var(--color-bg-dark);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid var(--color-border);
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .verification-option:hover {
+            border-color: var(--color-gold);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(229, 185, 92, 0.2);
         }
 
         /* Direct Messages Styles */
@@ -1800,21 +1987,24 @@
                 
                 <div class="apps-grid">
                     <!-- 1. Networking -->
-                    <div class="app-card" onclick="openApp('networking')">
+                    <div class="app-card" onclick="openApp('networking')" id="app-networking">
+                        <span class="app-badge hidden" id="badge-networking">0</span>
                         <div class="app-icon">🤝</div>
                         <div class="app-name">Networking</div>
                         <div class="app-description">Conexiones y Colaboración</div>
                     </div>
 
                     <!-- 2. Chat -->
-                    <div class="app-card" onclick="openApp('chat')">
+                    <div class="app-card" onclick="openApp('chat')" id="app-chat">
+                        <span class="app-badge hidden" id="badge-chat">0</span>
                         <div class="app-icon">💬</div>
                         <div class="app-name">Chat</div>
                         <div class="app-description">Comunidad Descentralizada</div>
                     </div>
 
                     <!-- 3. Gobernanza -->
-                    <div class="app-card" onclick="openApp('gobernanza')">
+                    <div class="app-card" onclick="openApp('gobernanza')" id="app-gobernanza">
+                        <span class="app-badge hidden" id="badge-gobernanza">0</span>
                         <div class="app-icon">🏛️</div>
                         <div class="app-name">Gobernanza</div>
                         <div class="app-description">Decisiones Colectivas</div>
@@ -1927,13 +2117,204 @@
 
         <!-- Placeholder Sections for other apps -->
         <section class="section" id="billeteraSection">
-            <div class="placeholder">
-                <button class="back-btn" onclick="backToMenu()">← Volver</button>
-                <h3>💰 Billetera Soberana</h3>
-                <p>Funcionalidad en desarrollo</p>
-                <p style="margin-top: 1rem; font-size: 0.9rem;">Gestión de Bitcoin y economía descentralizada</p>
+            <div class="chat-section">
+                <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
+                
+                <h2 style="color: var(--color-gold); margin-bottom: 0.5rem; text-align: center;">💰 Billetera Soberana</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">
+                    Bitcoin Lightning + USD estable • Sin KYC
+                </p>
+
+                <!-- Wallet Connection Status -->
+                <div id="walletDisconnected" style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border); margin-bottom: 2rem; text-align: center;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">⚡</div>
+                    <h3 style="color: var(--color-gold); margin-bottom: 1rem;">Conecta tu Billetera Lightning</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                        Usa Blink Wallet para gestionar BTC y USD de forma instantánea y sin comisiones altas
+                    </p>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="connectBlinkWallet()">
+                            🏖️ Conectar Blink Wallet
+                        </button>
+                        <button class="btn btn-secondary" onclick="connectWebLN()">
+                            ⚡ Conectar WebLN (Alby)
+                        </button>
+                    </div>
+
+                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; margin-top: 2rem; border: 1px solid var(--color-gold);">
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                            💡 <strong>¿No tienes wallet?</strong><br>
+                            Descarga <a href="https://www.blink.sv/" target="_blank" style="color: var(--color-gold);">Blink Wallet</a> (Android/iOS) o 
+                            <a href="https://getalby.com/" target="_blank" style="color: var(--color-gold);">Alby</a> (Browser Extension)
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Wallet Connected View -->
+                <div id="walletConnected" style="display: none;">
+                    <!-- Balance Card -->
+                    <div style="background: linear-gradient(135deg, var(--color-teal), var(--color-teal-dark)); padding: 2.5rem; border-radius: 20px; margin-bottom: 2rem; border: 2px solid var(--color-gold); position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(229, 185, 92, 0.1), transparent); border-radius: 50%;"></div>
+                        
+                        <div style="position: relative; z-index: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <h3 style="color: white; margin: 0;">Mi Balance</h3>
+                                <button onclick="disconnectWallet()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">
+                                    Desconectar
+                                </button>
+                            </div>
+
+                            <!-- Currency Switcher -->
+                            <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                                <button id="currencyBTC" class="currency-btn active" onclick="switchCurrency('BTC')">
+                                    ⚡ BTC
+                                </button>
+                                <button id="currencyUSD" class="currency-btn" onclick="switchCurrency('USD')">
+                                    💵 USD
+                                </button>
+                            </div>
+
+                            <!-- Balance Display -->
+                            <div style="text-align: center; margin-bottom: 2rem;">
+                                <div style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem;">Balance disponible</div>
+                                <div id="balanceDisplay" style="font-size: 3rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">
+                                    0.00000000 BTC
+                                </div>
+                                <div id="balanceUSDEquiv" style="font-size: 1.2rem; color: rgba(255,255,255,0.8);">
+                                    ≈ $0.00 USD
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <button class="btn btn-primary" onclick="showReceiveModal()" style="background: var(--color-gold); color: var(--color-teal-dark);">
+                                    📥 Recibir
+                                </button>
+                                <button class="btn btn-primary" onclick="showSendModal()" style="background: white; color: var(--color-teal-dark);">
+                                    📤 Enviar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cashback Button -->
+                    <div style="background: linear-gradient(135deg, rgba(229, 185, 92, 0.2), rgba(229, 185, 92, 0.05)); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem; text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎁</div>
+                        <h3 style="color: var(--color-gold); margin-bottom: 0.75rem;">Cashback LiberBit</h3>
+                        <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            Gana recompensas por tus compras en el ecosistema
+                        </p>
+                        <button class="btn btn-primary" onclick="showCashbackModal()" style="width: 100%; max-width: 300px;">
+                            Ver Cashback
+                        </button>
+                    </div>
+
+                    <!-- Transaction History -->
+                    <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border);">
+                        <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">📊 Historial de Transacciones</h3>
+                        <div id="transactionsList">
+                            <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                                <p>No hay transacciones aún</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
+
+        <!-- Receive Modal -->
+        <div class="modal" id="receiveModal" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <button class="modal-close" onclick="closeReceiveModal()">✕</button>
+                
+                <h2 style="color: var(--color-gold); margin-bottom: 1rem; text-align: center;">📥 Recibir Pago</h2>
+                
+                <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text-secondary); font-size: 0.9rem;">Cantidad</label>
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem;">
+                        <input type="number" id="receiveAmount" placeholder="0.00" style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-size: 1.2rem;">
+                        <select id="receiveCurrency" style="padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary);">
+                            <option value="BTC">BTC</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <label style="display: block; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--color-text-secondary); font-size: 0.9rem;">Descripción (opcional)</label>
+                    <input type="text" id="receiveMemo" placeholder="Concepto del pago" style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary);">
+                </div>
+
+                <button class="btn btn-primary" onclick="generateInvoice()" style="width: 100%; margin-bottom: 1rem;">
+                    Generar Invoice
+                </button>
+
+                <div id="invoiceDisplay" style="display: none;">
+                    <div style="background: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;">
+                        <div id="qrCode" style="display: inline-block;"></div>
+                    </div>
+                    <div style="background: var(--color-bg-dark); padding: 1rem; border-radius: 8px; word-break: break-all; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-secondary); margin-bottom: 1rem;" id="invoiceText">
+                    </div>
+                    <button class="btn btn-secondary" onclick="copyInvoice()" style="width: 100%;">
+                        📋 Copiar Invoice
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Modal -->
+        <div class="modal" id="sendModal" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <button class="modal-close" onclick="closeSendModal()">✕</button>
+                
+                <h2 style="color: var(--color-gold); margin-bottom: 1rem; text-align: center;">📤 Enviar Pago</h2>
+                
+                <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text-secondary); font-size: 0.9rem;">Lightning Invoice</label>
+                    <textarea id="sendInvoice" rows="4" placeholder="lnbc..." style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.85rem; resize: vertical;"></textarea>
+                </div>
+
+                <div id="sendPreview" style="display: none; background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--color-gold);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--color-text-secondary);">Cantidad:</span>
+                        <span style="font-weight: 700; color: var(--color-text-primary);" id="sendPreviewAmount">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--color-text-secondary);">Descripción:</span>
+                        <span style="color: var(--color-text-primary);" id="sendPreviewMemo">-</span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="closeSendModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="sendPayment()">Enviar Pago</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cashback Modal (Pending Development) -->
+        <div class="modal" id="cashbackModal" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <button class="modal-close" onclick="closeCashbackModal()">✕</button>
+                
+                <h2 style="color: var(--color-gold); margin-bottom: 1rem; text-align: center;">🎁 Cashback LiberBit</h2>
+                
+                <div style="text-align: center; padding: 3rem 2rem;">
+                    <div style="font-size: 5rem; margin-bottom: 1rem;">🚧</div>
+                    <h3 style="color: var(--color-text-primary); margin-bottom: 1rem;">Próximamente</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">
+                        El sistema de Cashback está en desarrollo. Pronto podrás ganar recompensas por tus compras en el ecosistema LiberBit World.
+                    </p>
+                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--color-gold);">
+                        <p style="font-size: 0.9rem; color: var(--color-text-secondary);">
+                            <strong style="color: var(--color-gold);">Funcionalidades planeadas:</strong><br><br>
+                            • Cashback en cada transacción<br>
+                            • Niveles de recompensas<br>
+                            • Bonos por referidos<br>
+                            • Promociones especiales
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <section class="section" id="sosSection">
             <div class="placeholder">
@@ -2128,10 +2509,87 @@
                     </div>
                 </div>
 
+                <!-- Identity Verification Status -->
+                <div id="verificationStatusCard" style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border); margin-bottom: 2rem;">
+                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">🔐 Estado de Verificación</h3>
+                    
+                    <!-- Not Verified -->
+                    <div id="statusNoVerificado" style="display: none;">
+                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: rgba(255, 68, 68, 0.1); border-radius: 12px; border: 2px solid #ff4444; margin-bottom: 1.5rem;">
+                            <div style="font-size: 3rem;">⚠️</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: #ff4444; margin-bottom: 0.5rem;">Identidad No Verificada</div>
+                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                    No puedes ganar méritos automáticos. Verifica tu identidad para participar en la comunidad.
+                                </div>
+                                <button class="btn btn-primary" onclick="showVerificationOptions()">
+                                    Verificar mi Identidad
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verified Basic -->
+                    <div id="statusVerificadoBasico" style="display: none;">
+                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: rgba(76, 175, 80, 0.1); border-radius: 12px; border: 2px solid #4CAF50; margin-bottom: 1.5rem;">
+                            <div style="font-size: 3rem;">✅</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: #4CAF50; margin-bottom: 0.5rem;">Verificado Básico</div>
+                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                    Puedes ganar méritos con límites. Máximo: 250 LBWM
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                        <strong>Límites restantes:</strong><br>
+                                        • Posts: <span id="limitPosts">5</span>/5<br>
+                                        • Ofertas: <span id="limitOffers">5</span>/5<br>
+                                        • Votos: <span id="limitVotes">10</span>/10<br>
+                                        • Propuestas: <span id="limitProposals">3</span>/3
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="showUpgradeToReal()" style="margin-top: 1rem;">
+                                    🌟 Actualizar a Identidad Real
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Identity Real -->
+                    <div id="statusIdentidadReal" style="display: none;">
+                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2), rgba(229, 185, 92, 0.05)); border-radius: 12px; border: 2px solid var(--color-gold);">
+                            <div style="font-size: 3rem;">👤</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; color: var(--color-gold); margin-bottom: 0.5rem;">Identidad Real Confirmada</div>
+                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                    Acceso completo + Méritos por antigüedad (1 LBWM/día)
+                                </div>
+                                <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                        <strong>Verificado por:</strong> <span id="verifiedMethod">-</span><br>
+                                        <strong>Fecha:</strong> <span id="verifiedDate">-</span><br>
+                                        <strong>Invitaciones disponibles:</strong> <span id="invitationsLeft">5</span>/5
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="showInviteFriend()" style="margin-top: 1rem;">
+                                    ✉️ Invitar a un Amigo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- How to Earn Merits -->
                 <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
                     <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">💡 Cómo Ganar Méritos LBWM</h3>
                     <div style="display: grid; gap: 1rem;">
+                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2), rgba(229, 185, 92, 0.1)); border-radius: 8px; border: 2px solid var(--color-gold);">
+                            <div style="font-size: 2rem;">⏰</div>
+                            <div>
+                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Antigüedad en la Comunidad ⭐</div>
+                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+1 LBWM por cada día desde tu registro</div>
+                                <div style="color: var(--color-gold); font-size: 0.85rem; margin-top: 0.25rem; font-style: italic;">Recompensa pasiva y automática</div>
+                            </div>
+                        </div>
                         <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px;">
                             <div style="font-size: 2rem;">💬</div>
                             <div>
@@ -2203,7 +2661,7 @@
                 </div>
 
                 <!-- Leaderboard -->
-                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold);">
+                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
                     <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">🏆 Clasificación de Méritos</h3>
                     <div id="leaderboardList">
                         <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
@@ -2211,8 +2669,200 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Professional Contribution System -->
+                <div style="background: linear-gradient(135deg, rgba(229, 185, 92, 0.1), rgba(44, 95, 111, 0.1)); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
+                    <h3 style="color: var(--color-gold); margin-bottom: 1rem; font-size: 1.3rem;">📜 Sistema Profesional de Aportaciones</h3>
+                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                        Presenta aportaciones de valor significativo para recibir LBWM verificados por el Comité de Emisión
+                    </p>
+                    
+                    <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--color-gold);">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 2rem;">💰</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Económica Definitiva</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">BTC donado, liquidez aportada • Factor: 1.0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--color-teal);">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 2rem;">🛠️</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Productiva (Trabajo)</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Desarrollo, diseño, operación, educación • Factor: 1.0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #9C27B0;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 2rem;">🔐</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Responsabilidad</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Custodia de fondos, operación crítica • Factor: 1.2</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #FF9800;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="font-size: 2rem;">⏳</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Aportación Financiada</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Trabajo adelantado sin garantía • Factor: 0.3 - 0.6</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--color-gold); margin-bottom: 1.5rem;">
+                        <p style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.75rem;">
+                            💡 <strong>Cálculo:</strong> LBWM = Valor de Referencia × Factor
+                        </p>
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 0;">
+                            Los LBWM profesionales se emiten <strong>ex-post</strong> tras verificación del Comité de Emisión con evidencias obligatorias.
+                        </p>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="showContributionForm()" style="width: 100%;">
+                        📝 Presentar Aportación de Valor
+                    </button>
+                </div>
+
+                <!-- My Contributions -->
+                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border);">
+                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">📋 Mis Aportaciones</h3>
+                    <div id="myContributionsList">
+                        <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                            <p>No has presentado aportaciones profesionales aún</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
+
+        <!-- Contribution Form Modal -->
+        <div class="modal" id="contributionFormModal" style="display: none;">
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+                <button class="modal-close" onclick="closeContributionForm()">✕</button>
+                
+                <h2 style="color: var(--color-gold); margin-bottom: 1rem;">📝 Formulario de Aportación de Valor LBWM</h2>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">
+                    Presenta tu contribución para evaluación del Comité de Emisión
+                </p>
+
+                <form id="contributionForm" onsubmit="submitContribution(event)">
+                    <!-- Section 1: Identification -->
+                    <div class="form-section">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">1️⃣ Identificación</h3>
+                        <div class="form-group">
+                            <label>Identidad LBW</label>
+                            <input type="text" id="contrib_identity" readonly value="">
+                        </div>
+                        <div class="form-group">
+                            <label>Contacto (opcional)</label>
+                            <input type="text" id="contrib_contact" placeholder="Email, Nostr, Telegram...">
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Contribution Type -->
+                    <div class="form-section">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">2️⃣ Tipo de Aportación</h3>
+                        <div class="form-group">
+                            <label>Selecciona el tipo</label>
+                            <select id="contrib_type" required onchange="updateContributionFactor()">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="economica" data-factor="1.0">💰 Económica Definitiva (Factor: 1.0)</option>
+                                <option value="productiva" data-factor="1.0">🛠️ Productiva - Trabajo (Factor: 1.0)</option>
+                                <option value="responsabilidad" data-factor="1.2">🔐 Responsabilidad (Factor: 1.2)</option>
+                                <option value="financiada" data-factor="0.0">⏳ Aportación Financiada (Factor: 0.3-0.6)</option>
+                            </select>
+                        </div>
+                        <div id="financiada_factor" style="display: none;" class="form-group">
+                            <label>Factor para Aportación Financiada</label>
+                            <select id="contrib_factor_financiada">
+                                <option value="0.3">0.3 - Fase muy temprana, alto riesgo</option>
+                                <option value="0.4">0.4 - Proyecto con tracción inicial</option>
+                                <option value="0.5">0.5 - Proyecto viable con uso real</option>
+                                <option value="0.6">0.6 - Proyecto maduro, bajo riesgo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Description -->
+                    <div class="form-section">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">3️⃣ Descripción</h3>
+                        <div class="form-group">
+                            <label>Descripción concreta de la aportación</label>
+                            <textarea id="contrib_description" rows="4" required placeholder="Ej: Desarrollo del módulo de pagos Lightning"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Periodo / Fecha de entrega</label>
+                            <input type="text" id="contrib_period" required placeholder="Ej: Enero 2026, Q1 2026">
+                        </div>
+                        <div class="form-group">
+                            <label>Proyecto asociado (opcional)</label>
+                            <input type="text" id="contrib_project" placeholder="Nombre del proyecto LBW">
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Valuation -->
+                    <div class="form-section">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">4️⃣ Valoración Económica</h3>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Valor de referencia propuesto</label>
+                                <input type="number" id="contrib_value" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Moneda</label>
+                                <select id="contrib_currency" required>
+                                    <option value="EUR">EUR €</option>
+                                    <option value="USD">USD $</option>
+                                    <option value="BTC">BTC ₿</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Justificación del valor</label>
+                            <textarea id="contrib_justification" rows="3" required placeholder="Ej: Tarifa de mercado para desarrollador senior: 50€/h × 40h"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: Evidence -->
+                    <div class="form-section">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">5️⃣ Evidencias</h3>
+                        <div class="form-group">
+                            <label>Enlaces / Documentos de respaldo</label>
+                            <textarea id="contrib_evidence" rows="4" required placeholder="URLs, hashes, tx IDs, commits GitHub..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Preview Calculation -->
+                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-gold); margin: 2rem 0;">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">📊 Estimación de LBWM</h3>
+                        <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
+                            Valor: <span id="preview_value">0</span> <span id="preview_currency">EUR</span>
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
+                            Factor: <span id="preview_factor">1.0</span>
+                        </div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-gold); margin-top: 1rem;">
+                            ≈ <span id="preview_lbwm">0</span> LBWM
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.75rem; margin-bottom: 0;">
+                            * Sujeto a aprobación del Comité de Emisión
+                        </p>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closeContributionForm()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">📤 Enviar al Comité</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <section class="section" id="networkingSection">
             <div class="chat-section">
@@ -2694,21 +3344,129 @@
             document.getElementById('userBadge').classList.remove('hidden');
             document.getElementById('userName').textContent = currentUser.name;
             initializeUserProfile();
+            updateAllBadges(); // Update notification badges
+        }
+
+        async function updateAllBadges() {
+            try {
+                await updateChatBadge();
+                await updateNetworkingBadge();
+                await updateGobernanzaBadge();
+            } catch (err) {
+                console.error('Error updating badges:', err);
+            }
+        }
+
+        async function updateChatBadge() {
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Get last visit timestamp
+                const lastVisit = parseInt(localStorage.getItem('lastVisit_chat') || '0');
+                
+                // Count posts created after last visit
+                const { data, error } = await supabaseClient
+                    .from('posts')
+                    .select('id, created_at')
+                    .gte('created_at', new Date(lastVisit).toISOString())
+                    .neq('author_public_key', pubKey); // Exclude own posts
+                
+                if (!error && data) {
+                    const unreadCount = data.length;
+                    updateBadge('chat', unreadCount);
+                }
+            } catch (err) {
+                console.error('Error updating chat badge:', err);
+            }
+        }
+
+        async function updateNetworkingBadge() {
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Get last visit timestamp
+                const lastVisit = parseInt(localStorage.getItem('lastVisit_networking') || '0');
+                
+                // Count offers created after last visit
+                const { data, error } = await supabaseClient
+                    .from('offers')
+                    .select('id, created_at')
+                    .gte('created_at', new Date(lastVisit).toISOString())
+                    .neq('author_public_key', pubKey); // Exclude own offers
+                
+                if (!error && data) {
+                    const unreadCount = data.length;
+                    updateBadge('networking', unreadCount);
+                }
+            } catch (err) {
+                console.error('Error updating networking badge:', err);
+            }
+        }
+
+        async function updateGobernanzaBadge() {
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Get last visit timestamp
+                const lastVisit = parseInt(localStorage.getItem('lastVisit_gobernanza') || '0');
+                
+                // Count new proposals and contributions
+                const proposals = JSON.parse(localStorage.getItem('liberbit_proposals') || '[]');
+                const contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+                
+                const newProposals = proposals.filter(p => 
+                    new Date(p.createdAt).getTime() > lastVisit && 
+                    p.createdBy !== pubKey
+                ).length;
+                
+                const newContributions = contributions.filter(c => 
+                    new Date(c.submitted_at).getTime() > lastVisit &&
+                    c.applicant_public_key !== pubKey &&
+                    c.status === 'approved'
+                ).length;
+                
+                const unreadCount = newProposals + newContributions;
+                updateBadge('gobernanza', unreadCount);
+            } catch (err) {
+                console.error('Error updating gobernanza badge:', err);
+            }
+        }
+
+        function updateBadge(appName, count) {
+            const badge = document.getElementById('badge-' + appName);
+            if (!badge) return;
+            
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function markAsRead(appName) {
+            // Save current timestamp as last visit
+            localStorage.setItem('lastVisit_' + appName, Date.now().toString());
+            // Clear badge
+            updateBadge(appName, 0);
         }
 
         function openApp(appName) {
             if (appName === 'chat') {
                 showSection('chatSection');
                 loadPosts();
+                markAsRead('chat');
             } else if (appName === 'networking') {
                 showSection('networkingSection');
                 loadOffers();
+                markAsRead('networking');
             } else if (appName === 'directMessages') {
                 showSection('directMessagesSection');
                 closeActiveChat();
                 loadConversationsList();
             } else if (appName === 'gobernanza') {
                 showSection('gobernanzaSection'); // Shows the menu with 2 options
+                markAsRead('gobernanza');
             } else if (appName === 'perfil') {
                 showSection('profileSection');
                 loadUserProfile();
@@ -2724,6 +3482,7 @@
             } else if (subAppName === 'merits') {
                 showSection('meritsSection');
                 loadMeritsData();
+                loadMyContributions();
             }
         }
 
@@ -2733,6 +3492,7 @@
 
         function backToMenu() {
             showSection('mainMenuSection');
+            updateAllBadges(); // Refresh badges when returning to menu
         }
 
         function showSection(sectionId) {
@@ -2798,6 +3558,8 @@
 
         async function loadPosts() {
             try {
+                const currentUserPubKey = currentUser.pubkey || currentUser.publicKey;
+                
                 // Load posts from Supabase
                 const { data, error } = await supabaseClient
                     .from('posts')
@@ -2810,11 +3572,58 @@
                     showNotification('Error al cargar posts: ' + (error.message || 'Error desconocido'), 'error');
                     allPosts = [];
                 } else {
+                    // Get unique author public keys
+                    const authorKeys = [...new Set(data.map(p => p.author_public_key))];
+                    
+                    // Fetch avatars for all authors
+                    const { data: usersData } = await supabaseClient
+                        .from('users')
+                        .select('public_key, avatar_url')
+                        .in('public_key', authorKeys);
+                    
+                    // Create avatar map
+                    const avatarMap = {};
+                    if (usersData) {
+                        usersData.forEach(user => {
+                            avatarMap[user.public_key] = user.avatar_url;
+                        });
+                    }
+                    
+                    // Get all post IDs
+                    const postIds = data.map(p => p.id);
+                    
+                    // Fetch likes for all posts
+                    const { data: likesData } = await supabaseClient
+                        .from('post_likes')
+                        .select('post_id, user_public_key, user_name')
+                        .in('post_id', postIds);
+                    
+                    // Create likes map
+                    const likesMap = {};
+                    if (likesData) {
+                        likesData.forEach(like => {
+                            if (!likesMap[like.post_id]) {
+                                likesMap[like.post_id] = {
+                                    count: 0,
+                                    users: [],
+                                    likedByCurrentUser: false
+                                };
+                            }
+                            likesMap[like.post_id].count++;
+                            likesMap[like.post_id].users.push(like.user_name);
+                            if (like.user_public_key === currentUserPubKey) {
+                                likesMap[like.post_id].likedByCurrentUser = true;
+                            }
+                        });
+                    }
+                    
                     allPosts = data.map(post => ({
                         id: post.id,
                         author: post.author_name,
+                        avatar_url: avatarMap[post.author_public_key] || null,
                         content: post.content,
-                        created_at: new Date(post.created_at).getTime()
+                        created_at: new Date(post.created_at).getTime(),
+                        likes: likesMap[post.id] || { count: 0, users: [], likedByCurrentUser: false }
                     }));
                 }
 
@@ -2825,15 +3634,34 @@
                     return;
                 }
 
-                container.innerHTML = allPosts.map(post => `
-                    <div class="post">
-                        <div class="post-header">
-                            <span class="post-author">${post.author}</span>
-                            <span class="post-time">${timeAgo(post.created_at)}</span>
+                container.innerHTML = allPosts.map(post => {
+                    const avatarHtml = post.avatar_url 
+                        ? `<img src="${post.avatar_url}" class="post-avatar" alt="${post.author}">`
+                        : `<div class="post-avatar-placeholder">👤</div>`;
+                    
+                    const likeButtonClass = post.likes.likedByCurrentUser ? 'liked' : '';
+                    const likeIcon = post.likes.likedByCurrentUser ? '❤️' : '🤍';
+                    const likesText = post.likes.count > 0 ? post.likes.count : '';
+                    
+                    return `
+                        <div class="post">
+                            <div class="post-header">
+                                <div class="post-author-info">
+                                    ${avatarHtml}
+                                    <span class="post-author">${post.author}</span>
+                                </div>
+                                <span class="post-time">${timeAgo(post.created_at)}</span>
+                            </div>
+                            <div class="post-content">${escapeHtml(post.content)}</div>
+                            <div class="post-footer">
+                                <button class="like-btn ${likeButtonClass}" onclick="toggleLike('${post.id}')" title="${post.likes.users.join(', ') || 'Sé el primero en dar like'}">
+                                    <span class="like-icon">${likeIcon}</span>
+                                    <span class="like-count">${likesText}</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="post-content">${escapeHtml(post.content)}</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (err) {
                 console.error('Error catch:', err);
                 showNotification('Error al cargar publicaciones: ' + err.message, 'error');
@@ -2842,6 +3670,51 @@
 
         function clearPost() {
             document.getElementById('newPostContent').value = '';
+        }
+
+        // Toggle like on post
+        async function toggleLike(postId) {
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Check if already liked
+                const { data: existingLike } = await supabaseClient
+                    .from('post_likes')
+                    .select('id')
+                    .eq('post_id', postId)
+                    .eq('user_public_key', pubKey)
+                    .single();
+                
+                if (existingLike) {
+                    // Unlike - remove like
+                    const { error } = await supabaseClient
+                        .from('post_likes')
+                        .delete()
+                        .eq('post_id', postId)
+                        .eq('user_public_key', pubKey);
+                    
+                    if (error) throw error;
+                    
+                } else {
+                    // Like - add like
+                    const { error } = await supabaseClient
+                        .from('post_likes')
+                        .insert({
+                            post_id: postId,
+                            user_public_key: pubKey,
+                            user_name: currentUser.name
+                        });
+                    
+                    if (error) throw error;
+                }
+                
+                // Reload posts to update like counts
+                await loadPosts();
+                
+            } catch (err) {
+                console.error('Error toggling like:', err);
+                showNotification('Error al actualizar like', 'error');
+            }
         }
 
         function logout() {
@@ -3071,6 +3944,23 @@ ${currentUser.privateKey}
                     console.error('Error loading offers:', error);
                     allOffers = [];
                 } else {
+                    // Get unique author public keys
+                    const authorKeys = [...new Set(data.map(o => o.author_public_key))];
+                    
+                    // Fetch avatars for all authors
+                    const { data: usersData } = await supabaseClient
+                        .from('users')
+                        .select('public_key, avatar_url')
+                        .in('public_key', authorKeys);
+                    
+                    // Create avatar map
+                    const avatarMap = {};
+                    if (usersData) {
+                        usersData.forEach(user => {
+                            avatarMap[user.public_key] = user.avatar_url;
+                        });
+                    }
+                    
                     allOffers = data.map(offer => ({
                         id: offer.id,
                         category: offer.category,
@@ -3081,6 +3971,7 @@ ${currentUser.privateKey}
                         image: offer.image_data,
                         author: offer.author_name,
                         authorId: offer.author_public_key,
+                        avatar_url: avatarMap[offer.author_public_key] || null,
                         created_at: new Date(offer.created_at).getTime()
                     }));
                 }
@@ -3116,6 +4007,10 @@ ${currentUser.privateKey}
             
             container.innerHTML = offersToShow.map(offer => {
                 const isOwnOffer = offer.authorId === currentUserPubKey;
+                const avatarHtml = offer.avatar_url 
+                    ? `<img src="${offer.avatar_url}" class="offer-author-avatar" alt="${offer.author}">`
+                    : `<div class="offer-author-avatar-placeholder">👤</div>`;
+                
                 return `
                     <div class="offer-card" ${!isOwnOffer ? `onclick="showOfferDetail('${offer.id}')"` : ''} style="cursor: ${!isOwnOffer ? 'pointer' : 'default'};">
                         ${isOwnOffer ? `
@@ -3136,7 +4031,10 @@ ${currentUser.privateKey}
                             <div class="offer-description">${escapeHtml(offer.description)}</div>
                             <div class="offer-footer">
                                 <div class="offer-price">${offer.price === 0 || !offer.price ? 'A negociar' : offer.price + ' LBWM'}</div>
-                                <div class="offer-author">Por ${escapeHtml(offer.author)}</div>
+                                <div class="offer-author-info">
+                                    ${avatarHtml}
+                                    <span class="offer-author">Por ${escapeHtml(offer.author)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3511,32 +4409,80 @@ ${currentUser.privateKey}
                 
                 // Calculate user merits from Supabase
                 let totalMerits = 0;
+                let breakdown = {
+                    posts: 0,
+                    offers: 0,
+                    votes: 0,
+                    proposals: 0,
+                    seniority: 0
+                };
                 
                 // Count posts (10 LBWM each)
-                const { data: postsData } = await supabaseClient
+                const { data: postsData, error: postsError } = await supabaseClient
                     .from('posts')
-                    .select('id', { count: 'exact', head: true })
+                    .select('id')
                     .eq('author_public_key', pubKey);
-                const postsCount = postsData?.length || 0;
-                totalMerits += postsCount * 10;
+                
+                if (!postsError && postsData) {
+                    breakdown.posts = postsData.length * 10;
+                    totalMerits += breakdown.posts;
+                    console.log('Posts:', postsData.length, 'Merits:', breakdown.posts);
+                }
                 
                 // Count offers (10 LBWM each)
-                const { data: offersData } = await supabaseClient
+                const { data: offersData, error: offersError } = await supabaseClient
                     .from('offers')
-                    .select('id', { count: 'exact', head: true })
+                    .select('id')
                     .eq('author_public_key', pubKey);
-                const offersCount = offersData?.length || 0;
-                totalMerits += offersCount * 10;
+                
+                if (!offersError && offersData) {
+                    breakdown.offers = offersData.length * 10;
+                    totalMerits += breakdown.offers;
+                    console.log('Offers:', offersData.length, 'Merits:', breakdown.offers);
+                }
                 
                 // Count votes (10 LBWM each) - from localStorage for now
                 const votes = JSON.parse(localStorage.getItem('liberbit_votes') || '[]');
                 const userVotes = votes.filter(v => v.voterId === pubKey);
-                totalMerits += userVotes.length * 10;
+                breakdown.votes = userVotes.length * 10;
+                totalMerits += breakdown.votes;
+                console.log('Votes:', userVotes.length, 'Merits:', breakdown.votes);
                 
                 // Count proposals (10 LBWM each) - from localStorage for now
                 const proposals = JSON.parse(localStorage.getItem('liberbit_proposals') || '[]');
                 const userProposals = proposals.filter(p => p.createdBy === pubKey);
-                totalMerits += userProposals.length * 10;
+                breakdown.proposals = userProposals.length * 10;
+                totalMerits += breakdown.proposals;
+                console.log('Proposals:', userProposals.length, 'Merits:', breakdown.proposals);
+                
+                // Calculate seniority merits (1 LBWM per day since registration)
+                const { data: userData, error: userError } = await supabaseClient
+                    .from('users')
+                    .select('created_at, registration_date')
+                    .eq('public_key', pubKey)
+                    .single();
+                
+                if (!userError && userData) {
+                    const registrationDate = new Date(userData.created_at || userData.registration_date || currentUser.created_at);
+                    const now = new Date();
+                    const daysSinceRegistration = Math.floor((now - registrationDate) / (1000 * 60 * 60 * 24));
+                    breakdown.seniority = daysSinceRegistration * 1; // 1 LBWM per day
+                    totalMerits += breakdown.seniority;
+                    console.log('Days since registration:', daysSinceRegistration, 'Seniority Merits:', breakdown.seniority);
+                } else {
+                    // Fallback to currentUser.created_at if available
+                    if (currentUser.created_at) {
+                        const registrationDate = new Date(currentUser.created_at);
+                        const now = new Date();
+                        const daysSinceRegistration = Math.floor((now - registrationDate) / (1000 * 60 * 60 * 24));
+                        breakdown.seniority = daysSinceRegistration * 1;
+                        totalMerits += breakdown.seniority;
+                        console.log('Days since registration (fallback):', daysSinceRegistration, 'Seniority Merits:', breakdown.seniority);
+                    }
+                }
+                
+                console.log('Total Merits:', totalMerits);
+                console.log('Breakdown:', breakdown);
                 
                 // Update user merits display
                 document.getElementById('userTotalMerits').textContent = totalMerits;
@@ -3558,12 +4504,12 @@ ${currentUser.privateKey}
                 document.getElementById('userLevel').textContent = level;
                 document.getElementById('userLevelName').textContent = levelName;
                 
-                // Load leaderboard (mock data for now)
+                // Load leaderboard
                 await loadLeaderboard();
                 
             } catch (err) {
                 console.error('Error loading merits:', err);
-                showNotification('Error al cargar méritos', 'error');
+                showNotification('Error al cargar méritos: ' + err.message, 'error');
             }
         }
 
@@ -3595,6 +4541,168 @@ ${currentUser.privateKey}
             const totalMerits = document.getElementById('userTotalMerits').textContent;
             document.getElementById('leaderboardUserMerits').textContent = totalMerits;
             document.getElementById('userRanking').textContent = '1';
+        }
+
+        // Professional Contribution System Functions
+        function showContributionForm() {
+            const modal = document.getElementById('contributionFormModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            document.getElementById('contrib_identity').value = currentUser.name;
+            updatePreviewCalculation();
+        }
+
+        function closeContributionForm() {
+            const modal = document.getElementById('contributionFormModal');
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            document.getElementById('contributionForm').reset();
+        }
+
+        function updateContributionFactor() {
+            const typeSelect = document.getElementById('contrib_type');
+            const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+            const factor = selectedOption.dataset.factor;
+            
+            const financiadaDiv = document.getElementById('financiada_factor');
+            if (typeSelect.value === 'financiada') {
+                financiadaDiv.style.display = 'block';
+                document.getElementById('preview_factor').textContent = document.getElementById('contrib_factor_financiada').value;
+            } else {
+                financiadaDiv.style.display = 'none';
+                document.getElementById('preview_factor').textContent = factor;
+            }
+            
+            updatePreviewCalculation();
+        }
+
+        function updatePreviewCalculation() {
+            const value = parseFloat(document.getElementById('contrib_value').value) || 0;
+            const currency = document.getElementById('contrib_currency').value;
+            let factor = parseFloat(document.getElementById('preview_factor').textContent);
+            
+            if (document.getElementById('contrib_type').value === 'financiada') {
+                factor = parseFloat(document.getElementById('contrib_factor_financiada').value);
+            }
+            
+            const lbwm = (value * factor).toFixed(2);
+            
+            document.getElementById('preview_value').textContent = value.toFixed(2);
+            document.getElementById('preview_currency').textContent = currency;
+            document.getElementById('preview_factor').textContent = factor;
+            document.getElementById('preview_lbwm').textContent = lbwm;
+        }
+
+        // Setup event listeners for preview updates
+        document.addEventListener('DOMContentLoaded', () => {
+            const valueInput = document.getElementById('contrib_value');
+            const currencySelect = document.getElementById('contrib_currency');
+            const factorFinanciada = document.getElementById('contrib_factor_financiada');
+            
+            if (valueInput) valueInput.addEventListener('input', updatePreviewCalculation);
+            if (currencySelect) currencySelect.addEventListener('change', updatePreviewCalculation);
+            if (factorFinanciada) factorFinanciada.addEventListener('change', updatePreviewCalculation);
+        });
+
+        async function submitContribution(event) {
+            event.preventDefault();
+            
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                const typeSelect = document.getElementById('contrib_type');
+                const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+                
+                let factor = parseFloat(selectedOption.dataset.factor);
+                if (typeSelect.value === 'financiada') {
+                    factor = parseFloat(document.getElementById('contrib_factor_financiada').value);
+                }
+                
+                const contribution = {
+                    applicant_public_key: pubKey,
+                    applicant_name: currentUser.name,
+                    contribution_type: typeSelect.value,
+                    description: document.getElementById('contrib_description').value,
+                    period: document.getElementById('contrib_period').value,
+                    project: document.getElementById('contrib_project').value,
+                    reference_value: parseFloat(document.getElementById('contrib_value').value),
+                    currency: document.getElementById('contrib_currency').value,
+                    factor_proposed: factor,
+                    justification: document.getElementById('contrib_justification').value,
+                    evidence: document.getElementById('contrib_evidence').value,
+                    contact: document.getElementById('contrib_contact').value,
+                    status: 'pending',
+                    lbwm_estimated: (parseFloat(document.getElementById('contrib_value').value) * factor).toFixed(2)
+                };
+                
+                // Save to Supabase - would need a new table "contributions"
+                // For now, save to localStorage
+                let contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+                contribution.id = 'CONT-' + Date.now();
+                contribution.submitted_at = new Date().toISOString();
+                contributions.push(contribution);
+                localStorage.setItem('liberbit_contributions', JSON.stringify(contributions));
+                
+                showNotification('✅ Aportación enviada al Comité de Emisión', 'success');
+                closeContributionForm();
+                loadMyContributions();
+                
+            } catch (err) {
+                console.error('Error submitting contribution:', err);
+                showNotification('Error al enviar aportación', 'error');
+            }
+        }
+
+        function loadMyContributions() {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            const contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+            const myContribs = contributions.filter(c => c.applicant_public_key === pubKey);
+            
+            const container = document.getElementById('myContributionsList');
+            
+            if (myContribs.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);"><p>No has presentado aportaciones profesionales aún</p></div>';
+                return;
+            }
+            
+            const statusColors = {
+                pending: '#FF9800',
+                approved: '#4CAF50',
+                rejected: '#F44336'
+            };
+            
+            const statusLabels = {
+                pending: '⏳ Pendiente',
+                approved: '✅ Aprobada',
+                rejected: '❌ Rechazada'
+            };
+            
+            container.innerHTML = myContribs.map(c => `
+                <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; border-left: 4px solid ${statusColors[c.status]}; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.5rem;">${c.description}</div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary);">${c.period}</div>
+                        </div>
+                        <span style="padding: 0.4rem 0.8rem; background: ${statusColors[c.status]}; color: white; border-radius: 8px; font-size: 0.75rem; font-weight: 600;">
+                            ${statusLabels[c.status]}
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-border);">
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Valor</div>
+                            <div style="font-weight: 600; color: var(--color-text-primary);">${c.reference_value} ${c.currency}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Factor</div>
+                            <div style="font-weight: 600; color: var(--color-text-primary);">${c.factor_proposed}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">LBWM Estimados</div>
+                            <div style="font-weight: 700; color: var(--color-gold); font-size: 1.1rem;">${c.lbwm_estimated}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function loadProposals() {
@@ -4308,6 +5416,937 @@ ${currentUser.privateKey}
                 showNotification('Error al actualizar ciudadanía', 'error');
             }
         }
+
+        // ============================================
+        // BLINK WALLET INTEGRATION
+        // ============================================
+
+        const BLINK_API = 'https://api.blink.sv/graphql';
+        let walletData = {
+            connected: false,
+            type: null, // 'blink' or 'webln'
+            authToken: null,
+            wallets: [],
+            currentCurrency: 'BTC',
+            balance: {
+                BTC: 0,
+                USD: 0
+            }
+        };
+
+        // Connect to Blink Wallet
+        async function connectBlinkWallet() {
+            try {
+                showNotification('🏖️ Conectando con Blink Wallet...');
+                
+                // For demo purposes, we'll show a simplified flow
+                // In production, you would implement OAuth or phone authentication
+                const demoMode = confirm('¿Usar modo DEMO? (En producción usarías tu cuenta de Blink real)\n\nSí = Demo\nNo = Cancelar');
+                
+                if (!demoMode) {
+                    showNotification('ℹ️ Para usar Blink real, necesitas autenticarte con tu número de teléfono', 'info');
+                    return;
+                }
+                
+                // Demo wallet data
+                walletData.connected = true;
+                walletData.type = 'blink';
+                walletData.authToken = 'DEMO_TOKEN';
+                walletData.balance.BTC = 0.00050000;
+                walletData.balance.USD = 45.50;
+                
+                // Save to localStorage
+                localStorage.setItem('liberbit_wallet', JSON.stringify(walletData));
+                
+                // Update UI
+                showWalletConnected();
+                showNotification('✅ Wallet conectada correctamente', 'success');
+                
+            } catch (err) {
+                console.error('Error connecting Blink:', err);
+                showNotification('Error al conectar wallet', 'error');
+            }
+        }
+
+        // Connect to WebLN (Alby)
+        async function connectWebLN() {
+            try {
+                if (typeof window.webln === 'undefined') {
+                    if (confirm('Alby no está instalado. ¿Abrir página de descarga?')) {
+                        window.open('https://getalby.com/', '_blank');
+                    }
+                    return;
+                }
+                
+                showNotification('⚡ Conectando con Alby...');
+                
+                await window.webln.enable();
+                const info = await window.webln.getInfo();
+                
+                walletData.connected = true;
+                walletData.type = 'webln';
+                walletData.balance.BTC = 0; // WebLN doesn't provide balance by default
+                walletData.balance.USD = 0;
+                
+                localStorage.setItem('liberbit_wallet', JSON.stringify(walletData));
+                
+                showWalletConnected();
+                showNotification('✅ Alby conectado correctamente', 'success');
+                
+            } catch (err) {
+                console.error('Error connecting WebLN:', err);
+                showNotification('Error al conectar Alby: ' + err.message, 'error');
+            }
+        }
+
+        // Disconnect wallet
+        function disconnectWallet() {
+            if (confirm('¿Desconectar billetera?')) {
+                walletData = {
+                    connected: false,
+                    type: null,
+                    authToken: null,
+                    wallets: [],
+                    currentCurrency: 'BTC',
+                    balance: { BTC: 0, USD: 0 }
+                };
+                
+                localStorage.removeItem('liberbit_wallet');
+                showWalletDisconnected();
+                showNotification('Wallet desconectada');
+            }
+        }
+
+        // Switch currency display
+        function switchCurrency(currency) {
+            walletData.currentCurrency = currency;
+            
+            // Update button states
+            document.getElementById('currencyBTC').classList.toggle('active', currency === 'BTC');
+            document.getElementById('currencyUSD').classList.toggle('active', currency === 'USD');
+            
+            // Update balance display
+            updateBalanceDisplay();
+        }
+
+        // Update balance display
+        function updateBalanceDisplay() {
+            const balanceDisplay = document.getElementById('balanceDisplay');
+            const balanceUSDEquiv = document.getElementById('balanceUSDEquiv');
+            
+            if (walletData.currentCurrency === 'BTC') {
+                balanceDisplay.textContent = walletData.balance.BTC.toFixed(8) + ' BTC';
+                balanceUSDEquiv.textContent = '≈ $' + walletData.balance.USD.toFixed(2) + ' USD';
+            } else {
+                balanceDisplay.textContent = '$' + walletData.balance.USD.toFixed(2) + ' USD';
+                balanceUSDEquiv.textContent = '≈ ' + walletData.balance.BTC.toFixed(8) + ' BTC';
+            }
+        }
+
+        // Show wallet connected view
+        function showWalletConnected() {
+            document.getElementById('walletDisconnected').style.display = 'none';
+            document.getElementById('walletConnected').style.display = 'block';
+            updateBalanceDisplay();
+            loadTransactions();
+        }
+
+        // Show wallet disconnected view
+        function showWalletDisconnected() {
+            document.getElementById('walletDisconnected').style.display = 'block';
+            document.getElementById('walletConnected').style.display = 'none';
+        }
+
+        // Show receive modal
+        function showReceiveModal() {
+            document.getElementById('receiveModal').style.display = 'flex';
+            document.getElementById('receiveModal').classList.add('active');
+        }
+
+        // Close receive modal
+        function closeReceiveModal() {
+            document.getElementById('receiveModal').style.display = 'none';
+            document.getElementById('receiveModal').classList.remove('active');
+            document.getElementById('invoiceDisplay').style.display = 'none';
+        }
+
+        // Generate Lightning invoice
+        async function generateInvoice() {
+            try {
+                const amount = parseFloat(document.getElementById('receiveAmount').value);
+                const currency = document.getElementById('receiveCurrency').value;
+                const memo = document.getElementById('receiveMemo').value || 'Pago LiberBit World';
+                
+                if (!amount || amount <= 0) {
+                    showNotification('Por favor ingresa una cantidad válida', 'error');
+                    return;
+                }
+                
+                showNotification('Generando invoice...');
+                
+                // For demo purposes, generate a fake invoice
+                // In production, this would call Blink API or WebLN
+                const fakeInvoice = 'lnbc' + Math.floor(amount * 100000000) + 'n1p' + Math.random().toString(36).substring(2, 15);
+                
+                document.getElementById('invoiceText').textContent = fakeInvoice;
+                document.getElementById('invoiceDisplay').style.display = 'block';
+                
+                // Generate QR code (you'd need a QR library in production)
+                document.getElementById('qrCode').innerHTML = `
+                    <div style="width: 200px; height: 200px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                        <div style="color: #333; text-align: center; padding: 1rem;">
+                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">📱</div>
+                            <div style="font-size: 0.9rem;">Escanea con tu<br>wallet Lightning</div>
+                        </div>
+                    </div>
+                `;
+                
+                showNotification('✅ Invoice generado', 'success');
+                
+            } catch (err) {
+                console.error('Error generating invoice:', err);
+                showNotification('Error al generar invoice', 'error');
+            }
+        }
+
+        // Copy invoice to clipboard
+        function copyInvoice() {
+            const invoiceText = document.getElementById('invoiceText').textContent;
+            navigator.clipboard.writeText(invoiceText).then(() => {
+                showNotification('✅ Invoice copiado al portapapeles', 'success');
+            });
+        }
+
+        // Show send modal
+        function showSendModal() {
+            document.getElementById('sendModal').style.display = 'flex';
+            document.getElementById('sendModal').classList.add('active');
+        }
+
+        // Close send modal
+        function closeSendModal() {
+            document.getElementById('sendModal').style.display = 'none';
+            document.getElementById('sendModal').classList.remove('active');
+        }
+
+        // Send payment
+        async function sendPayment() {
+            try {
+                const invoice = document.getElementById('sendInvoice').value.trim();
+                
+                if (!invoice) {
+                    showNotification('Por favor pega un invoice Lightning', 'error');
+                    return;
+                }
+                
+                if (!invoice.toLowerCase().startsWith('lnbc')) {
+                    showNotification('Invoice Lightning inválido', 'error');
+                    return;
+                }
+                
+                if (!confirm('¿Confirmar envío de pago?')) {
+                    return;
+                }
+                
+                showNotification('Enviando pago...');
+                
+                // In production, call Blink API or WebLN here
+                if (walletData.type === 'webln' && window.webln) {
+                    const response = await window.webln.sendPayment(invoice);
+                    showNotification('✅ Pago enviado correctamente', 'success');
+                } else {
+                    // Demo mode
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    showNotification('✅ Pago enviado (DEMO)', 'success');
+                }
+                
+                closeSendModal();
+                loadTransactions();
+                
+            } catch (err) {
+                console.error('Error sending payment:', err);
+                showNotification('Error al enviar pago: ' + err.message, 'error');
+            }
+        }
+
+        // Show cashback modal
+        function showCashbackModal() {
+            document.getElementById('cashbackModal').style.display = 'flex';
+            document.getElementById('cashbackModal').classList.add('active');
+        }
+
+        // Close cashback modal
+        function closeCashbackModal() {
+            document.getElementById('cashbackModal').style.display = 'none';
+            document.getElementById('cashbackModal').classList.remove('active');
+        }
+
+        // Load transactions
+        function loadTransactions() {
+            const container = document.getElementById('transactionsList');
+            
+            // Demo transactions
+            const demoTransactions = [
+                {
+                    type: 'receive',
+                    amount: 0.00010000,
+                    currency: 'BTC',
+                    memo: 'Pago por servicio',
+                    date: new Date(Date.now() - 3600000).toISOString(),
+                    status: 'completed'
+                },
+                {
+                    type: 'send',
+                    amount: 0.00005000,
+                    currency: 'BTC',
+                    memo: 'Compra en LiberBit',
+                    date: new Date(Date.now() - 7200000).toISOString(),
+                    status: 'completed'
+                }
+            ];
+            
+            if (demoTransactions.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);"><p>No hay transacciones aún</p></div>';
+                return;
+            }
+            
+            container.innerHTML = demoTransactions.map(tx => `
+                <div style="background: var(--color-bg-dark); padding: 1.25rem; border-radius: 12px; margin-bottom: 1rem; border-left: 4px solid ${tx.type === 'receive' ? 'var(--color-success)' : 'var(--color-gold)'};">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">
+                                ${tx.type === 'receive' ? '📥 Recibido' : '📤 Enviado'}
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                ${tx.memo}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: ${tx.type === 'receive' ? 'var(--color-success)' : 'var(--color-text-primary)'};">
+                                ${tx.type === 'receive' ? '+' : '-'}${tx.amount.toFixed(8)} ${tx.currency}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">
+                                ${timeAgo(new Date(tx.date).getTime())}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize wallet on page load
+        function initializeWallet() {
+            const saved = localStorage.getItem('liberbit_wallet');
+            if (saved) {
+                walletData = JSON.parse(saved);
+                if (walletData.connected) {
+                    showWalletConnected();
+                }
+            }
+        }
+
+        // Call initialize when opening billetera
+        const originalOpenAppBilletera = openApp;
+        openApp = function(appName) {
+            originalOpenAppBilletera(appName);
+            if (appName === 'billetera') {
+                initializeWallet();
+            }
+        };
+
+        // ============================================
+        // IDENTITY VERIFICATION SYSTEM
+        // ============================================
+
+        // Verification levels
+        const VERIFICATION_LEVELS = {
+            NO_VERIFICADO: 'no_verificado',
+            VERIFICADO_BASICO: 'verificado_basico',
+            IDENTIDAD_REAL: 'identidad_real'
+        };
+
+        // Merit limits by verification level
+        const MERIT_LIMITS = {
+            no_verificado: {
+                posts: { max: 0, merits: 0 },
+                offers: { max: 0, merits: 0 },
+                votes: { max: 0, merits: 0 },
+                proposals: { max: 0, merits: 0 },
+                seniority: false
+            },
+            verificado_basico: {
+                posts: { max: 5, merits: 10 },
+                offers: { max: 5, merits: 15 },
+                votes: { max: 10, merits: 5 },
+                proposals: { max: 3, merits: 25 },
+                seniority: false
+            },
+            identidad_real: {
+                posts: { max: 5, merits: 10 },
+                offers: { max: 5, merits: 15 },
+                votes: { max: 10, merits: 5 },
+                proposals: { max: 3, merits: 25 },
+                seniority: true // 1 LBWM per day
+            }
+        };
+
+        let userVerification = {
+            level: VERIFICATION_LEVELS.NO_VERIFICADO,
+            method: null,
+            verifiedAt: null,
+            verifiedBy: null,
+            limits: {
+                posts_count: 0,
+                offers_count: 0,
+                votes_count: 0,
+                proposals_count: 0
+            },
+            invitationsLeft: 5
+        };
+
+        // Initialize verification status
+        async function loadVerificationStatus() {
+            try {
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Get user data from Supabase
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('verification_level, verification_method, verified_at, verified_by, merit_limits, invitation_count, max_invitations')
+                    .eq('public_key', pubKey)
+                    .single();
+                
+                if (!error && data) {
+                    userVerification.level = data.verification_level || VERIFICATION_LEVELS.NO_VERIFICADO;
+                    userVerification.method = data.verification_method;
+                    userVerification.verifiedAt = data.verified_at;
+                    userVerification.verifiedBy = data.verified_by;
+                    userVerification.limits = data.merit_limits || {
+                        posts_count: 0,
+                        offers_count: 0,
+                        votes_count: 0,
+                        proposals_count: 0
+                    };
+                    userVerification.invitationsLeft = (data.max_invitations || 5) - (data.invitation_count || 0);
+                }
+                
+                updateVerificationUI();
+                
+            } catch (err) {
+                console.error('Error loading verification status:', err);
+            }
+        }
+
+        // Update verification UI
+        function updateVerificationUI() {
+            // Hide all status cards
+            document.getElementById('statusNoVerificado').style.display = 'none';
+            document.getElementById('statusVerificadoBasico').style.display = 'none';
+            document.getElementById('statusIdentidadReal').style.display = 'none';
+            
+            // Show appropriate status card
+            if (userVerification.level === VERIFICATION_LEVELS.NO_VERIFICADO) {
+                document.getElementById('statusNoVerificado').style.display = 'block';
+            } else if (userVerification.level === VERIFICATION_LEVELS.VERIFICADO_BASICO) {
+                document.getElementById('statusVerificadoBasico').style.display = 'block';
+                updateLimitsDisplay();
+            } else if (userVerification.level === VERIFICATION_LEVELS.IDENTIDAD_REAL) {
+                document.getElementById('statusIdentidadReal').style.display = 'block';
+                updateRealIdentityDisplay();
+            }
+        }
+
+        // Update limits display
+        function updateLimitsDisplay() {
+            const limits = MERIT_LIMITS[userVerification.level];
+            const current = userVerification.limits;
+            
+            document.getElementById('limitPosts').textContent = limits.posts.max - current.posts_count;
+            document.getElementById('limitOffers').textContent = limits.offers.max - current.offers_count;
+            document.getElementById('limitVotes').textContent = limits.votes.max - current.votes_count;
+            document.getElementById('limitProposals').textContent = limits.proposals.max - current.proposals_count;
+        }
+
+        // Update real identity display
+        function updateRealIdentityDisplay() {
+            const methodNames = {
+                'invitation': 'Invitación',
+                'video': 'Video Verificación',
+                'stake': 'Stake de LBWM'
+            };
+            
+            document.getElementById('verifiedMethod').textContent = methodNames[userVerification.method] || userVerification.method || '-';
+            
+            if (userVerification.verifiedAt) {
+                const date = new Date(userVerification.verifiedAt);
+                document.getElementById('verifiedDate').textContent = date.toLocaleDateString('es-ES');
+            }
+            
+            document.getElementById('invitationsLeft').textContent = userVerification.invitationsLeft;
+            updateLimitsDisplay();
+        }
+
+        // Show verification options modal
+        function showVerificationOptions() {
+            document.getElementById('verificationOptionsModal').style.display = 'flex';
+            document.getElementById('verificationOptionsModal').classList.add('active');
+        }
+
+        // Close verification options
+        function closeVerificationOptions() {
+            document.getElementById('verificationOptionsModal').style.display = 'none';
+            document.getElementById('verificationOptionsModal').classList.remove('active');
+        }
+
+        // Select verification method
+        function selectVerificationMethod(method) {
+            closeVerificationOptions();
+            
+            if (method === 'invitation') {
+                showRequestInvitation();
+            } else if (method === 'video') {
+                showVideoVerification();
+            } else if (method === 'stake') {
+                showStakeVerification();
+            }
+        }
+
+        // Show request invitation modal
+        function showRequestInvitation() {
+            document.getElementById('requestInvitationModal').style.display = 'flex';
+            document.getElementById('requestInvitationModal').classList.add('active');
+        }
+
+        // Close request invitation
+        function closeRequestInvitation() {
+            document.getElementById('requestInvitationModal').style.display = 'none';
+            document.getElementById('requestInvitationModal').classList.remove('active');
+        }
+
+        // Accept invitation
+        async function acceptInvitation() {
+            try {
+                const code = document.getElementById('invitationCode').value.trim();
+                
+                if (!code) {
+                    showNotification('Por favor ingresa un código de invitación', 'error');
+                    return;
+                }
+                
+                if (!code.startsWith('INV-')) {
+                    showNotification('Código de invitación inválido', 'error');
+                    return;
+                }
+                
+                showNotification('Verificando invitación...');
+                
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Update user verification level
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update({
+                        verification_level: VERIFICATION_LEVELS.VERIFICADO_BASICO,
+                        verification_method: 'invitation',
+                        verified_at: new Date().toISOString()
+                    })
+                    .eq('public_key', pubKey);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                userVerification.level = VERIFICATION_LEVELS.VERIFICADO_BASICO;
+                userVerification.method = 'invitation';
+                userVerification.verifiedAt = new Date().toISOString();
+                
+                showNotification('✅ ¡Invitación aceptada! Ahora eres Verificado Básico', 'success');
+                closeRequestInvitation();
+                updateVerificationUI();
+                
+            } catch (err) {
+                console.error('Error accepting invitation:', err);
+                showNotification('Error al aceptar invitación', 'error');
+            }
+        }
+
+        // Show video verification modal
+        function showVideoVerification() {
+            document.getElementById('videoVerificationModal').style.display = 'flex';
+            document.getElementById('videoVerificationModal').classList.add('active');
+        }
+
+        // Close video verification
+        function closeVideoVerification() {
+            document.getElementById('videoVerificationModal').style.display = 'none';
+            document.getElementById('videoVerificationModal').classList.remove('active');
+        }
+
+        // Submit video verification
+        async function submitVideoVerification() {
+            try {
+                const videoUrl = document.getElementById('videoUrl').value.trim();
+                const description = document.getElementById('videoDescription').value.trim();
+                
+                if (!videoUrl) {
+                    showNotification('Por favor ingresa la URL del video', 'error');
+                    return;
+                }
+                
+                if (!description) {
+                    showNotification('Por favor describe tu presentación', 'error');
+                    return;
+                }
+                
+                showNotification('Enviando solicitud...');
+                
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                // Create verification request
+                const { error } = await supabaseClient
+                    .from('verification_requests')
+                    .insert({
+                        user_public_key: pubKey,
+                        user_name: currentUser.name,
+                        request_type: 'video',
+                        video_url: videoUrl,
+                        video_description: description,
+                        status: 'pending',
+                        approvals_needed: 3
+                    });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                showNotification('✅ Solicitud enviada. Será revisada por la comunidad', 'success');
+                closeVideoVerification();
+                
+            } catch (err) {
+                console.error('Error submitting video verification:', err);
+                showNotification('Error al enviar solicitud', 'error');
+            }
+        }
+
+        // Show stake verification modal
+        function showStakeVerification() {
+            const modal = document.getElementById('stakeVerificationModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            
+            const currentMerits = parseInt(document.getElementById('userTotalMerits').textContent) || 0;
+            document.getElementById('userBalanceForStake').textContent = currentMerits + ' LBWM';
+            
+            const stakeBtn = document.getElementById('stakeBtn');
+            const insufficientMsg = document.getElementById('insufficientBalance');
+            
+            if (currentMerits < 100) {
+                stakeBtn.disabled = true;
+                stakeBtn.style.opacity = '0.5';
+                insufficientMsg.style.display = 'block';
+            } else {
+                stakeBtn.disabled = false;
+                stakeBtn.style.opacity = '1';
+                insufficientMsg.style.display = 'none';
+            }
+        }
+
+        // Close stake verification
+        function closeStakeVerification() {
+            document.getElementById('stakeVerificationModal').style.display = 'none';
+            document.getElementById('stakeVerificationModal').classList.remove('active');
+        }
+
+        // Submit stake verification
+        async function submitStakeVerification() {
+            try {
+                const currentMerits = parseInt(document.getElementById('userTotalMerits').textContent) || 0;
+                
+                if (currentMerits < 100) {
+                    showNotification('Balance insuficiente', 'error');
+                    return;
+                }
+                
+                if (!confirm('¿Bloquear 100 LBWM como stake? Si haces spam o fraude, perderás el stake.')) {
+                    return;
+                }
+                
+                showNotification('Procesando stake...');
+                
+                const pubKey = currentUser.pubkey || currentUser.publicKey;
+                
+                const { error } = await supabaseClient
+                    .from('users')
+                    .update({
+                        verification_level: VERIFICATION_LEVELS.IDENTIDAD_REAL,
+                        verification_method: 'stake',
+                        verified_at: new Date().toISOString(),
+                        staked_lbwm: 100
+                    })
+                    .eq('public_key', pubKey);
+                
+                if (error) {
+                    throw error;
+                }
+                
+                userVerification.level = VERIFICATION_LEVELS.IDENTIDAD_REAL;
+                userVerification.method = 'stake';
+                userVerification.verifiedAt = new Date().toISOString();
+                
+                showNotification('✅ ¡Stake realizado! Ahora eres Identidad Real Confirmada', 'success');
+                closeStakeVerification();
+                updateVerificationUI();
+                loadMeritsData();
+                
+            } catch (err) {
+                console.error('Error submitting stake:', err);
+                showNotification('Error al procesar stake', 'error');
+            }
+        }
+
+        // Show upgrade to real identity
+        function showUpgradeToReal() {
+            showVerificationOptions();
+        }
+
+        // Show invite friend modal
+        function showInviteFriend() {
+            if (userVerification.invitationsLeft <= 0) {
+                showNotification('No tienes invitaciones disponibles', 'error');
+                return;
+            }
+            
+            const code = 'INV-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            const message = `Tu código de invitación:\n\n${code}\n\nCompártelo con un amigo para invitarlo a LiberBit World.\n\nTe quedan ${userVerification.invitationsLeft} invitaciones.`;
+            
+            if (confirm(message + '\n\n¿Copiar al portapapeles?')) {
+                navigator.clipboard.writeText(code);
+                showNotification('✅ Código copiado al portapapeles', 'success');
+            }
+        }
+
+        // Check if user can earn merits for action
+        function canEarnMerits(actionType) {
+            const level = userVerification.level;
+            const limits = MERIT_LIMITS[level];
+            const current = userVerification.limits;
+            
+            if (level === VERIFICATION_LEVELS.NO_VERIFICADO) {
+                return {
+                    allowed: false,
+                    message: '⚠️ Debes verificar tu identidad para ganar méritos'
+                };
+            }
+            
+            const typeMap = {
+                'post': 'posts',
+                'offer': 'offers',
+                'vote': 'votes',
+                'proposal': 'proposals'
+            };
+            
+            const limitKey = typeMap[actionType];
+            const currentCount = current[limitKey + '_count'];
+            const maxCount = limits[limitKey].max;
+            
+            if (currentCount >= maxCount) {
+                return {
+                    allowed: false,
+                    message: `Has alcanzado el límite de ${maxCount} ${actionType}s con méritos`
+                };
+            }
+            
+            return {
+                allowed: true,
+                remaining: maxCount - currentCount,
+                merits: limits[limitKey].merits
+            };
+        }
+
+        // Increment merit counter after action
+        async function incrementMeritCounter(actionType) {
+            const typeMap = {
+                'post': 'posts',
+                'offer': 'offers',
+                'vote': 'votes',
+                'proposal': 'proposals'
+            };
+            
+            const limitKey = typeMap[actionType] + '_count';
+            userVerification.limits[limitKey]++;
+            
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            await supabaseClient
+                .from('users')
+                .update({
+                    merit_limits: userVerification.limits
+                })
+                .eq('public_key', pubKey);
+            
+            updateVerificationUI();
+        }
+
+        // Update openSubApp to load verification
+        const originalOpenSubApp = openSubApp;
+        openSubApp = function(subAppName) {
+            originalOpenSubApp(subAppName);
+            if (subAppName === 'merits') {
+                loadVerificationStatus();
+            }
+        };
     </script>
+    <!-- Verification Options Modal -->
+    <div class="modal" id="verificationOptionsModal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" onclick="closeVerificationOptions()">✕</button>
+            
+            <h2 style="color: var(--color-gold); margin-bottom: 1rem; text-align: center;">🔐 Verificar Identidad</h2>
+            <p style="color: var(--color-text-secondary); text-align: center; margin-bottom: 2rem;">
+                Elige cómo quieres verificar tu identidad
+            </p>
+
+            <!-- Option 1: Invitation -->
+            <div class="verification-option" onclick="selectVerificationMethod('invitation')">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">✉️</div>
+                <h3 style="color: var(--color-gold); margin-bottom: 0.5rem;">Invitación</h3>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Recibe una invitación de un miembro verificado
+                </p>
+                <div style="background: rgba(76, 175, 80, 0.1); padding: 0.75rem; border-radius: 8px; border: 1px solid #4CAF50;">
+                    <div style="font-size: 0.85rem; color: #4CAF50;">
+                        ✅ Rápido<br>
+                        ✅ Nivel: Verificado Básico<br>
+                        ✅ Máx: 250 LBWM
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 2: Video Verification -->
+            <div class="verification-option" onclick="selectVerificationMethod('video')">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🎥</div>
+                <h3 style="color: var(--color-gold); margin-bottom: 0.5rem;">Video Verificación</h3>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Sube un video de 30 segundos presentándote
+                </p>
+                <div style="background: rgba(229, 185, 92, 0.1); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-gold);">
+                    <div style="font-size: 0.85rem; color: var(--color-gold);">
+                        ⭐ Nivel: Identidad Real<br>
+                        ⭐ Antigüedad: 1 LBWM/día<br>
+                        ⭐ Límites: 250 LBWM automáticos
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 3: Stake LBWM -->
+            <div class="verification-option" onclick="selectVerificationMethod('stake')">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+                <h3 style="color: var(--color-gold); margin-bottom: 0.5rem;">Stake de LBWM</h3>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Bloquea 100 LBWM como garantía
+                </p>
+                <div style="background: rgba(229, 185, 92, 0.1); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--color-gold);">
+                    <div style="font-size: 0.85rem; color: var(--color-gold);">
+                        ⚡ Instantáneo<br>
+                        ⭐ Nivel: Identidad Real<br>
+                        ⚠️ Requiere: 100 LBWM
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Invitation Modal -->
+    <div class="modal" id="requestInvitationModal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="modal-close" onclick="closeRequestInvitation()">✕</button>
+            
+            <h2 style="color: var(--color-gold); margin-bottom: 1rem;">✉️ Solicitar Invitación</h2>
+            
+            <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">
+                    Para recibir una invitación, necesitas el código de invitación de un miembro verificado.
+                </p>
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text-secondary);">Código de Invitación</label>
+                <input type="text" id="invitationCode" placeholder="INV-XXXXXXXX" style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-mono);">
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="closeRequestInvitation()">Cancelar</button>
+                <button class="btn btn-primary" onclick="acceptInvitation()">Aceptar Invitación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Verification Modal -->
+    <div class="modal" id="videoVerificationModal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="modal-close" onclick="closeVideoVerification()">✕</button>
+            
+            <h2 style="color: var(--color-gold); margin-bottom: 1rem;">🎥 Verificación por Video</h2>
+            
+            <div style="background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--color-gold); margin-bottom: 1.5rem;">
+                <p style="font-size: 0.9rem; color: var(--color-text-secondary);">
+                    📹 <strong>Instrucciones:</strong><br><br>
+                    1. Graba un video de 30-60 segundos<br>
+                    2. Di tu nombre o alias<br>
+                    3. Explica por qué quieres unirte a LiberBit World<br>
+                    4. Muestra brevemente tu rostro<br><br>
+                    <em>El video será revisado por 3 miembros verificados</em>
+                </p>
+            </div>
+
+            <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text-secondary);">URL del Video</label>
+                <input type="text" id="videoUrl" placeholder="https://youtube.com/... o archivo local" style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); margin-bottom: 1rem;">
+                
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--color-text-secondary);">Descripción</label>
+                <textarea id="videoDescription" rows="3" placeholder="Cuéntanos sobre ti..." style="width: 100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); resize: vertical;"></textarea>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="closeVideoVerification()">Cancelar</button>
+                <button class="btn btn-primary" onclick="submitVideoVerification()">Enviar Solicitud</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stake Verification Modal -->
+    <div class="modal" id="stakeVerificationModal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="modal-close" onclick="closeStakeVerification()">✕</button>
+            
+            <h2 style="color: var(--color-gold); margin-bottom: 1rem;">🔒 Verificación por Stake</h2>
+            
+            <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+                <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">
+                    Bloquea 100 LBWM como garantía de buena fe. Si haces spam o fraude, perderás el stake (slashing).
+                </p>
+                
+                <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-gold); margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--color-text-secondary);">Stake requerido:</span>
+                        <span style="font-weight: 700; color: var(--color-gold);">100 LBWM</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--color-text-secondary);">Tu balance:</span>
+                        <span style="font-weight: 700; color: var(--color-text-primary);" id="userBalanceForStake">0 LBWM</span>
+                    </div>
+                </div>
+
+                <div id="insufficientBalance" style="display: none; background: rgba(255, 68, 68, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid #ff4444;">
+                    <p style="font-size: 0.9rem; color: #ff4444;">
+                        ⚠️ Balance insuficiente. Gana más méritos a través de aportaciones profesionales.
+                    </p>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="closeStakeVerification()">Cancelar</button>
+                <button class="btn btn-primary" onclick="submitStakeVerification()" id="stakeBtn">Bloquear 100 LBWM</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
