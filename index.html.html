@@ -1116,6 +1116,286 @@
             margin: 0 auto;
         }
 
+        /* WhatsApp-style chat layout */
+        .chat-layout {
+            display: flex;
+            gap: 0;
+            height: calc(100vh - 160px);
+            min-height: 500px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid var(--color-border);
+        }
+
+        .chat-sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--color-bg-card);
+            border-right: 2px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-sidebar-header h3 {
+            color: var(--color-gold);
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .chat-sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .chat-sidebar-tab {
+            flex: 1;
+            padding: 0.7rem 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: var(--font-display);
+        }
+
+        .chat-sidebar-tab:hover {
+            color: var(--color-text-primary);
+            background: rgba(229, 185, 92, 0.05);
+        }
+
+        .chat-sidebar-tab.active {
+            color: var(--color-gold);
+            border-bottom-color: var(--color-gold);
+        }
+
+        .chat-sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .sidebar-conversation {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-conversation:hover {
+            background: rgba(229, 185, 92, 0.1);
+        }
+
+        .sidebar-conversation.active {
+            background: rgba(229, 185, 92, 0.15);
+            border-left: 3px solid var(--color-gold);
+        }
+
+        .sidebar-conv-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--color-teal-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            color: var(--color-gold);
+            font-weight: 700;
+        }
+
+        .sidebar-conv-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-conv-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-conv-preview {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-conv-time {
+            font-size: 0.65rem;
+            color: var(--color-text-secondary);
+            font-family: var(--font-mono);
+            flex-shrink: 0;
+        }
+
+        .sidebar-community-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0.5rem;
+            background: rgba(229, 185, 92, 0.08);
+        }
+
+        .sidebar-community-btn:hover {
+            background: rgba(229, 185, 92, 0.15);
+        }
+
+        .sidebar-community-btn.active {
+            background: rgba(229, 185, 92, 0.2);
+            border-left: 3px solid var(--color-gold);
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--color-bg-dark);
+        }
+
+        .chat-main-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-main-header h3 {
+            color: var(--color-gold);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .chat-main-header-sub {
+            font-size: 0.75rem;
+            color: var(--color-text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .chat-main-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .chat-main-compose {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--color-border);
+            background: var(--color-bg-card);
+        }
+
+        .chat-main-compose-inner {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .chat-main-compose textarea {
+            flex: 1;
+            min-height: 42px;
+            max-height: 120px;
+            resize: none;
+            padding: 0.6rem 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-dark);
+            color: var(--color-text-primary);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+        }
+
+        .chat-main-compose textarea:focus {
+            outline: none;
+            border-color: var(--color-gold);
+        }
+
+        .chat-send-btn {
+            background: var(--color-gold);
+            color: var(--color-teal-dark);
+            border: none;
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .chat-send-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(229, 185, 92, 0.4);
+        }
+
+        .chat-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--color-text-secondary);
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .chat-empty-state .emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .chat-layout {
+                flex-direction: column;
+                height: calc(100vh - 140px);
+            }
+            .chat-sidebar {
+                width: 100%;
+                min-width: 100%;
+                max-height: 200px;
+                border-right: none;
+                border-bottom: 2px solid var(--color-border);
+            }
+            .chat-sidebar.sidebar-hidden {
+                display: none;
+            }
+            .chat-main.main-hidden {
+                display: none;
+            }
+        }
+
         .back-btn {
             background: transparent;
             border: 1px solid var(--color-border);
@@ -1282,6 +1562,88 @@
             font-weight: 600;
             min-width: 1.5rem;
             text-align: center;
+        }
+
+        .reply-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: transparent;
+            border: 1px solid var(--color-border);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .reply-btn:hover {
+            border-color: var(--color-gold);
+            background: rgba(229, 185, 92, 0.1);
+            transform: scale(1.05);
+        }
+
+        .reply-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(229, 185, 92, 0.08);
+            border-left: 3px solid var(--color-gold);
+            padding: 0.6rem 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+        }
+
+        .reply-preview-content {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .reply-preview-author {
+            font-weight: 600;
+            color: var(--color-gold);
+            margin-right: 0.5rem;
+        }
+
+        .reply-preview-close {
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0.2rem;
+            flex-shrink: 0;
+        }
+
+        .reply-preview-close:hover {
+            color: var(--color-text-primary);
+        }
+
+        .post-reply-context {
+            background: rgba(229, 185, 92, 0.05);
+            border-left: 2px solid var(--color-gold);
+            padding: 0.4rem 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.8rem;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+        }
+
+        .post-reply-context:hover {
+            background: rgba(229, 185, 92, 0.1);
+        }
+
+        .post-reply-context .reply-context-author {
+            font-weight: 600;
+            color: var(--color-gold);
         }
 
         .placeholder {
@@ -1660,6 +2022,141 @@
             color: var(--color-text-secondary);
             margin-top: 0.25rem;
             font-family: var(--font-mono);
+        }
+
+        /* LBWM Merits Styles */
+        .lbwm-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 0;
+        }
+
+        .lbwm-tab {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+            margin-bottom: -2px;
+        }
+
+        .lbwm-tab:hover {
+            color: var(--color-text-primary);
+            border-bottom-color: var(--color-gold);
+        }
+
+        .lbwm-tab.active {
+            color: var(--color-gold);
+            border-bottom-color: var(--color-gold);
+        }
+
+        .lbwm-tab-content {
+            display: none;
+        }
+
+        .lbwm-tab-content.active {
+            display: block;
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ledger-table thead {
+            background: var(--color-bg-dark);
+        }
+
+        .ledger-table th {
+            padding: 0.75rem;
+            text-align: left;
+            color: var(--color-gold);
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .ledger-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .ledger-table tbody tr:hover {
+            background: rgba(229, 185, 92, 0.05);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-activo {
+            background: rgba(82, 196, 26, 0.2);
+            color: #52c41a;
+        }
+
+        .status-pendiente {
+            background: rgba(229, 185, 92, 0.2);
+            color: var(--color-gold);
+        }
+
+        .lbwm-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .lbwm-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .lbwm-card {
+            background: var(--color-bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--color-border);
+        }
+
+        .lbwm-highlight-box {
+            background: rgba(229, 185, 92, 0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid var(--color-gold);
+        }
+
+        .lbwm-warning-box {
+            background: rgba(198, 89, 17, 0.1);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #C65911;
+        }
+
+        .lbwm-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .lbwm-info-grid {
+                grid-template-columns: 1fr;
+            }
+            .lbwm-tab {
+                font-size: 0.75rem;
+                padding: 0.5rem 0.75rem;
+            }
         }
 
         /* Governance Styles */
@@ -2283,7 +2780,7 @@
                 <img src="" alt="LiberBit Logo" class="logo-img" id="logoImg">
                 <div class="logo-text">
                     <div class="logo-title">LiberBit World</div>
-                    <div class="logo-subtitle">Ecosistema Descentralizado</div>
+                    <div class="logo-subtitle">Decentralized Network State</div>
                 </div>
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;">
@@ -2291,9 +2788,27 @@
                     <span id="userName">Usuario</span>
                 </div>
                 <!-- Active Nodes Counter -->
-                <div class="active-nodes-counter-header hidden" id="activeNodesCounterHeader">
-                    <div class="active-nodes-count-header" id="activeNodesCount">0</div>
-                    <div class="active-nodes-label-header">Nodos Activos</div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div class="active-nodes-counter-header hidden" id="activeNodesCounterHeader">
+                        <div class="active-nodes-count-header" id="activeNodesCount">0</div>
+                        <div class="active-nodes-label-header">Nodos Activos</div>
+                    </div>
+                    <div class="active-nodes-counter-header hidden" id="identitiesCounterHeader" style="border-color: var(--color-teal-light);">
+                        <div class="active-nodes-count-header" id="identitiesCount" style="color: var(--color-teal-light); text-shadow: 0 0 15px rgba(61, 117, 133, 0.5);">0</div>
+                        <div class="active-nodes-label-header">ID Registradas</div>
+                    </div>
+                    <div class="active-nodes-counter-header hidden" id="relaysCounterHeader" style="border-color: #9C27B0;">
+                        <div class="active-nodes-count-header" id="relaysCount" style="color: #CE93D8; text-shadow: 0 0 15px rgba(156, 39, 176, 0.5);">3</div>
+                        <div class="active-nodes-label-header">Relays Privados</div>
+                    </div>
+                    <div class="active-nodes-counter-header hidden" id="citiesCounterHeader" style="border-color: #FF6D00;">
+                        <div class="active-nodes-count-header" id="citiesCount" style="color: #FFB74D; text-shadow: 0 0 15px rgba(255, 109, 0, 0.5);">1</div>
+                        <div class="active-nodes-label-header">City's en Desarrollo</div>
+                    </div>
+                    <div class="active-nodes-counter-header hidden" id="activeCitiesCounterHeader" style="border-color: #2E7D32;">
+                        <div class="active-nodes-count-header" id="activeCitiesCount" style="color: #81C784; text-shadow: 0 0 15px rgba(46, 125, 50, 0.5);">0</div>
+                        <div class="active-nodes-label-header">City's Activas</div>
+                    </div>
                 </div>
             </div>
         </header>
@@ -2319,9 +2834,7 @@
                     <h1 class="hero-title">Bienvenido a LiberBit World</h1>
                     <p class="hero-subtitle">La libertad no se pide, se construye</p>
                     <p class="hero-description">
-                        Un ecosistema descentralizado donde la soberanía individual 
-                        se encuentra con la colaboración comunitaria. Construye, 
-                        conecta y prospera en una red libre de control centralizado.
+                        Decentralized Network State
                     </p>
                     <div class="hero-features">
                         <div class="hero-feature">
@@ -2374,7 +2887,7 @@
                         <form>
                             <div class="form-group">
                                 <label>Clave Privada</label>
-                                <input type="password" id="existingPrivKey" placeholder="Pega tu clave privada (64 caracteres)">
+                                <input type="password" id="existingPrivKey" placeholder="nsec1... o clave hex (64 caracteres)">
                             </div>
 
                             <button type="button" class="btn btn-primary btn-large" id="importAccountBtn">
@@ -2395,7 +2908,7 @@
                         </div>
 
                         <div class="key-display">
-                            <h3>🔑 Clave Pública</h3>
+                            <h3>🔑 Clave Pública (npub)</h3>
                             <div class="key-value" id="pubkeyDisplay">
                                 <button class="copy-btn" onclick="copyKey('pubkeyDisplay')">Copiar</button>
                                 <span id="pubkeyText"></span>
@@ -2403,7 +2916,7 @@
                         </div>
 
                         <div class="key-display">
-                            <h3>🔐 Clave Privada</h3>
+                            <h3>🔐 Clave Privada (nsec)</h3>
                             <div class="key-value" id="privkeyDisplay">
                                 <button class="copy-btn" onclick="copyKey('privkeyDisplay')">Copiar</button>
                                 <span id="privkeyText" style="filter: blur(4px); cursor: pointer;" onclick="this.style.filter='none'">Clic para ver</span>
@@ -2422,40 +2935,53 @@
         <!-- Main Menu Section -->
         <section class="section" id="mainMenuSection">
             <div class="main-menu">
-                <h2>Selecciona una Aplicación</h2>
-                
-                <!-- Notification Inbox -->
-                <div class="notification-inbox" onclick="openNotificationCenter()">
-                    <div class="notification-inbox-header">
-                        <div class="notification-inbox-left">
-                            <div class="notification-bell">
+                <!-- Welcome row: Card + Aportar Valor button -->
+                <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 2rem;">
+                    <!-- User Welcome & Notifications Card -->
+                    <div class="notification-inbox" onclick="openNotificationCenter()" style="flex: 1; margin-bottom: 0;">
+                        <!-- Top: Avatar + User Info -->
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <img id="homeAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect fill='%232C5F6F' width='60' height='60' rx='30'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='28' fill='%23E5B95C'%3E👤%3C/text%3E%3C/svg%3E" alt="Avatar" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-gold); flex-shrink: 0;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Bienvenido,</div>
+                                <div style="font-size: 1.15rem; font-weight: 700; color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="homeUserName">Usuario</div>
+                                <div style="font-size: 0.65rem; color: var(--color-gold); font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="homeNpub">npub1...</div>
+                            </div>
+                        </div>
+                        <!-- Bottom: Bell + Notification counters -->
+                        <div style="display: flex; align-items: center; gap: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(229, 185, 92, 0.2);">
+                            <div class="notification-bell" style="flex-shrink: 0;">
                                 🔔
                                 <span class="notification-bell-badge hidden" id="totalNotificationsBadge">0</span>
                             </div>
-                            <div class="notification-inbox-info">
-                                <h3>Centro de Notificaciones</h3>
-                                <p>Mensajes, propuestas y actividad de la comunidad</p>
-                            </div>
-                        </div>
-                        <div class="notification-summary">
-                            <div class="notification-type" id="notif-messages">
-                                <span class="notification-type-icon">💬</span>
-                                <span class="notification-type-count" id="notifCountMessages">0</span>
-                                <span class="notification-type-label">Mensajes</span>
-                            </div>
-                            <div class="notification-type" id="notif-governance">
-                                <span class="notification-type-icon">🏛️</span>
-                                <span class="notification-type-count" id="notifCountGovernance">0</span>
-                                <span class="notification-type-label">Gobernanza</span>
-                            </div>
-                            <div class="notification-type" id="notif-merits">
-                                <span class="notification-type-icon">🏅</span>
-                                <span class="notification-type-count" id="notifCountMerits">0</span>
-                                <span class="notification-type-label">Méritos</span>
+                            <div style="display: flex; justify-content: space-around; flex: 1;">
+                                <div class="notification-type" id="notif-messages">
+                                    <span class="notification-type-icon">💬</span>
+                                    <span class="notification-type-count" id="notifCountMessages">0</span>
+                                    <span class="notification-type-label">Mensajes</span>
+                                </div>
+                                <div class="notification-type" id="notif-governance">
+                                    <span class="notification-type-icon">🏛️</span>
+                                    <span class="notification-type-count" id="notifCountGovernance">0</span>
+                                    <span class="notification-type-label">Gobernanza</span>
+                                </div>
+                                <div class="notification-type" id="notif-merits">
+                                    <span class="notification-type-icon">🏅</span>
+                                    <span class="notification-type-count" id="notifCountMerits">0</span>
+                                    <span class="notification-type-label">Méritos</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <!-- Aportar Valor Button -->
+                    <div onclick="openSubApp('merits')" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2) 0%, rgba(229, 185, 92, 0.05) 100%); border: 2px solid var(--color-gold); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(229, 185, 92, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-gold); line-height: 1.3;">Aportar<br>Valor</div>
+                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Ganar LBWM</div>
+                    </div>
                 </div>
+                
+                <h2>Selecciona una Aplicación</h2>
                 
                 <div class="apps-grid">
                     <!-- 1. Networking -->
@@ -2478,7 +3004,7 @@
                     <div class="app-card" onclick="openApp('gobernanza')" id="app-gobernanza">
                         <span class="app-badge hidden" id="badge-gobernanza">0</span>
                         <div class="app-icon">🏛️</div>
-                        <div class="app-name">Gobernanza</div>
+                        <div class="app-name">Merits y Gobernanza</div>
                         <div class="app-description">Decisiones Colectivas</div>
                     </div>
 
@@ -2524,23 +3050,82 @@
 
         <!-- Chat Section -->
         <section class="section" id="chatSection">
-            <div class="chat-section">
+            <div class="chat-section" style="max-width: 1100px;">
                 <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
                 
-                <h2 style="color: var(--color-gold); margin-bottom: 2rem;">💬 Chat Comunitario</h2>
+                <h2 style="color: var(--color-gold); margin-bottom: 1rem;">💬 Chat</h2>
 
-                <div class="compose-box">
-                    <textarea id="newPostContent" placeholder="Comparte con la comunidad..."></textarea>
-                    <div class="compose-actions">
-                        <button class="btn btn-secondary" onclick="clearPost()">Limpiar</button>
-                        <button class="btn btn-primary" id="publishPostBtn">Publicar</button>
+                <div class="chat-layout">
+                    <!-- Sidebar: Conversations -->
+                    <div class="chat-sidebar" id="chatSidebar">
+                        <div class="chat-sidebar-tabs">
+                            <button class="chat-sidebar-tab active" id="tabCommunity" onclick="switchChatTab('community')" style="position: relative;">🌐 Comunidad <span id="badgeCommunity" style="display:none; position:absolute; top:4px; right:8px; background:#ff4d4f; color:white; border-radius:50%; width:18px; height:18px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center;">0</span></button>
+                            <button class="chat-sidebar-tab" id="tabPrivate" onclick="switchChatTab('private')" style="position: relative;">🔒 Privados <span id="badgePrivate" style="display:none; position:absolute; top:4px; right:8px; background:#ff4d4f; color:white; border-radius:50%; width:18px; height:18px; font-size:0.65rem; font-weight:700; align-items:center; justify-content:center;">0</span></button>
+                        </div>
+                        <div class="chat-sidebar-list" id="chatSidebarList">
+                            <!-- Populated dynamically -->
+                        </div>
                     </div>
-                </div>
 
-                <div id="postsList">
-                    <div class="placeholder">
-                        <h3>🌟 Sé el primero</h3>
-                        <p>Inicia la conversación en la comunidad</p>
+                    <!-- Main chat area -->
+                    <div class="chat-main" id="chatMain">
+                        <!-- Community chat view (default) -->
+                        <div id="communityView" style="display: flex; flex-direction: column; height: 100%;">
+                            <div class="chat-main-header">
+                                <div>
+                                    <h3>🌐 Chat Comunitario</h3>
+                                    <div class="chat-main-header-sub">Todos los miembros</div>
+                                </div>
+                            </div>
+                            <div class="chat-main-messages" id="communityMessages">
+                                <div id="postsList">
+                                    <div class="chat-empty-state">
+                                        <div class="emoji">🌟</div>
+                                        <p>Sé el primero en iniciar la conversación</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-main-compose">
+                                <div id="replyPreview" style="display: none;" class="reply-preview">
+                                    <div class="reply-preview-content">
+                                        <span>↩️ Respondiendo a </span><span class="reply-preview-author" id="replyToAuthor"></span><span id="replyToText"></span>
+                                    </div>
+                                    <button class="reply-preview-close" onclick="cancelReply()">✕</button>
+                                </div>
+                                <div class="chat-main-compose-inner">
+                                    <textarea id="newPostContent" placeholder="Escribe a la comunidad..." rows="1"></textarea>
+                                    <button class="chat-send-btn" id="publishPostBtn" title="Publicar">➤</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Private chat view (hidden by default) -->
+                        <div id="privateView" style="display: none; flex-direction: column; height: 100%;">
+                            <!-- No conversation selected -->
+                            <div id="privatePlaceholder" style="display: flex; flex-direction: column; height: 100%;">
+                                <div class="chat-empty-state">
+                                    <div class="emoji">💬</div>
+                                    <p>Selecciona una conversación<br>o contacta a alguien desde Networking</p>
+                                </div>
+                            </div>
+                            <!-- Active private conversation -->
+                            <div id="privateActiveChat" style="display: none; flex-direction: column; height: 100%;">
+                                <div class="chat-main-header">
+                                    <div>
+                                        <h3 id="privateChatName">Usuario</h3>
+                                        <div class="chat-main-header-sub" id="privateChatId">npub1...</div>
+                                    </div>
+                                </div>
+                                <div class="chat-main-messages" id="privateChatMessages">
+                                </div>
+                                <div class="chat-main-compose">
+                                    <div class="chat-main-compose-inner">
+                                        <textarea id="dmContent" placeholder="Escribe un mensaje..." rows="1"></textarea>
+                                        <button class="chat-send-btn" onclick="sendDirectMessage()" title="Enviar">➤</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2959,277 +3544,547 @@
                 
                 <h2 style="color: var(--color-gold); margin-bottom: 0.5rem; text-align: center;">🏅 LiberBit World Méritos (LBWM)</h2>
                 <p style="color: var(--color-text-secondary); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">
-                    Sistema de reconocimiento y recompensas por contribuciones
+                    Sistema de Meritocracia basado en Valor Aportado. El poder emerge de quien demuestra capacidad de crear valor y asumir riesgos.
                 </p>
 
-                <!-- Stats Overview -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-                    <div style="background: linear-gradient(135deg, var(--color-gold) 0%, #d4a84e 100%); padding: 2rem; border-radius: 16px; text-align: center; box-shadow: 0 8px 24px rgba(229, 185, 92, 0.3);">
-                        <div style="font-size: 0.9rem; color: var(--color-teal-dark); margin-bottom: 0.5rem; font-weight: 600;">Tus Méritos</div>
-                        <div style="font-size: 3rem; font-weight: 700; color: var(--color-teal-dark);" id="userTotalMerits">0</div>
-                        <div style="font-size: 0.8rem; color: var(--color-teal-dark); margin-top: 0.5rem;">LBWM</div>
-                    </div>
-                    <div style="background: var(--color-bg-card); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-gold); text-align: center;">
-                        <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">Ranking</div>
-                        <div style="font-size: 2rem; font-weight: 700; color: var(--color-gold);">#<span id="userRanking">-</span></div>
-                        <div style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.5rem;">de la comunidad</div>
-                    </div>
-                    <div style="background: var(--color-bg-card); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-teal); text-align: center;">
-                        <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">Nivel</div>
-                        <div style="font-size: 2rem; font-weight: 700; color: var(--color-teal-light);" id="userLevel">1</div>
-                        <div style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.5rem;" id="userLevelName">Ciudadano</div>
-                    </div>
-                </div>
-
-                <!-- Identity Verification Status -->
-                <div id="verificationStatusCard" style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border); margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">🔐 Estado de Verificación</h3>
-                    
-                    <!-- Not Verified -->
-                    <div id="statusNoVerificado" style="display: none;">
-                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: rgba(255, 68, 68, 0.1); border-radius: 12px; border: 2px solid #ff4444; margin-bottom: 1.5rem;">
-                            <div style="font-size: 3rem;">⚠️</div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: #ff4444; margin-bottom: 0.5rem;">Identidad No Verificada</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
-                                    No puedes ganar méritos automáticos. Verifica tu identidad para participar en la comunidad.
-                                </div>
-                                <button class="btn btn-primary" onclick="showVerificationOptions()">
-                                    Verificar mi Identidad
-                                </button>
+                <!-- User Balance Card -->
+                <div class="lbwm-card" style="background: linear-gradient(135deg, var(--color-teal-dark) 0%, var(--color-bg-card) 100%); border: 2px solid var(--color-gold);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem;">
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
+                                Tu Balance LBWM
+                            </div>
+                            <div style="font-size: 3rem; font-weight: 800; color: var(--color-gold);" id="userTotalMerits">0</div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
+                                <span id="user_lbwm_activos">0</span> Activos • 
+                                <span id="user_lbwm_aportaciones">0</span> Aportaciones
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: right;">
+                            <button class="btn btn-primary" onclick="showContributionForm()" style="margin-bottom: 0.5rem;">
+                                📝 Nueva Aportación
+                            </button>
+                            <div style="font-size: 0.8rem; color: var(--color-text-secondary);">
+                                Presenta valor para ganar mérito
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Verified Basic -->
-                    <div id="statusVerificadoBasico" style="display: none;">
-                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: rgba(76, 175, 80, 0.1); border-radius: 12px; border: 2px solid #4CAF50; margin-bottom: 1.5rem;">
-                            <div style="font-size: 3rem;">✅</div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: #4CAF50; margin-bottom: 0.5rem;">Verificado Básico</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
-                                    Puedes ganar méritos con límites. Máximo: 250 LBWM
-                                </div>
-                                <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                                        <strong>Límites restantes:</strong><br>
-                                        • Posts: <span id="limitPosts">5</span>/5<br>
-                                        • Ofertas: <span id="limitOffers">5</span>/5<br>
-                                        • Votos: <span id="limitVotes">10</span>/10<br>
-                                        • Propuestas: <span id="limitProposals">3</span>/3
+                <!-- LBWM Tabs -->
+                <div class="lbwm-tabs">
+                    <div class="lbwm-tab active" onclick="switchLbwmTab('resumen')" data-lbwm-tab="resumen">
+                        📊 Resumen
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('que-son')" data-lbwm-tab="que-son">
+                        ❓ Qué son
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('como-ganar')" data-lbwm-tab="como-ganar">
+                        💡 Cómo Ganar
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('mis-aportaciones')" data-lbwm-tab="mis-aportaciones">
+                        📋 Mis Aportaciones
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('ledger')" data-lbwm-tab="ledger">
+                        📖 Ledger
+                    </div>
+                </div>
+
+                <!-- Tab: Resumen -->
+                <div class="lbwm-tab-content active" id="lbwm-tab-resumen">
+                    <div class="lbwm-grid-3" style="margin-bottom: 2rem;">
+                        <!-- Card: Sistema Meritocrático -->
+                        <div class="lbwm-card">
+                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">🎯 Principio Fundamental</h3>
+                            <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                En LiberBit World <strong>no existe "una persona, un voto"</strong>. 
+                                La influencia es proporcional al <strong>valor real aportado</strong> a lo largo del tiempo.
+                            </p>
+                            <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem; border-left: 3px solid var(--color-gold);">
+                                <em style="font-size: 0.9rem; color: var(--color-text-secondary);">
+                                    "El poder emerge de quien demuestra, una y otra vez, que puede crear valor y asumir riesgos."
+                                </em>
+                            </div>
+                        </div>
+
+                        <!-- Card: Tipos de Aportación -->
+                        <div class="lbwm-card">
+                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">📊 Tipos de Aportación</h3>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--color-text-primary);">💰 Económica</span>
+                                        <span style="color: var(--color-gold); font-weight: 700;">Factor 1.0</span>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+                                        BTC donado, liquidez
                                     </div>
                                 </div>
-                                <button class="btn btn-secondary" onclick="showUpgradeToReal()" style="margin-top: 1rem;">
-                                    🌟 Actualizar a Identidad Real
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Identity Real -->
-                    <div id="statusIdentidadReal" style="display: none;">
-                        <div style="display: flex; align-items: start; gap: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2), rgba(229, 185, 92, 0.05)); border-radius: 12px; border: 2px solid var(--color-gold);">
-                            <div style="font-size: 3rem;">👤</div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: 700; color: var(--color-gold); margin-bottom: 0.5rem;">Identidad Real Confirmada</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
-                                    Acceso completo + Méritos por antigüedad (1 LBWM/día)
-                                </div>
-                                <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                                        <strong>Verificado por:</strong> <span id="verifiedMethod">-</span><br>
-                                        <strong>Fecha:</strong> <span id="verifiedDate">-</span><br>
-                                        <strong>Invitaciones disponibles:</strong> <span id="invitationsLeft">5</span>/5
+                                
+                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--color-text-primary);">⚡ Productiva</span>
+                                        <span style="color: var(--color-gold); font-weight: 700;">Factor 1.0</span>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+                                        Desarrollo, diseño, operación
                                     </div>
                                 </div>
-                                <button class="btn btn-secondary" onclick="showInviteFriend()" style="margin-top: 1rem;">
-                                    ✉️ Invitar a un Amigo
-                                </button>
+                                
+                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--color-text-primary);">🛡️ Responsabilidad</span>
+                                        <span style="color: var(--color-success); font-weight: 700;">Factor 1.2</span>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+                                        Custodia, arbitraje
+                                    </div>
+                                </div>
+                                
+                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--color-text-primary);">📋 Financiada</span>
+                                        <span style="color: var(--color-teal-light); font-weight: 700;">Factor 0.3-0.6</span>
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+                                        Trabajo adelantado
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- How to Earn Merits -->
-                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">💡 Cómo Ganar Méritos LBWM</h3>
-                    <div style="display: grid; gap: 1rem;">
-                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2), rgba(229, 185, 92, 0.1)); border-radius: 8px; border: 2px solid var(--color-gold);">
-                            <div style="font-size: 2rem;">⏰</div>
-                            <div>
-                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Antigüedad en la Comunidad ⭐</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+1 LBWM por cada día desde tu registro</div>
-                                <div style="color: var(--color-gold); font-size: 0.85rem; margin-top: 0.25rem; font-style: italic;">Recompensa pasiva y automática</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px;">
-                            <div style="font-size: 2rem;">💬</div>
-                            <div>
-                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Publicar en el Chat</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+10 LBWM por cada publicación</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px;">
-                            <div style="font-size: 2rem;">🤝</div>
-                            <div>
-                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Crear Ofertas en Networking</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+10 LBWM por cada oferta publicada</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px;">
-                            <div style="font-size: 2rem;">🗳️</div>
-                            <div>
-                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Votar en Propuestas</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+10 LBWM por cada voto emitido</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: start; gap: 1rem; padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px;">
-                            <div style="font-size: 2rem;">🏛️</div>
-                            <div>
-                                <div style="color: var(--color-text-primary); font-weight: 600; margin-bottom: 0.25rem;">Crear Propuestas</div>
-                                <div style="color: var(--color-text-secondary); font-size: 0.9rem;">+10 LBWM por cada propuesta creada</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Level System -->
-                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-teal); margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-teal-light); margin-bottom: 1.5rem; font-size: 1.3rem;">🎖️ Sistema de Niveles</h3>
-                    <div style="display: grid; gap: 1rem;">
-                        <div style="padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px; border-left: 4px solid var(--color-gold);">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="color: var(--color-text-primary); font-weight: 600;">🌱 Nivel 1 - Ciudadano</div>
-                                    <div style="color: var(--color-text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">0 - 99 LBWM</div>
+                        <!-- Card: Estadísticas -->
+                        <div class="lbwm-card">
+                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">📊 Estadísticas</h3>
+                            
+                            <!-- Estadísticas del Sistema -->
+                            <div style="background: var(--color-bg-dark); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                <h4 style="color: var(--color-teal-light); font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Sistema Global</h4>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Total LBWM</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_total_lbwm">0</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Aportantes</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_aportantes">0</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Emisiones</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_emisiones">0</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div style="padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px; border-left: 4px solid var(--color-gold);">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="color: var(--color-text-primary); font-weight: 600;">⭐ Nivel 2 - Contribuidor</div>
-                                    <div style="color: var(--color-text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">100 - 499 LBWM</div>
+                            
+                            <!-- Mis Estadísticas -->
+                            <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-gold);">
+                                <h4 style="color: var(--color-gold); font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Mi Participación</h4>
+                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Mi Balance</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-gold);" id="stat_mi_balance">0</div>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">% Participación</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-gold);" id="stat_mi_participacion">0%</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div style="padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px; border-left: 4px solid var(--color-gold);">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="color: var(--color-text-primary); font-weight: 600;">💎 Nivel 3 - Líder Comunitario</div>
-                                    <div style="color: var(--color-text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">500 - 999 LBWM</div>
+                                
+                                <!-- Barra de participación visual -->
+                                <div style="background: var(--color-bg-dark); border-radius: 8px; height: 8px; overflow: hidden;">
+                                    <div id="participacionBar" style="background: linear-gradient(90deg, var(--color-gold) 0%, #d4a84e 100%); height: 100%; width: 0%; transition: width 0.5s ease;"></div>
                                 </div>
-                            </div>
-                        </div>
-                        <div style="padding: 1rem; background: rgba(44, 95, 111, 0.2); border-radius: 8px; border-left: 4px solid var(--color-gold);">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <div style="color: var(--color-text-primary); font-weight: 600;">👑 Nivel 4 - Embajador</div>
-                                    <div style="color: var(--color-text-secondary); font-size: 0.85rem; margin-top: 0.25rem;">1000+ LBWM</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Leaderboard -->
-                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">🏆 Clasificación de Méritos</h3>
-                    <div id="leaderboardList">
-                        <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
-                            <p>🌟 Sé el primero en ganar méritos</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Professional Contribution System -->
-                <div style="background: linear-gradient(135deg, rgba(229, 185, 92, 0.1), rgba(44, 95, 111, 0.1)); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-gold); margin-bottom: 2rem;">
-                    <h3 style="color: var(--color-gold); margin-bottom: 1rem; font-size: 1.3rem;">📜 Sistema Profesional de Aportaciones</h3>
-                    <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
-                        Presenta aportaciones de valor significativo para recibir LBWM verificados por el Comité de Emisión
-                    </p>
-                    
-                    <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
-                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--color-gold);">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 2rem;">💰</div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Económica Definitiva</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">BTC donado, liquidez aportada • Factor: 1.0</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid var(--color-teal);">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 2rem;">🛠️</div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Productiva (Trabajo)</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Desarrollo, diseño, operación, educación • Factor: 1.0</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #9C27B0;">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 2rem;">🔐</div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Responsabilidad</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Custodia de fondos, operación crítica • Factor: 1.2</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: var(--color-bg-card); padding: 1.25rem; border-radius: 12px; border-left: 4px solid #FF9800;">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <div style="font-size: 2rem;">⏳</div>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.25rem;">Aportación Financiada</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Trabajo adelantado sin garantía • Factor: 0.3 - 0.6</div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.5rem; text-align: right;">
+                                    Tu influencia en la red
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--color-gold); margin-bottom: 1.5rem;">
-                        <p style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.75rem;">
-                            💡 <strong>Cálculo:</strong> LBWM = Valor de Referencia × Factor
+                    <!-- Modelo de Aportación Financiada -->
+                    <div class="lbwm-warning-box">
+                        <h3 style="color: #C65911; margin-bottom: 1rem; font-size: 1.2rem;">💡 Aportación Financiada: Innovación Clave</h3>
+                        <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+                            LiberBit World reconoce que <strong>financiar valor cuando la red no puede hacerlo</strong> 
+                            es una contribución meritoria, aunque menor que renunciar completamente a ese valor.
                         </p>
-                        <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 0;">
-                            Los LBWM profesionales se emiten <strong>ex-post</strong> tras verificación del Comité de Emisión con evidencias obligatorias.
-                        </p>
-                    </div>
-
-                    <button class="btn btn-primary" onclick="showContributionForm()" style="width: 100%;">
-                        📝 Presentar Aportación de Valor
-                    </button>
-                </div>
-
-                <!-- My Contributions -->
-                <div style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border);">
-                    <h3 style="color: var(--color-gold); margin-bottom: 1.5rem; font-size: 1.3rem;">📋 Mis Aportaciones</h3>
-                    <div id="myContributionsList">
-                        <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
-                            <p>No has presentado aportaciones profesionales aún</p>
+                        <div class="lbwm-info-grid" style="margin-top: 1.5rem;">
+                            <div>
+                                <h4 style="color: var(--color-gold); margin-bottom: 0.75rem;">✅ Qué Obtienes</h4>
+                                <ul style="color: var(--color-text-secondary); line-height: 1.8; list-style: none; padding-left: 0;">
+                                    <li>✓ LBWM parciales inmediatos (30-60%)</li>
+                                    <li>✓ Mérito permanente</li>
+                                    <li>✓ Crédito condicional registrado</li>
+                                    <li>✓ Posible devolución futura</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 style="color: #C65911; margin-bottom: 0.75rem;">📌 Importante</h4>
+                                <ul style="color: var(--color-text-secondary); line-height: 1.8; list-style: none; padding-left: 0;">
+                                    <li>• NO es deuda garantizada</li>
+                                    <li>• Devolución sujeta a viabilidad</li>
+                                    <li>• El mérito se conserva siempre</li>
+                                    <li>• Premia confiar antes, no cobrar después</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab: Qué son los LBWM -->
+                <div class="lbwm-tab-content" id="lbwm-tab-que-son">
+                    <div class="lbwm-card">
+                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">❓ ¿Qué son los LBWM?</h2>
+                        
+                        <div style="background: rgba(229, 185, 92, 0.1); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--color-gold); margin-bottom: 2rem;">
+                            <p style="font-size: 1.05rem; line-height: 1.8; color: var(--color-text-primary);">
+                                <strong>LBWM (LiberBit World Merits)</strong> son unidades de mérito funcional que 
+                                representan el <strong>valor real aportado</strong> a LiberBit World a lo largo del tiempo.
+                            </p>
+                        </div>
+
+                        <div class="lbwm-grid-2" style="margin-bottom: 2rem;">
+                            <!-- Lo que SON -->
+                            <div class="lbwm-card" style="background: var(--color-bg-dark);">
+                                <h3 style="color: var(--color-success); font-size: 1.1rem;">✅ Los LBWM SON:</h3>
+                                <ul style="color: var(--color-text-secondary); line-height: 2; margin-top: 1rem; padding-left: 1.5rem;">
+                                    <li><strong>Unidades de mérito funcional</strong> que reflejan valor neto aportado</li>
+                                    <li><strong>Peso proporcional</strong> en decisiones de red</li>
+                                    <li><strong>Influencia</strong> en la asignación de recursos comunes</li>
+                                    <li><strong>Capacidad de orientar</strong> la evolución estratégica de LBW</li>
+                                    <li><strong>Acceso preferente</strong> a proyectos y responsabilidades</li>
+                                    <li><strong>Reconocimiento permanente</strong> de tu contribución</li>
+                                </ul>
+                            </div>
+
+                            <!-- Lo que NO son -->
+                            <div class="lbwm-card" style="background: var(--color-bg-dark);">
+                                <h3 style="color: var(--color-error); font-size: 1.1rem;">❌ Los LBWM NO son:</h3>
+                                <ul style="color: var(--color-text-secondary); line-height: 2; margin-top: 1rem; padding-left: 1.5rem;">
+                                    <li><strong>Un token financiero</strong> negociable en mercados</li>
+                                    <li><strong>Equity legal</strong> o propiedad jurídica</li>
+                                    <li><strong>Libremente transferibles</strong> entre personas</li>
+                                    <li><strong>Poder sobre personas</strong> o territorios</li>
+                                    <li><strong>Dividendos garantizados</strong> o rendimientos</li>
+                                    <li><strong>Derechos territoriales</strong> sobre LiberBit Citys</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Para qué sirven -->
+                        <div class="lbwm-card" style="background: linear-gradient(135deg, var(--color-teal-dark) 0%, var(--color-bg-card) 100%); border: 2px solid var(--color-gold);">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">🎯 ¿Para qué sirven los LBWM?</h3>
+                            
+                            <div style="display: grid; gap: 1.5rem;">
+                                <div style="display: flex; gap: 1rem; align-items: start;">
+                                    <div style="font-size: 2rem; flex-shrink: 0;">🏛️</div>
+                                    <div>
+                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">1. Participación en Gobernanza</h4>
+                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                            Tus LBWM determinan tu <strong>peso en decisiones</strong> sobre fondos comunes, 
+                                            infraestructura compartida, protocolos y estrategia global de LiberBit World. 
+                                            <em>No es "una persona, un voto" — es influencia proporcional al valor aportado.</em>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; align-items: start;">
+                                    <div style="font-size: 2rem; flex-shrink: 0;">⭐</div>
+                                    <div>
+                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">2. Reputación y Confianza</h4>
+                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                            Los LBWM son una <strong>señal pública de confianza</strong>. Cuando otros ven 
+                                            tu balance de méritos, saben que has contribuido valor real verificado.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; align-items: start;">
+                                    <div style="font-size: 2rem; flex-shrink: 0;">🔑</div>
+                                    <div>
+                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">3. Acceso Preferente</h4>
+                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                            Algunos proyectos, residencias piloto, grants o roles críticos pueden 
+                                            <strong>priorizar a quienes tienen más LBWM</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; align-items: start;">
+                                    <div style="font-size: 2rem; flex-shrink: 0;">🌐</div>
+                                    <div>
+                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">4. Coordinación Inter-City</h4>
+                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                            Los LBWM <strong>solo aplican a nivel global</strong> de LiberBit World, no dentro 
+                                            de cada City individual. Sirven para coordinar proyectos de ámbito global.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; align-items: start;">
+                                    <div style="font-size: 2rem; flex-shrink: 0;">🎯</div>
+                                    <div>
+                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">5. Alineación de Incentivos</h4>
+                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                            Los LBWM alinean los incentivos: <strong>quien más contribuye, más responsabilidad 
+                                            asume</strong> sobre la dirección de la red. Esto evita que quienes no arriesgan 
+                                            nada decidan sobre quienes sí lo hacen.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Principios Clave -->
+                        <div class="lbwm-grid-2" style="margin-top: 2rem;">
+                            <div class="lbwm-warning-box">
+                                <h4 style="color: #C65911; margin-bottom: 1rem;">⚡ Principio de Emisión</h4>
+                                <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                                    Los LBWM <strong>solo se emiten cuando se crea valor real</strong>, nunca por expectativas. 
+                                    La emisión es siempre <em>ex-post</em>, tras verificación del Comité de Emisión.
+                                </p>
+                                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem; color: var(--color-gold);">
+                                    LBWM = Valor Referencia × Factor
+                                </div>
+                            </div>
+
+                            <div class="lbwm-highlight-box">
+                                <h4 style="color: var(--color-gold); margin-bottom: 1rem;">🛡️ Protección del Mérito</h4>
+                                <p style="color: var(--color-text-secondary); line-height: 1.6;">
+                                    Los LBWM son <strong>permanentes</strong> (no caducan) y solo pueden perderse por 
+                                    <em>slashing</em> en caso de fraude probado o incumplimiento grave. 
+                                    El proceso de slashing es público, motivado y apelable.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Ejemplo Práctico -->
+                        <div class="lbwm-card" style="background: var(--color-bg-dark); margin-top: 2rem;">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">💼 Ejemplo Práctico</h3>
+                            
+                            <div style="background: rgba(229, 185, 92, 0.05); padding: 1.5rem; border-radius: 12px; border-left: 3px solid var(--color-gold);">
+                                <p style="color: var(--color-text-secondary); line-height: 1.8; margin-bottom: 1rem;">
+                                    <strong style="color: var(--color-text-primary);">Escenario:</strong> Ana desarrolla un módulo de pagos Lightning para LBW valorado en 5,000 EUR 
+                                    (según tarifa de mercado). El Comité lo verifica y aprueba.
+                                </p>
+                                
+                                <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                    <div style="font-family: var(--font-mono); font-size: 0.9rem;">
+                                        <div style="color: var(--color-teal-light);">// Cálculo de LBWM</div>
+                                        <div style="color: var(--color-text-primary); margin: 0.5rem 0;">
+                                            <span style="color: var(--color-gold);">LBWM_emitidos</span> = 
+                                            <span style="color: var(--color-success);">5,000</span> × 
+                                            <span style="color: var(--color-success);">1.0</span> = 
+                                            <strong style="color: var(--color-gold);">5,000 LBWM</strong>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <p style="color: var(--color-text-secondary); line-height: 1.8;">
+                                    <strong style="color: var(--color-text-primary);">Resultado:</strong> Ana ahora tiene 5,000 LBWM. Si el total de la red es 100,000 LBWM, 
+                                    Ana tiene <strong style="color: var(--color-gold);">5% de influencia</strong> en decisiones globales.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Frase Final -->
+                        <div style="background: linear-gradient(135deg, var(--color-bg-dark) 0%, var(--color-teal-dark) 100%); padding: 2rem; border-radius: 12px; margin-top: 2rem; text-align: center; border: 2px solid var(--color-gold);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">💎</div>
+                            <p style="font-size: 1.1rem; color: var(--color-gold); font-weight: 700; line-height: 1.6; margin-bottom: 0.5rem;">
+                                "El poder emerge de quien demuestra, una y otra vez,<br>que puede crear valor y asumir riesgos."
+                            </p>
+                            <p style="font-size: 0.9rem; color: var(--color-text-secondary); font-style: italic;">
+                                — Principio Fundacional de LiberBit World
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cómo Ganar LBWM -->
+                <div class="lbwm-tab-content" id="lbwm-tab-como-ganar">
+                    <div class="lbwm-card">
+                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">💡 Cómo Ganar Méritos LBWM</h2>
+                        
+                        <div class="lbwm-grid-3" style="margin-top: 2rem;">
+                            <!-- Aportación Económica -->
+                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-gold);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
+                                <h3 style="color: var(--color-gold); margin-bottom: 1rem; font-size: 1.1rem;">Aportación Económica</h3>
+                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
+                                    Aporta BTC a fondos comunes, liquidez a sistemas monetarios LBW, 
+                                    o financia infraestructura sin expectativa de retorno.
+                                </p>
+                                <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px;">
+                                    <div style="font-weight: 700; color: var(--color-gold); margin-bottom: 0.5rem;">
+                                        LBWM = Valor aportado × 1.0
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                        Ejemplo: 10,000 € → 10,000 LBWM
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Aportación Productiva -->
+                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-teal-light);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+                                <h3 style="color: var(--color-teal-light); margin-bottom: 1rem; font-size: 1.1rem;">Aportación Productiva</h3>
+                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
+                                    Desarrollo de software, operación de nodos, coordinación de red, 
+                                    educación y contenidos, expansión del ecosistema.
+                                </p>
+                                <div style="background: rgba(61, 117, 133, 0.1); padding: 1rem; border-radius: 8px;">
+                                    <div style="font-weight: 700; color: var(--color-teal-light); margin-bottom: 0.5rem;">
+                                        LBWM = Presupuesto aprobado × 1.0
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                        Valoración basada en tarifa de mercado
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Aportación de Responsabilidad -->
+                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-success);">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">🛡️</div>
+                                <h3 style="color: var(--color-success); margin-bottom: 1rem; font-size: 1.1rem;">Responsabilidad</h3>
+                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
+                                    Custodia de fondos comunes, arbitraje inter-City, operación de infraestructura crítica. 
+                                    Mayor riesgo, mayor mérito.
+                                </p>
+                                <div style="background: rgba(82, 196, 26, 0.1); padding: 1rem; border-radius: 8px;">
+                                    <div style="font-weight: 700; color: var(--color-success); margin-bottom: 0.5rem;">
+                                        LBWM = Valor × 1.2
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
+                                        ⚠️ Sujeto a slashing por incumplimiento
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Proceso de Emisión -->
+                        <div class="lbwm-card" style="margin-top: 2rem; background: var(--color-bg-dark);">
+                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">📝 Proceso de Emisión</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                                <div style="text-align: center; padding: 1rem;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">1️⃣</div>
+                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Aporta Valor</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Realiza tu contribución</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">2️⃣</div>
+                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Presenta Formulario</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Con evidencias verificables</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">3️⃣</div>
+                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Comité Verifica</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Aprueba valoración</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem;">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">4️⃣</div>
+                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">LBWM Emitidos</div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Registrados en Ledger</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <button class="btn btn-primary" onclick="showContributionForm()" style="font-size: 1rem; padding: 1rem 2.5rem;">
+                                📝 Presentar Aportación de Valor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Mis Aportaciones -->
+                <div class="lbwm-tab-content" id="lbwm-tab-mis-aportaciones">
+                    <div class="lbwm-card">
+                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">📋 Mis Aportaciones</h2>
+                        
+                        <div id="myContributionsList" style="margin-top: 2rem;">
+                            <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                                <p>No has presentado aportaciones profesionales aún</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Ledger Maestro -->
+                <div class="lbwm-tab-content" id="lbwm-tab-ledger">
+                    <div class="lbwm-card">
+                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">📖 Ledger Maestro LBWM</h2>
+                        <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">
+                            Registro público y auditable de todas las emisiones de mérito en LiberBit World
+                        </p>
+                        
+                        <div style="overflow-x: auto;">
+                            <table class="ledger-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Fecha</th>
+                                        <th>Identidad</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción</th>
+                                        <th style="text-align: right;">Valor</th>
+                                        <th style="text-align: center;">Factor</th>
+                                        <th style="text-align: right;">LBWM</th>
+                                        <th style="text-align: center;">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ledgerTableBody">
+                                    <tr>
+                                        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                                            Cargando datos del ledger...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 2rem; padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px;">
+                            <h4 style="color: var(--color-gold); margin-bottom: 1rem;">📊 Estadísticas del Ledger</h4>
+                            <div class="lbwm-grid-3">
+                                <div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Total Emitido</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_total_emitido">0 LBWM</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Emisiones Registradas</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_emisiones">0</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Aportantes Únicos</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_aportantes">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
-        <!-- Contribution Form Modal -->
+        <!-- Contribution Form Modal (LBWM) -->
         <div class="modal" id="contributionFormModal" style="display: none;">
-            <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
                 <button class="modal-close" onclick="closeContributionForm()">✕</button>
                 
                 <h2 style="color: var(--color-gold); margin-bottom: 1rem;">📝 Formulario de Aportación de Valor LBWM</h2>
-                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">
-                    Presenta tu contribución para evaluación del Comité de Emisión
+                
+                <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">
+                    Presenta tu aportación de valor a LiberBit World. El Comité de Emisión verificará y aprobará los LBWM correspondientes.
                 </p>
 
                 <form id="contributionForm" onsubmit="submitContribution(event)">
-                    <!-- Section 1: Identification -->
-                    <div class="form-section">
+                    
+                    <!-- Sección 1: Identificación -->
+                    <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">1️⃣ Identificación</h3>
+                        
                         <div class="form-group">
-                            <label>Identidad LBW</label>
+                            <label>Identidad LBW *</label>
                             <input type="text" id="contrib_identity" readonly value="">
                         </div>
                         <div class="form-group">
@@ -3238,11 +4093,12 @@
                         </div>
                     </div>
 
-                    <!-- Section 2: Contribution Type -->
-                    <div class="form-section">
+                    <!-- Sección 2: Tipo de Aportación -->
+                    <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">2️⃣ Tipo de Aportación</h3>
+                        
                         <div class="form-group">
-                            <label>Selecciona el tipo</label>
+                            <label>Tipo *</label>
                             <select id="contrib_type" required onchange="updateContributionFactor()">
                                 <option value="">-- Seleccionar --</option>
                                 <option value="economica" data-factor="1.0">💰 Económica Definitiva (Factor: 1.0)</option>
@@ -3251,6 +4107,14 @@
                                 <option value="financiada" data-factor="0.0">⏳ Aportación Financiada (Factor: 0.3-0.6)</option>
                             </select>
                         </div>
+                        
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: rgba(198, 89, 17, 0.1); border-radius: 8px; border: 1px solid #C65911;">
+                                <input type="checkbox" id="aport_financiada" onchange="toggleFinanciada()">
+                                <span>📋 Es una aportación financiada (trabajo adelantado sin garantía de pago)</span>
+                            </label>
+                        </div>
+
                         <div id="financiada_factor" style="display: none;" class="form-group">
                             <label>Factor para Aportación Financiada</label>
                             <select id="contrib_factor_financiada">
@@ -3262,75 +4126,122 @@
                         </div>
                     </div>
 
-                    <!-- Section 3: Description -->
-                    <div class="form-section">
+                    <!-- Sección 3: Descripción -->
+                    <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">3️⃣ Descripción</h3>
+                        
                         <div class="form-group">
-                            <label>Descripción concreta de la aportación</label>
-                            <textarea id="contrib_description" rows="4" required placeholder="Ej: Desarrollo del módulo de pagos Lightning"></textarea>
+                            <label>Descripción concreta *</label>
+                            <textarea id="contrib_description" required rows="4" placeholder="Detalla qué has aportado o construido..."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label>Periodo / Fecha de entrega</label>
-                            <input type="text" id="contrib_period" required placeholder="Ej: Enero 2026, Q1 2026">
-                        </div>
-                        <div class="form-group">
-                            <label>Proyecto asociado (opcional)</label>
-                            <input type="text" id="contrib_project" placeholder="Nombre del proyecto LBW">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Periodo / Entrega *</label>
+                                <input type="text" id="contrib_period" required placeholder="Ej: Enero 2026, Q1 2026">
+                            </div>
+                            <div class="form-group">
+                                <label>Proyecto (opcional)</label>
+                                <input type="text" id="contrib_project" placeholder="Nombre del proyecto LBW">
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Section 4: Valuation -->
-                    <div class="form-section">
+                    <!-- Sección 4: Valoración -->
+                    <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">4️⃣ Valoración Económica</h3>
-                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+                        
+                        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
-                                <label>Valor de referencia propuesto</label>
-                                <input type="number" id="contrib_value" required min="0" step="0.01" placeholder="0.00">
+                                <label>Valor de Referencia Propuesto *</label>
+                                <input type="number" id="contrib_value" required min="0" step="0.01" onchange="updatePreviewCalculation()">
                             </div>
                             <div class="form-group">
-                                <label>Moneda</label>
+                                <label>Moneda *</label>
                                 <select id="contrib_currency" required>
-                                    <option value="EUR">EUR €</option>
-                                    <option value="USD">USD $</option>
-                                    <option value="BTC">BTC ₿</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="BTC">BTC</option>
                                 </select>
                             </div>
                         </div>
+                        
                         <div class="form-group">
-                            <label>Justificación del valor</label>
-                            <textarea id="contrib_justification" rows="3" required placeholder="Ej: Tarifa de mercado para desarrollador senior: 50€/h × 40h"></textarea>
+                            <label>Justificación del Valor *</label>
+                            <textarea id="contrib_justification" required rows="3" placeholder="Ej: tarifa de mercado, presupuesto aprobado, valor BTC aportado..."></textarea>
                         </div>
                     </div>
 
-                    <!-- Section 5: Evidence -->
-                    <div class="form-section">
+                    <!-- Sección 5: Evidencias -->
+                    <div style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">5️⃣ Evidencias</h3>
+                        
                         <div class="form-group">
-                            <label>Enlaces / Documentos de respaldo</label>
-                            <textarea id="contrib_evidence" rows="4" required placeholder="URLs, hashes, tx IDs, commits GitHub..."></textarea>
+                            <label>Enlaces / Documentos de Respaldo *</label>
+                            <textarea id="contrib_evidence" required rows="3" placeholder="URLs, hashes, tx IDs, commits GitHub, documentos adjuntos..."></textarea>
                         </div>
                     </div>
 
-                    <!-- Preview Calculation -->
-                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-gold); margin: 2rem 0;">
-                        <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 1rem;">📊 Estimación de LBWM</h3>
-                        <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-                            Valor: <span id="preview_value">0</span> <span id="preview_currency">EUR</span>
+                    <!-- Sección 6: Solo Aportación Financiada -->
+                    <div id="financiada_section" style="display: none; margin-bottom: 2rem;">
+                        <h3 style="color: #C65911; font-size: 1.1rem; margin-bottom: 1rem;">6️⃣ Aportación Financiada</h3>
+                        
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="aport_espera_devol">
+                                <span>Espero devolución futura (sujeto a viabilidad y aprobación de la red)</span>
+                            </label>
                         </div>
-                        <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-                            Factor: <span id="preview_factor">1.0</span>
+                        
+                        <div class="form-group">
+                            <label>Factor Propuesto (0.3 - 0.6)</label>
+                            <input type="number" id="aport_factor" min="0.3" max="0.6" step="0.1" value="0.4" onchange="updatePreviewCalculation()">
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
+                                0.3 = Fase muy temprana | 0.4 = Con tracción | 0.5 = Proyecto viable | 0.6 = Proyecto maduro
+                            </div>
                         </div>
-                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-gold); margin-top: 1rem;">
-                            ≈ <span id="preview_lbwm">0</span> LBWM
+                    </div>
+
+                    <!-- Preview de LBWM Estimados -->
+                    <div class="lbwm-highlight-box" style="margin-bottom: 2rem;">
+                        <h3 style="color: var(--color-gold); font-size: 1.1rem;">📊 Estimación de LBWM</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                            <div>
+                                <div style="font-size: 0.9rem; color: var(--color-text-secondary);">Factor aplicable:</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="preview_factor">
+                                    1.0
+                                </div>
+                            </div>
+                            <div style="font-size: 2rem; color: var(--color-text-secondary);">×</div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.9rem; color: var(--color-text-secondary);">LBWM Estimados:</div>
+                                <div style="font-size: 2.5rem; font-weight: 800; color: var(--color-gold);">
+                                    ≈ <span id="preview_lbwm">0</span>
+                                </div>
+                            </div>
                         </div>
-                        <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.75rem; margin-bottom: 0;">
-                            * Sujeto a aprobación del Comité de Emisión
+                        <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--color-text-secondary); font-style: italic;">
+                            * Estimación sujeta a aprobación del Comité de Emisión
+                        </div>
+                    </div>
+
+                    <!-- Declaración -->
+                    <div style="background: var(--color-bg-dark); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+                        <h4 style="color: var(--color-gold); margin-bottom: 0.75rem;">📋 Declaración</h4>
+                        <p style="color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.6;">
+                            Declaro que la información proporcionada es veraz y completa. Entiendo que los LBWM 
+                            se emiten <strong>ex-post</strong> tras verificación del Comité de Emisión, y que 
+                            cualquier falsedad puede resultar en rechazo de la aportación o slashing de mérito ya obtenido.
                         </p>
                     </div>
 
                     <div class="action-buttons">
-                        <button type="button" class="btn btn-secondary" onclick="closeContributionForm()">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">📤 Enviar al Comité</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeContributionForm()">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            📝 Enviar Formulario
+                        </button>
                     </div>
                 </form>
             </div>
@@ -3473,6 +4384,10 @@
                                 🌐 E-Residency
                             </div>
                             <div class="profile-id" id="profileId">LBWID-XXXXXXXX</div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-family: var(--font-mono); opacity: 0.8;" id="profileNpub">npub1...</div>
+                                <button onclick="copyNpubKey()" style="background: var(--color-gold); color: var(--color-teal-dark); border: none; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; white-space: nowrap;" id="copyNpubBtn">📋 Copiar</button>
+                            </div>
                             <button class="profile-edit-btn" onclick="showCitizenshipModal()">
                                 ✏️ Editar Ciudadanía
                             </button>
@@ -3655,6 +4570,38 @@
             }, 16);
         }
 
+        const IDENTITIES_BASE_OFFSET = 35;
+
+        async function updateIdentitiesCounter() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('id');
+                
+                let realCount = 0;
+                if (!error && data) {
+                    realCount = data.length;
+                } else {
+                    const savedKeys = localStorage.getItem('liberbit_keys');
+                    if (savedKeys) realCount = 1;
+                }
+                
+                const displayCount = realCount + IDENTITIES_BASE_OFFSET;
+                
+                const counter = document.getElementById('identitiesCount');
+                if (counter) {
+                    const currentValue = parseInt(counter.textContent) || 0;
+                    animateCounter(counter, currentValue, displayCount, 1500);
+                }
+            } catch (err) {
+                console.error('Error updating identities counter:', err);
+                const counter = document.getElementById('identitiesCount');
+                if (counter && counter.textContent === '0') {
+                    counter.textContent = IDENTITIES_BASE_OFFSET;
+                }
+            }
+        }
+
         // Load hero background image
         const heroImageData = 'HERO_IMAGE_PLACEHOLDER';
         
@@ -3714,20 +4661,52 @@
             if (savedKeys) {
                 currentUser = JSON.parse(savedKeys);
                 
+                // Migrate old hex keys to npub1/nsec1 format
+                const pubKey = currentUser.publicKey || currentUser.pubkey;
+                if (pubKey && !isNpubFormat(pubKey)) {
+                    // Old hex format detected - convert to npub1
+                    const npubKey = hexToNpub(pubKey);
+                    currentUser.publicKey = npubKey;
+                    currentUser.pubkey = npubKey;
+                    
+                    // Convert private key too if it's hex
+                    if (currentUser.privateKey && !isNsecFormat(currentUser.privateKey)) {
+                        currentUser.privateKey = hexToNsec(currentUser.privateKey);
+                    }
+                    
+                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    
+                    // Update in Supabase
+                    try {
+                        await supabaseClient
+                            .from('users')
+                            .update({ public_key: npubKey })
+                            .eq('public_key', pubKey);
+                        
+                        // Also update related records
+                        await supabaseClient.from('posts').update({ author_public_key: npubKey }).eq('author_public_key', pubKey);
+                        await supabaseClient.from('offers').update({ author_public_key: npubKey }).eq('author_public_key', pubKey);
+                        
+                        console.log('Migrated keys to npub1/nsec1 format');
+                    } catch (err) {
+                        console.log('Migration update in DB skipped:', err.message);
+                    }
+                }
+                
                 // Sync with Supabase to get user ID if not present
                 if (!currentUser.id && (currentUser.publicKey || currentUser.pubkey)) {
                     try {
-                        const pubKey = currentUser.publicKey || currentUser.pubkey;
+                        const currentPubKey = currentUser.publicKey || currentUser.pubkey;
                         const { data, error } = await supabaseClient
                             .from('users')
                             .select('*')
-                            .eq('public_key', pubKey)
+                            .eq('public_key', currentPubKey)
                             .single();
                         
                         if (data) {
                             currentUser.id = data.id;
-                            currentUser.pubkey = pubKey;
-                            currentUser.publicKey = pubKey;
+                            currentUser.pubkey = currentPubKey;
+                            currentUser.publicKey = currentPubKey;
                             localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
                         }
                     } catch (err) {
@@ -3747,9 +4726,14 @@
             try {
                 const array = new Uint8Array(32);
                 crypto.getRandomValues(array);
-                const privateKey = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+                const privateKeyHex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
                 
-                const publicKey = await hashSimple(privateKey);
+                const publicKeyHex = await hashSimple(privateKeyHex);
+                
+                // Convert to npub1/nsec1 format
+                const publicKey = hexToNpub(publicKeyHex);
+                const privateKey = hexToNsec(privateKeyHex);
+                
                 const userName = document.getElementById('userNameInput').value.trim() || 'Anónimo';
                 
                 // Save user to Supabase
@@ -3757,6 +4741,7 @@
                     .from('users')
                     .insert([
                         {
+                            id: generateUUID(),
                             public_key: publicKey,
                             name: userName,
                             citizenship_type: 'E-Residency'
@@ -3796,6 +4781,19 @@
             }
         }
 
+        // Generate UUID v4
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            // Fallback
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
         async function hashSimple(text) {
             const encoder = new TextEncoder();
             const data = encoder.encode(text);
@@ -3803,6 +4801,140 @@
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
+
+        // ===== Bech32 Encoding for npub1 / nsec1 format =====
+        const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+
+        function bech32Polymod(values) {
+            const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+            let chk = 1;
+            for (const v of values) {
+                const b = chk >> 25;
+                chk = ((chk & 0x1ffffff) << 5) ^ v;
+                for (let i = 0; i < 5; i++) {
+                    if ((b >> i) & 1) chk ^= GEN[i];
+                }
+            }
+            return chk;
+        }
+
+        function bech32HrpExpand(hrp) {
+            const ret = [];
+            for (let i = 0; i < hrp.length; i++) {
+                ret.push(hrp.charCodeAt(i) >> 5);
+            }
+            ret.push(0);
+            for (let i = 0; i < hrp.length; i++) {
+                ret.push(hrp.charCodeAt(i) & 31);
+            }
+            return ret;
+        }
+
+        function bech32CreateChecksum(hrp, data) {
+            const values = bech32HrpExpand(hrp).concat(data).concat([0, 0, 0, 0, 0, 0]);
+            const polymod = bech32Polymod(values) ^ 1;
+            const ret = [];
+            for (let i = 0; i < 6; i++) {
+                ret.push((polymod >> (5 * (5 - i))) & 31);
+            }
+            return ret;
+        }
+
+        function bech32Encode(hrp, data) {
+            const combined = data.concat(bech32CreateChecksum(hrp, data));
+            let ret = hrp + '1';
+            for (const d of combined) {
+                ret += BECH32_CHARSET[d];
+            }
+            return ret;
+        }
+
+        function bech32Decode(str) {
+            str = str.toLowerCase();
+            const pos = str.lastIndexOf('1');
+            if (pos < 1 || pos + 7 > str.length) return null;
+            const hrp = str.substring(0, pos);
+            const dataChars = str.substring(pos + 1);
+            const data = [];
+            for (const c of dataChars) {
+                const idx = BECH32_CHARSET.indexOf(c);
+                if (idx === -1) return null;
+                data.push(idx);
+            }
+            if (bech32Polymod(bech32HrpExpand(hrp).concat(data)) !== 1) return null;
+            return { hrp, data: data.slice(0, data.length - 6) };
+        }
+
+        // Convert between 8-bit and 5-bit groups
+        function convertBits(data, fromBits, toBits, pad) {
+            let acc = 0;
+            let bits = 0;
+            const ret = [];
+            const maxv = (1 << toBits) - 1;
+            for (const value of data) {
+                if (value < 0 || value >> fromBits) return null;
+                acc = (acc << fromBits) | value;
+                bits += fromBits;
+                while (bits >= toBits) {
+                    bits -= toBits;
+                    ret.push((acc >> bits) & maxv);
+                }
+            }
+            if (pad) {
+                if (bits > 0) {
+                    ret.push((acc << (toBits - bits)) & maxv);
+                }
+            } else if (bits >= fromBits || ((acc << (toBits - bits)) & maxv)) {
+                return null;
+            }
+            return ret;
+        }
+
+        // Convert hex string to npub1/nsec1 format
+        function hexToNpub(hexStr) {
+            const bytes = [];
+            for (let i = 0; i < hexStr.length; i += 2) {
+                bytes.push(parseInt(hexStr.substr(i, 2), 16));
+            }
+            const words = convertBits(bytes, 8, 5, true);
+            return bech32Encode('npub', words);
+        }
+
+        function hexToNsec(hexStr) {
+            const bytes = [];
+            for (let i = 0; i < hexStr.length; i += 2) {
+                bytes.push(parseInt(hexStr.substr(i, 2), 16));
+            }
+            const words = convertBits(bytes, 8, 5, true);
+            return bech32Encode('nsec', words);
+        }
+
+        // Convert npub1/nsec1 back to hex
+        function npubToHex(npubStr) {
+            const decoded = bech32Decode(npubStr.toLowerCase());
+            if (!decoded || decoded.hrp !== 'npub') return null;
+            const bytes = convertBits(decoded.data, 5, 8, false);
+            if (!bytes) return null;
+            return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function nsecToHex(nsecStr) {
+            const decoded = bech32Decode(nsecStr.toLowerCase());
+            if (!decoded || decoded.hrp !== 'nsec') return null;
+            const bytes = convertBits(decoded.data, 5, 8, false);
+            if (!bytes) return null;
+            return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Check if a string is in npub/nsec format
+        function isNpubFormat(str) {
+            return str && str.toLowerCase().startsWith('npub1') && str.length > 10;
+        }
+
+        function isNsecFormat(str) {
+            return str && str.toLowerCase().startsWith('nsec1') && str.length > 10;
+        }
+        // ===== End Bech32 =====
 
         function displayKeys() {
             document.getElementById('pubkeyText').textContent = currentUser.publicKey;
@@ -3813,9 +4945,26 @@
         }
 
         async function importExistingAccount() {
-            const privKey = document.getElementById('existingPrivKey').value.trim();
-            if (!privKey || privKey.length !== 64) {
-                showNotification('Clave privada inválida (debe tener 64 caracteres)', 'error');
+            let privKeyInput = document.getElementById('existingPrivKey').value.trim();
+            
+            // Support both nsec1 and hex formats
+            let privateKeyHex;
+            let privateKeyNsec;
+            
+            if (isNsecFormat(privKeyInput)) {
+                // nsec1 format - decode to hex
+                privateKeyHex = nsecToHex(privKeyInput);
+                privateKeyNsec = privKeyInput;
+                if (!privateKeyHex) {
+                    showNotification('Clave nsec1 inválida. Verifica el formato.', 'error');
+                    return;
+                }
+            } else if (/^[0-9a-fA-F]{64}$/.test(privKeyInput)) {
+                // Legacy hex format
+                privateKeyHex = privKeyInput;
+                privateKeyNsec = hexToNsec(privKeyInput);
+            } else {
+                showNotification('Clave privada inválida. Usa formato nsec1... o hex (64 caracteres)', 'error');
                 return;
             }
 
@@ -3824,42 +4973,59 @@
             btn.disabled = true;
 
             try {
-                // Calculate public key from private key
-                const publicKey = await hashSimple(privKey);
+                // Calculate public key from private key hex
+                const publicKeyHex = await hashSimple(privateKeyHex);
+                const publicKeyNpub = hexToNpub(publicKeyHex);
                 
-                // Check if user exists in Supabase
-                const { data, error } = await supabaseClient
+                // Try to find user with npub1 format first, then hex fallback
+                let userData = null;
+                
+                const { data: npubData, error: npubError } = await supabaseClient
                     .from('users')
                     .select('*')
-                    .eq('public_key', publicKey)
-                    .single();
+                    .eq('public_key', publicKeyNpub)
+                    .maybeSingle();
+                
+                if (npubData) {
+                    userData = npubData;
+                } else {
+                    // Try legacy hex format
+                    const { data: hexData, error: hexError } = await supabaseClient
+                        .from('users')
+                        .select('*')
+                        .eq('public_key', publicKeyHex)
+                        .maybeSingle();
+                    
+                    if (hexData) {
+                        userData = hexData;
+                        // Migrate to npub1 format
+                        await supabaseClient
+                            .from('users')
+                            .update({ public_key: publicKeyNpub })
+                            .eq('public_key', publicKeyHex);
+                    }
+                }
 
-                if (error) {
-                    console.error('Error fetching user:', error);
+                if (!userData) {
                     showNotification('Usuario no encontrado en la base de datos. ¿Creaste tu cuenta con esta clave?', 'error');
                     btn.innerHTML = 'Importar →';
                     btn.disabled = false;
                     return;
                 }
 
-                if (data) {
-                    // User exists in Supabase - load full profile
-                    currentUser = {
-                        id: data.id,
-                        privateKey: privKey,
-                        pubkey: publicKey,
-                        publicKey: publicKey,
-                        name: data.name,
-                        created_at: Date.now()
-                    };
-                    
-                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-                    closeAuthModal();
-                    showMainMenu();
-                    showNotification(`¡Bienvenido de nuevo, ${data.name}! ✅`);
-                } else {
-                    showNotification('No se encontró ningún usuario con esa clave privada', 'error');
-                }
+                currentUser = {
+                    id: userData.id,
+                    privateKey: privateKeyNsec,
+                    pubkey: publicKeyNpub,
+                    publicKey: publicKeyNpub,
+                    name: userData.name,
+                    created_at: Date.now()
+                };
+                
+                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                closeAuthModal();
+                showMainMenu();
+                showNotification(`¡Bienvenido de nuevo, ${userData.name}! ✅`);
                 
                 btn.innerHTML = 'Importar →';
                 btn.disabled = false;
@@ -3875,15 +5041,69 @@
             showSection('mainMenuSection');
             document.getElementById('userBadge').classList.remove('hidden');
             document.getElementById('userName').textContent = currentUser.name;
+            
+            // Update home welcome card
+            document.getElementById('homeUserName').textContent = currentUser.name;
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            if (pubKey && isNpubFormat(pubKey)) {
+                document.getElementById('homeNpub').textContent = pubKey.substring(0, 20) + '...' + pubKey.substring(pubKey.length - 6);
+            } else if (pubKey) {
+                document.getElementById('homeNpub').textContent = pubKey.substring(0, 16) + '...';
+            }
+            
+            // Load home avatar from cache or Supabase
+            updateHomeAvatar();
+            
             // Show and update active nodes counter
             document.getElementById('activeNodesCounterHeader').classList.remove('hidden');
+            document.getElementById('identitiesCounterHeader').classList.remove('hidden');
+            document.getElementById('relaysCounterHeader').classList.remove('hidden');
+            document.getElementById('citiesCounterHeader').classList.remove('hidden');
+            document.getElementById('activeCitiesCounterHeader').classList.remove('hidden');
             updateActiveNodesCounter();
+            updateIdentitiesCounter();
             // Start interval to update counter every 30 seconds
             if (activeNodesInterval) clearInterval(activeNodesInterval);
-            activeNodesInterval = setInterval(updateActiveNodesCounter, 30000);
+            activeNodesInterval = setInterval(() => {
+                updateActiveNodesCounter();
+                updateIdentitiesCounter();
+            }, 30000);
             initializeUserProfile();
             updateAllBadges(); // Update notification badges
             loadAllNotifications(); // Load notification center
+        }
+
+        async function updateHomeAvatar() {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            const homeAvatarEl = document.getElementById('homeAvatar');
+            if (!homeAvatarEl) return;
+            
+            // Try localStorage cache first
+            const cached = localStorage.getItem('userProfile_' + pubKey);
+            if (cached) {
+                try {
+                    const profile = JSON.parse(cached);
+                    if (profile.avatarUrl) {
+                        homeAvatarEl.src = profile.avatarUrl;
+                        return;
+                    }
+                } catch (e) {}
+            }
+            
+            // Try Supabase
+            try {
+                const { data } = await supabaseClient
+                    .from('users')
+                    .select('avatar_url')
+                    .eq('public_key', pubKey)
+                    .maybeSingle();
+                
+                if (data && data.avatar_url) {
+                    homeAvatarEl.src = data.avatar_url;
+                }
+            } catch (err) {
+                console.log('Could not load home avatar:', err.message);
+            }
         }
 
         async function updateAllBadges() {
@@ -3990,25 +5210,34 @@
             updateBadge(appName, 0);
         }
 
-        function openApp(appName) {
+        async function openApp(appName) {
             if (appName === 'chat') {
                 showSection('chatSection');
-                loadPosts();
+                switchChatTab('community');
                 markAsRead('chat');
+                // Refresh badges every 15 seconds while in chat
+                if (window.chatBadgeInterval) clearInterval(window.chatBadgeInterval);
+                window.chatBadgeInterval = setInterval(updateChatBadges, 15000);
             } else if (appName === 'networking') {
                 showSection('networkingSection');
                 loadOffers();
                 markAsRead('networking');
             } else if (appName === 'directMessages') {
-                showSection('directMessagesSection');
-                closeActiveChat();
-                loadConversationsList();
+                showSection('chatSection');
+                switchChatTab('private');
+                markAsRead('chat');
             } else if (appName === 'gobernanza') {
                 showSection('gobernanzaSection'); // Shows the menu with 2 options
                 markAsRead('gobernanza');
             } else if (appName === 'perfil') {
                 showSection('profileSection');
-                loadUserProfile();
+                // Load fresh data first, then update profile with accurate stats
+                await Promise.all([
+                    loadPosts(),
+                    loadOffers()
+                ]);
+                loadProposals();
+                await loadUserProfile();
             } else {
                 showSection(appName + 'Section');
             }
@@ -4031,6 +5260,7 @@
 
         function backToMenu() {
             showSection('mainMenuSection');
+            if (window.chatBadgeInterval) clearInterval(window.chatBadgeInterval);
             updateAllBadges(); // Refresh badges when returning to menu
         }
 
@@ -4057,6 +5287,20 @@
             document.getElementById('authModal').classList.add('hidden');
         }
 
+        // Reply state
+        let currentReplyTo = null; // { id, author, content }
+        
+        // Reply mappings stored locally (postId -> { reply_to_id, reply_to_author, reply_to_content })
+        function getReplyMappings() {
+            return JSON.parse(localStorage.getItem('liberbit_reply_mappings') || '{}');
+        }
+        
+        function saveReplyMapping(postId, replyData) {
+            const mappings = getReplyMappings();
+            mappings[postId] = replyData;
+            localStorage.setItem('liberbit_reply_mappings', JSON.stringify(mappings));
+        }
+
         async function publishPost() {
             const content = document.getElementById('newPostContent').value.trim();
             if (!content) {
@@ -4066,17 +5310,19 @@
 
             try {
                 const pubKey = currentUser.pubkey || currentUser.publicKey;
+                const postId = generateUUID();
                 
-                // Insert post into Supabase
+                const postData = {
+                    id: postId,
+                    author_public_key: pubKey,
+                    author_name: currentUser.name,
+                    content: content
+                };
+                
+                // Insert post into Supabase (without reply columns)
                 const { data, error } = await supabaseClient
                     .from('posts')
-                    .insert([
-                        {
-                            author_public_key: pubKey,
-                            author_name: currentUser.name,
-                            content: content
-                        }
-                    ])
+                    .insert([postData])
                     .select()
                     .single();
 
@@ -4085,8 +5331,18 @@
                     showNotification('Error al publicar: ' + error.message, 'error');
                     return;
                 }
+                
+                // Save reply mapping locally if replying
+                if (currentReplyTo) {
+                    saveReplyMapping(data.id || postId, {
+                        reply_to_id: currentReplyTo.id,
+                        reply_to_author: currentReplyTo.author,
+                        reply_to_content: currentReplyTo.content
+                    });
+                }
 
                 document.getElementById('newPostContent').value = '';
+                cancelReply();
                 showNotification('¡Publicado! ✨');
                 await loadPosts();
             } catch (err) {
@@ -4156,14 +5412,22 @@
                         });
                     }
                     
-                    allPosts = data.map(post => ({
-                        id: post.id,
-                        author: post.author_name,
-                        avatar_url: avatarMap[post.author_public_key] || null,
-                        content: post.content,
-                        created_at: new Date(post.created_at).getTime(),
-                        likes: likesMap[post.id] || { count: 0, users: [], likedByCurrentUser: false }
-                    }));
+                    const replyMappings = getReplyMappings();
+                    
+                    allPosts = data.map(post => {
+                        const replyData = replyMappings[post.id] || {};
+                        return {
+                            id: post.id,
+                            author: post.author_name,
+                            avatar_url: avatarMap[post.author_public_key] || null,
+                            content: post.content,
+                            created_at: new Date(post.created_at).getTime(),
+                            likes: likesMap[post.id] || { count: 0, users: [], likedByCurrentUser: false },
+                            reply_to_id: replyData.reply_to_id || null,
+                            reply_to_author: replyData.reply_to_author || null,
+                            reply_to_content: replyData.reply_to_content || null
+                        };
+                    });
                 }
 
                 const container = document.getElementById('postsList');
@@ -4182,20 +5446,39 @@
                     const likeIcon = post.likes.likedByCurrentUser ? '❤️' : '🤍';
                     const likesText = post.likes.count > 0 ? post.likes.count : '';
                     
+                    // Reply context
+                    let replyContextHtml = '';
+                    if (post.reply_to_id && post.reply_to_author) {
+                        const replyText = post.reply_to_content ? post.reply_to_content.substring(0, 80) + (post.reply_to_content.length > 80 ? '...' : '') : '';
+                        replyContextHtml = `
+                            <div class="post-reply-context" onclick="scrollToPost('${post.reply_to_id}')">
+                                <span class="reply-context-author">↩️ ${escapeHtml(post.reply_to_author)}</span> ${escapeHtml(replyText)}
+                            </div>
+                        `;
+                    }
+                    
+                    const safeContent = escapeHtml(post.content);
+                    const safeAuthor = escapeHtml(post.author);
+                    
                     return `
-                        <div class="post">
+                        <div class="post" id="post-${post.id}">
                             <div class="post-header">
                                 <div class="post-author-info">
                                     ${avatarHtml}
-                                    <span class="post-author">${post.author}</span>
+                                    <span class="post-author">${safeAuthor}</span>
                                 </div>
                                 <span class="post-time">${timeAgo(post.created_at)}</span>
                             </div>
-                            <div class="post-content">${escapeHtml(post.content)}</div>
+                            ${replyContextHtml}
+                            <div class="post-content">${safeContent}</div>
                             <div class="post-footer">
                                 <button class="like-btn ${likeButtonClass}" onclick="toggleLike('${post.id}')" title="${post.likes.users.join(', ') || 'Sé el primero en dar like'}">
                                     <span class="like-icon">${likeIcon}</span>
                                     <span class="like-count">${likesText}</span>
+                                </button>
+                                <button class="reply-btn" onclick="replyToPost('${post.id}', '${safeAuthor}', '${safeContent.substring(0, 60).replace(/'/g, "\\'")}')">
+                                    <span>💬</span>
+                                    <span>Responder</span>
                                 </button>
                             </div>
                         </div>
@@ -4209,6 +5492,36 @@
 
         function clearPost() {
             document.getElementById('newPostContent').value = '';
+            cancelReply();
+        }
+
+        function replyToPost(postId, author, contentPreview) {
+            currentReplyTo = { id: postId, author: author, content: contentPreview };
+            document.getElementById('replyToAuthor').textContent = author;
+            document.getElementById('replyToText').textContent = contentPreview;
+            document.getElementById('replyPreview').style.display = 'flex';
+            
+            // Focus on textarea and scroll to compose
+            const textarea = document.getElementById('newPostContent');
+            textarea.focus();
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function cancelReply() {
+            currentReplyTo = null;
+            document.getElementById('replyPreview').style.display = 'none';
+            document.getElementById('replyToAuthor').textContent = '';
+            document.getElementById('replyToText').textContent = '';
+        }
+
+        function scrollToPost(postId) {
+            const postEl = document.getElementById('post-' + postId);
+            if (postEl) {
+                postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                postEl.style.transition = 'background 0.3s ease';
+                postEl.style.background = 'rgba(229, 185, 92, 0.15)';
+                setTimeout(() => { postEl.style.background = ''; }, 2000);
+            }
         }
 
         // Toggle like on post
@@ -4239,6 +5552,7 @@
                     const { error } = await supabaseClient
                         .from('post_likes')
                         .insert({
+                            id: generateUUID(),
                             post_id: postId,
                             user_public_key: pubKey,
                             user_name: currentUser.name
@@ -4262,6 +5576,10 @@
                 currentUser = null;
                 document.getElementById('userBadge').classList.add('hidden');
                 document.getElementById('activeNodesCounterHeader').classList.add('hidden');
+                document.getElementById('identitiesCounterHeader').classList.add('hidden');
+                document.getElementById('relaysCounterHeader').classList.add('hidden');
+                document.getElementById('citiesCounterHeader').classList.add('hidden');
+                document.getElementById('activeCitiesCounterHeader').classList.add('hidden');
                 // Stop active nodes counter interval
                 if (activeNodesInterval) {
                     clearInterval(activeNodesInterval);
@@ -4293,19 +5611,29 @@
             });
         };
 
+        function copyNpubKey() {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            navigator.clipboard.writeText(pubKey).then(() => {
+                const btn = document.getElementById('copyNpubBtn');
+                btn.textContent = '✅ Copiado';
+                setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000);
+                showNotification('Clave pública npub copiada ✓');
+            });
+        }
+
         function downloadKeys() {
             const content = `LiberBit World - Claves
 =============================
 Nombre: ${currentUser.name}
 Fecha: ${new Date().toLocaleString()}
 
-Clave Pública:
+Clave Pública (npub):
 ${currentUser.publicKey}
 
-Clave Privada:
+Clave Privada (nsec):
 ${currentUser.privateKey}
 
-⚠️ NUNCA compartas tu clave privada
+⚠️ NUNCA compartas tu clave privada (nsec)
 =============================`;
 
             const blob = new Blob([content], { type: 'text/plain' });
@@ -4428,6 +5756,7 @@ ${currentUser.privateKey}
                     const { data, error } = await supabaseClient
                         .from('offers')
                         .insert([{
+                            id: generateUUID(),
                             author_public_key: pubKey,
                             author_name: currentUser.name,
                             title: title,
@@ -4952,8 +6281,8 @@ ${currentUser.privateKey}
                 name: recipientName
             };
 
-            showSection('directMessagesSection');
-            openChatWith(recipientId, recipientName);
+            showSection('chatSection');
+            openPrivateChat(recipientId, recipientName);
         }
 
         function openChatWith(userId, userName) {
@@ -4973,6 +6302,244 @@ ${currentUser.privateKey}
             document.getElementById('activeChat').style.display = 'none';
             document.getElementById('dmContent').value = '';
             loadConversationsList();
+        }
+
+        // Chat tab state
+        let currentChatTab = 'community';
+        let lastSeenCommunity = parseInt(localStorage.getItem('lastSeen_community') || '0');
+        let lastSeenPrivate = parseInt(localStorage.getItem('lastSeen_private') || '0');
+
+        function switchChatTab(tab) {
+            currentChatTab = tab;
+            
+            // Mark as seen - clear badge for this tab
+            if (tab === 'community') {
+                lastSeenCommunity = Date.now();
+                localStorage.setItem('lastSeen_community', lastSeenCommunity.toString());
+                updateChatTabBadge('community', 0);
+            } else {
+                lastSeenPrivate = Date.now();
+                localStorage.setItem('lastSeen_private', lastSeenPrivate.toString());
+                updateChatTabBadge('private', 0);
+            }
+            
+            // Update tab buttons
+            document.getElementById('tabCommunity').classList.toggle('active', tab === 'community');
+            document.getElementById('tabPrivate').classList.toggle('active', tab === 'private');
+            
+            // Update main view
+            document.getElementById('communityView').style.display = tab === 'community' ? 'flex' : 'none';
+            document.getElementById('privateView').style.display = tab === 'private' ? 'flex' : 'none';
+            
+            // Load sidebar content
+            loadChatSidebar();
+            
+            if (tab === 'community') {
+                loadPosts();
+            } else {
+                loadPrivateConversationsSidebar();
+            }
+            
+            // Update the OTHER tab's badge
+            updateChatBadges();
+        }
+
+        function updateChatTabBadge(tab, count) {
+            const badgeId = tab === 'community' ? 'badgeCommunity' : 'badgePrivate';
+            const badge = document.getElementById(badgeId);
+            if (!badge) return;
+            if (count > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = count > 99 ? '99+' : count;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        async function updateChatBadges() {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            
+            try {
+                // Community badge: new posts since last seen
+                if (currentChatTab !== 'community') {
+                    const { data: newPosts } = await supabaseClient
+                        .from('posts')
+                        .select('id')
+                        .gt('created_at', new Date(lastSeenCommunity).toISOString())
+                        .neq('author_public_key', pubKey);
+                    
+                    if (newPosts) updateChatTabBadge('community', newPosts.length);
+                }
+                
+                // Private badge: new DMs since last seen
+                if (currentChatTab !== 'private') {
+                    const { data: newDMs } = await supabaseClient
+                        .from('direct_messages')
+                        .select('id')
+                        .eq('recipient_id', pubKey)
+                        .gt('created_at', new Date(lastSeenPrivate).toISOString());
+                    
+                    if (newDMs) updateChatTabBadge('private', newDMs.length);
+                }
+            } catch (err) {
+                console.error('Error updating chat badges:', err);
+            }
+        }
+
+        async function loadChatSidebar() {
+            const container = document.getElementById('chatSidebarList');
+            if (!container) return;
+            
+            if (currentChatTab === 'community') {
+                // Show online users / community info
+                container.innerHTML = `
+                    <div class="sidebar-community-btn active" onclick="switchChatTab('community')">
+                        <div class="sidebar-conv-avatar" style="background: rgba(229, 185, 92, 0.2);">🌐</div>
+                        <div class="sidebar-conv-info">
+                            <div class="sidebar-conv-name">Chat General</div>
+                            <div class="sidebar-conv-preview">Todos los miembros</div>
+                        </div>
+                    </div>
+                `;
+                // Load private conversations below
+                await appendPrivateConversationsToSidebar(container);
+            } else {
+                await loadPrivateConversationsSidebar();
+            }
+        }
+
+        async function appendPrivateConversationsToSidebar(container) {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('direct_messages')
+                    .select('*')
+                    .or(`sender_id.eq.${pubKey},recipient_id.eq.${pubKey}`)
+                    .order('created_at', { ascending: false });
+
+                if (error || !data) return;
+
+                const conversations = new Map();
+                data.forEach(msg => {
+                    const otherUserId = msg.sender_id === pubKey ? msg.recipient_id : msg.sender_id;
+                    const otherUserName = msg.sender_id === pubKey ? msg.recipient_name : msg.sender_name;
+                    const timestamp = new Date(msg.created_at).getTime();
+                    
+                    if (!conversations.has(otherUserId) || timestamp > conversations.get(otherUserId).timestamp) {
+                        conversations.set(otherUserId, {
+                            userId: otherUserId,
+                            userName: otherUserName,
+                            lastMessage: msg.content,
+                            timestamp: timestamp
+                        });
+                    }
+                });
+
+                if (conversations.size > 0) {
+                    container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Conversaciones Privadas</div>`;
+                    
+                    const sorted = Array.from(conversations.values()).sort((a, b) => b.timestamp - a.timestamp);
+                    sorted.forEach(conv => {
+                        const initial = conv.userName.charAt(0).toUpperCase();
+                        const isActive = currentChatWith && currentChatWith.id === conv.userId;
+                        container.innerHTML += `
+                            <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.userId}', '${escapeHtml(conv.userName)}')">
+                                <div class="sidebar-conv-avatar">${initial}</div>
+                                <div class="sidebar-conv-info">
+                                    <div class="sidebar-conv-name">${escapeHtml(conv.userName)}</div>
+                                    <div class="sidebar-conv-preview">${escapeHtml(conv.lastMessage.substring(0, 30))}${conv.lastMessage.length > 30 ? '...' : ''}</div>
+                                </div>
+                                <div class="sidebar-conv-time">${timeAgo(conv.timestamp)}</div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading sidebar conversations:', err);
+            }
+        }
+
+        async function loadPrivateConversationsSidebar() {
+            const container = document.getElementById('chatSidebarList');
+            if (!container) return;
+            container.innerHTML = '';
+            await appendPrivateConversationsToSidebar(container);
+            
+            if (container.innerHTML.trim() === '') {
+                container.innerHTML = `
+                    <div style="padding: 2rem 1rem; text-align: center; color: var(--color-text-secondary);">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
+                        <div style="font-size: 0.85rem;">Sin conversaciones</div>
+                        <div style="font-size: 0.75rem; margin-top: 0.25rem;">Contacta desde Networking</div>
+                    </div>
+                `;
+            }
+        }
+
+        function openPrivateChat(userId, userName) {
+            currentChatWith = { id: userId, name: userName };
+            
+            // Switch to private tab if not already
+            if (currentChatTab !== 'private') {
+                switchChatTab('private');
+            }
+            
+            // Show private chat view
+            document.getElementById('privatePlaceholder').style.display = 'none';
+            document.getElementById('privateActiveChat').style.display = 'flex';
+            document.getElementById('privateChatName').textContent = userName;
+            document.getElementById('privateChatId').textContent = userId.substring(0, 16) + '...';
+            
+            // Load messages
+            loadPrivateChatMessages(userId);
+            
+            // Refresh sidebar to show active state
+            loadPrivateConversationsSidebar();
+        }
+
+        async function loadPrivateChatMessages(userId) {
+            const pubKey = currentUser.pubkey || currentUser.publicKey;
+            const container = document.getElementById('privateChatMessages');
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('direct_messages')
+                    .select('*')
+                    .or(`and(sender_id.eq.${pubKey},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${pubKey})`)
+                    .order('created_at', { ascending: true });
+
+                if (error) {
+                    console.error('Error loading private messages:', error);
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = `<div class="chat-empty-state"><div class="emoji">👋</div><p>Envía el primer mensaje</p></div>`;
+                    return;
+                }
+
+                container.innerHTML = data.map(msg => {
+                    const isMine = msg.sender_id === pubKey;
+                    const align = isMine ? 'flex-end' : 'flex-start';
+                    const bg = isMine ? 'rgba(229, 185, 92, 0.15)' : 'var(--color-bg-card)';
+                    const borderColor = isMine ? 'var(--color-gold)' : 'var(--color-border)';
+                    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    return `
+                        <div style="display: flex; justify-content: ${align}; margin-bottom: 0.75rem;">
+                            <div style="max-width: 75%; padding: 0.75rem 1rem; border-radius: 16px; background: ${bg}; border: 1px solid ${borderColor};">
+                                <div style="font-size: 0.9rem; color: var(--color-text-primary); word-break: break-word;">${escapeHtml(msg.content)}</div>
+                                <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.3rem; text-align: right;">${time}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.scrollTop = container.scrollHeight;
+            } catch (err) {
+                console.error('Error:', err);
+            }
         }
 
         async function loadConversationsList() {
@@ -5115,6 +6682,7 @@ ${currentUser.privateKey}
                 const { data, error } = await supabaseClient
                     .from('direct_messages')
                     .insert([{
+                        id: generateUUID(),
                         sender_id: pubKey,
                         sender_name: currentUser.name,
                         recipient_id: currentChatWith.id,
@@ -5130,6 +6698,10 @@ ${currentUser.privateKey}
                 }
 
                 document.getElementById('dmContent').value = '';
+                // Reload messages in the new layout
+                if (document.getElementById('privateChatMessages')) {
+                    await loadPrivateChatMessages(currentChatWith.id);
+                }
                 await loadDirectMessages(currentChatWith.id);
                 showNotification('Mensaje enviado ✅');
             } catch (err) {
@@ -5291,6 +6863,23 @@ ${currentUser.privateKey}
                 // Update user merits display
                 document.getElementById('userTotalMerits').textContent = totalMerits;
                 
+                // Update new stats elements
+                if (document.getElementById('user_lbwm_activos')) {
+                    document.getElementById('user_lbwm_activos').textContent = totalMerits.toFixed ? totalMerits.toFixed(2) : totalMerits;
+                }
+                
+                // Count contributions
+                const contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+                const myContribs = contributions.filter(c => c.applicant_public_key === pubKey);
+                if (document.getElementById('user_lbwm_aportaciones')) {
+                    document.getElementById('user_lbwm_aportaciones').textContent = myContribs.length;
+                }
+                
+                // Update statistics panel
+                if (document.getElementById('stat_mi_balance')) {
+                    document.getElementById('stat_mi_balance').textContent = totalMerits.toFixed ? totalMerits.toFixed(2) : totalMerits;
+                }
+                
                 // Calculate level
                 let level = 1;
                 let levelName = 'Ciudadano';
@@ -5305,11 +6894,16 @@ ${currentUser.privateKey}
                     levelName = 'Contribuidor';
                 }
                 
-                document.getElementById('userLevel').textContent = level;
-                document.getElementById('userLevelName').textContent = levelName;
+                // These elements may or may not exist depending on the current view
+                const userLevelEl = document.getElementById('userLevel');
+                if (userLevelEl) userLevelEl.textContent = level;
+                const userLevelNameEl = document.getElementById('userLevelName');
+                if (userLevelNameEl) userLevelNameEl.textContent = levelName;
                 
-                // Load leaderboard
+                // Load leaderboard and ledger
                 await loadLeaderboard();
+                loadLedgerData();
+                await updateLbwmStats(totalMerits);
                 
             } catch (err) {
                 console.error('Error loading merits:', err);
@@ -5339,15 +6933,182 @@ ${currentUser.privateKey}
                 </div>
             `;
             
-            document.getElementById('leaderboardList').innerHTML = leaderboardHTML;
+            const leaderboardEl = document.getElementById('leaderboardList');
+            if (leaderboardEl) leaderboardEl.innerHTML = leaderboardHTML;
             
             // Copy merits to leaderboard
             const totalMerits = document.getElementById('userTotalMerits').textContent;
-            document.getElementById('leaderboardUserMerits').textContent = totalMerits;
-            document.getElementById('userRanking').textContent = '1';
+            const lbMeritsEl = document.getElementById('leaderboardUserMerits');
+            if (lbMeritsEl) lbMeritsEl.textContent = totalMerits;
+            const rankingEl = document.getElementById('userRanking');
+            if (rankingEl) rankingEl.textContent = '1';
+        }
+
+        // Load Ledger data for the Ledger tab
+        function loadLedgerData() {
+            const contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+            const ledgerBody = document.getElementById('ledgerTableBody');
+            
+            if (!ledgerBody) return;
+            
+            if (contributions.length === 0) {
+                ledgerBody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                            🌟 No hay emisiones registradas aún. Sé el primero en presentar una aportación.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                let totalEmitido = 0;
+                const aportantesSet = new Set();
+                
+                ledgerBody.innerHTML = contributions.map((c, i) => {
+                    const lbwm = parseFloat(c.lbwm_estimated || 0);
+                    totalEmitido += lbwm;
+                    aportantesSet.add(c.applicant_public_key);
+                    const statusClass = c.status === 'approved' ? 'status-activo' : 'status-pendiente';
+                    const statusLabel = c.status === 'approved' ? 'Activo' : 'Pendiente';
+                    const date = c.submitted_at ? new Date(c.submitted_at).toISOString().split('T')[0] : '-';
+                    
+                    return `
+                        <tr>
+                            <td>${String(i + 1).padStart(3, '0')}</td>
+                            <td>${date}</td>
+                            <td>${c.applicant_name || '-'}</td>
+                            <td>${c.contribution_type || '-'}</td>
+                            <td>${(c.description || '-').substring(0, 50)}${(c.description || '').length > 50 ? '...' : ''}</td>
+                            <td style="text-align: right;">${c.reference_value || 0} ${c.currency || 'EUR'}</td>
+                            <td style="text-align: center;">${c.factor_proposed || '-'}</td>
+                            <td style="text-align: right; font-weight: 700; color: var(--color-gold);">${lbwm.toFixed(2)}</td>
+                            <td style="text-align: center;"><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                // Update ledger stats
+                const totalEmitidoEl = document.getElementById('ledger_total_emitido');
+                if (totalEmitidoEl) totalEmitidoEl.textContent = totalEmitido.toFixed(2) + ' LBWM';
+                const emisionesEl = document.getElementById('ledger_emisiones');
+                if (emisionesEl) emisionesEl.textContent = contributions.length;
+                const aportantesEl = document.getElementById('ledger_aportantes');
+                if (aportantesEl) aportantesEl.textContent = aportantesSet.size;
+            }
+        }
+
+        // Update LBWM global statistics
+        async function updateLbwmStats(userMerits) {
+            try {
+                // Calculate global LBWM from ALL users in Supabase
+                let globalTotalLbwm = 0;
+                let totalUsers = 0;
+                
+                // Fetch all users to count total identities
+                const { data: allUsers, error: usersError } = await supabaseClient
+                    .from('users')
+                    .select('public_key, created_at');
+                
+                if (!usersError && allUsers) {
+                    totalUsers = allUsers.length;
+                    
+                    // Calculate seniority merits for all users
+                    const now = new Date();
+                    allUsers.forEach(user => {
+                        if (user.created_at) {
+                            const regDate = new Date(user.created_at);
+                            const days = Math.floor((now - regDate) / (1000 * 60 * 60 * 24));
+                            globalTotalLbwm += days * 1; // 1 LBWM per day per user
+                        }
+                    });
+                }
+                
+                // Fetch all posts and count merits (10 LBWM each)
+                const { data: allPostsData } = await supabaseClient
+                    .from('posts')
+                    .select('id');
+                if (allPostsData) {
+                    globalTotalLbwm += allPostsData.length * 10;
+                }
+                
+                // Fetch all offers and count merits (10 LBWM each)
+                const { data: allOffersData } = await supabaseClient
+                    .from('offers')
+                    .select('id');
+                if (allOffersData) {
+                    globalTotalLbwm += allOffersData.length * 10;
+                }
+                
+                // Add contributions from localStorage
+                const contributions = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+                contributions.forEach(c => {
+                    globalTotalLbwm += parseFloat(c.lbwm_estimated || 0);
+                });
+                
+                // Update UI
+                const totalLbwmEl = document.getElementById('stat_total_lbwm');
+                if (totalLbwmEl) totalLbwmEl.textContent = globalTotalLbwm.toFixed(2);
+                
+                const aportantesEl = document.getElementById('stat_aportantes');
+                if (aportantesEl) aportantesEl.textContent = Math.max(totalUsers, 1);
+                
+                const emisionesEl = document.getElementById('stat_emisiones');
+                const totalEmisiones = (allPostsData?.length || 0) + (allOffersData?.length || 0) + contributions.length;
+                if (emisionesEl) emisionesEl.textContent = totalEmisiones;
+                
+                // Calculate participation percentage
+                if (globalTotalLbwm > 0 && userMerits > 0) {
+                    const participacion = (userMerits / globalTotalLbwm) * 100;
+                    const partEl = document.getElementById('stat_mi_participacion');
+                    if (partEl) partEl.textContent = participacion.toFixed(2) + '%';
+                    const barEl = document.getElementById('participacionBar');
+                    if (barEl) barEl.style.width = Math.min(participacion, 100).toFixed(2) + '%';
+                } else {
+                    const partEl = document.getElementById('stat_mi_participacion');
+                    if (partEl) partEl.textContent = '0%';
+                    const barEl = document.getElementById('participacionBar');
+                    if (barEl) barEl.style.width = '0%';
+                }
+                
+                console.log(`Global LBWM: ${globalTotalLbwm.toFixed(2)} | User: ${userMerits} | Users: ${totalUsers}`);
+            } catch (err) {
+                console.error('Error calculating global stats:', err);
+            }
         }
 
         // Professional Contribution System Functions
+        // LBWM Tab switching function
+        function switchLbwmTab(tabName) {
+            // Deactivate all tabs
+            document.querySelectorAll('.lbwm-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Hide all tab contents
+            document.querySelectorAll('.lbwm-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Activate selected tab
+            const tab = document.querySelector(`.lbwm-tab[data-lbwm-tab="${tabName}"]`);
+            if (tab) {
+                tab.classList.add('active');
+            }
+            
+            // Show selected content
+            const content = document.getElementById(`lbwm-tab-${tabName}`);
+            if (content) {
+                content.classList.add('active');
+            }
+        }
+
+        // Toggle financiada section in contribution form
+        function toggleFinanciada() {
+            const isChecked = document.getElementById('aport_financiada').checked;
+            const section = document.getElementById('financiada_section');
+            section.style.display = isChecked ? 'block' : 'none';
+            updatePreviewCalculation();
+        }
+
         function showContributionForm() {
             const modal = document.getElementById('contributionFormModal');
             modal.style.display = 'flex';
@@ -5381,20 +7142,39 @@ ${currentUser.privateKey}
         }
 
         function updatePreviewCalculation() {
-            const value = parseFloat(document.getElementById('contrib_value').value) || 0;
-            const currency = document.getElementById('contrib_currency').value;
-            let factor = parseFloat(document.getElementById('preview_factor').textContent);
+            const value = parseFloat(document.getElementById('contrib_value')?.value) || 0;
+            const currency = document.getElementById('contrib_currency')?.value || 'EUR';
+            const esFinanciada = document.getElementById('aport_financiada')?.checked;
+            const tipo = document.getElementById('contrib_type')?.value;
             
-            if (document.getElementById('contrib_type').value === 'financiada') {
-                factor = parseFloat(document.getElementById('contrib_factor_financiada').value);
+            let factor = 1.0;
+            
+            if (esFinanciada) {
+                factor = parseFloat(document.getElementById('aport_factor')?.value || document.getElementById('contrib_factor_financiada')?.value || 0.4);
+            } else if (tipo === 'financiada') {
+                factor = parseFloat(document.getElementById('contrib_factor_financiada')?.value || 0.4);
+            } else {
+                factor = parseFloat(document.getElementById('preview_factor')?.textContent || 1.0);
+                // If factor is still from financiada type, get from selected option
+                const typeSelect = document.getElementById('contrib_type');
+                if (typeSelect && typeSelect.selectedIndex > 0) {
+                    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+                    if (selectedOption.dataset.factor && selectedOption.dataset.factor !== '0.0') {
+                        factor = parseFloat(selectedOption.dataset.factor);
+                    }
+                }
             }
             
             const lbwm = (value * factor).toFixed(2);
             
-            document.getElementById('preview_value').textContent = value.toFixed(2);
-            document.getElementById('preview_currency').textContent = currency;
-            document.getElementById('preview_factor').textContent = factor;
-            document.getElementById('preview_lbwm').textContent = lbwm;
+            const previewValueEl = document.getElementById('preview_value');
+            if (previewValueEl) previewValueEl.textContent = value.toFixed(2);
+            const previewCurrencyEl = document.getElementById('preview_currency');
+            if (previewCurrencyEl) previewCurrencyEl.textContent = currency;
+            const previewFactorEl = document.getElementById('preview_factor');
+            if (previewFactorEl) previewFactorEl.textContent = factor.toFixed(1);
+            const previewLbwmEl = document.getElementById('preview_lbwm');
+            if (previewLbwmEl) previewLbwmEl.textContent = lbwm;
         }
 
         // Setup event listeners for preview updates
@@ -5923,8 +7703,16 @@ ${currentUser.privateKey}
             
             // Update LBWID
             const pubKey = currentUser.pubkey || currentUser.publicKey;
-            const shortId = pubKey.substring(0, 8).toUpperCase();
-            document.getElementById('profileId').textContent = `LBWID-${shortId}`;
+            if (isNpubFormat(pubKey)) {
+                const hexKey = npubToHex(pubKey);
+                const shortHex = hexKey ? hexKey.substring(0, 8).toUpperCase() : pubKey.substring(5, 13).toUpperCase();
+                document.getElementById('profileId').textContent = `LBWID-${shortHex}`;
+                document.getElementById('profileNpub').textContent = pubKey.substring(0, 16) + '...' + pubKey.substring(pubKey.length - 6);
+            } else {
+                const shortId = pubKey.substring(0, 8).toUpperCase();
+                document.getElementById('profileId').textContent = `LBWID-${shortId}`;
+                document.getElementById('profileNpub').textContent = pubKey.substring(0, 16) + '...';
+            }
             
             // Calculate stats
             const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
@@ -6037,6 +7825,7 @@ ${currentUser.privateKey}
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('users')
                         .insert([{
+                            id: generateUUID(),
                             public_key: pubKey,
                             name: currentUser.name,
                             avatar_url: base64Image,
@@ -6069,6 +7858,9 @@ ${currentUser.privateKey}
 
                 // Update UI
                 document.getElementById('profileAvatar').src = base64Image;
+                // Also update home avatar
+                const homeAvatarEl = document.getElementById('homeAvatar');
+                if (homeAvatarEl) homeAvatarEl.src = base64Image;
                 
                 // Save to localStorage as cache
                 if (!userProfile) userProfile = {};
@@ -6165,6 +7957,7 @@ ${currentUser.privateKey}
                     const { data: newUser, error: insertError } = await supabaseClient
                         .from('users')
                         .insert([{
+                            id: generateUUID(),
                             public_key: pubKey,
                             name: currentUser.name,
                             citizenship_type: typeSelect.value,
@@ -6810,6 +8603,7 @@ ${currentUser.privateKey}
                 const { error } = await supabaseClient
                     .from('verification_requests')
                     .insert({
+                        id: generateUUID(),
                         user_public_key: pubKey,
                         user_name: currentUser.name,
                         request_type: 'video',
