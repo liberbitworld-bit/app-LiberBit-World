@@ -4637,91 +4637,39 @@
             <div class="profile-container">
                 <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
                 
-                <!-- E-RESIDENCY CARD -->
-                <div id="eResidencyCard" style="max-width: 600px; margin: 0 auto 2rem; border-radius: 18px; overflow: hidden; border: 2px solid var(--color-gold); position: relative; background: linear-gradient(135deg, #0a1628 0%, #152238 30%, #1a3050 60%, #0d1f33 100%); box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 60px rgba(229,185,92,0.1), inset 0 1px 0 rgba(255,255,255,0.05);">
-                    
-                    <!-- Holographic overlay -->
-                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(229,185,92,0.03) 0%, transparent 30%, rgba(100,180,255,0.05) 50%, transparent 70%, rgba(229,185,92,0.03) 100%); pointer-events: none; z-index: 1;"></div>
-                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at 80% 20%, rgba(100,180,255,0.08) 0%, transparent 50%); pointer-events: none; z-index: 1;"></div>
-                    
-                    <!-- Card header bar -->
-                    <div style="background: linear-gradient(90deg, rgba(229,185,92,0.15) 0%, rgba(229,185,92,0.05) 100%); padding: 0.75rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(229,185,92,0.2); position: relative; z-index: 2;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="font-size: 1rem; font-weight: 800; color: var(--color-gold); letter-spacing: 2px;">LIBERBIT WORLD</div>
-                        </div>
-                        <div style="font-size: 0.65rem; color: rgba(229,185,92,0.7); letter-spacing: 1px; text-transform: uppercase;">E-Residency Card</div>
-                    </div>
+                <h2 style="color: var(--color-gold); margin-bottom: 2rem; text-align: center;">👤 Mi Perfil</h2>
 
-                    <!-- Card body -->
-                    <div style="padding: 1.5rem; position: relative; z-index: 2;">
-                        <div style="display: flex; gap: 1.25rem; align-items: flex-start;">
-                            
-                            <!-- Photo area -->
-                            <div style="flex-shrink: 0; position: relative;">
-                                <div style="width: 110px; height: 130px; border-radius: 8px; border: 2px solid rgba(229,185,92,0.4); overflow: hidden; background: rgba(44,95,111,0.3); position: relative;">
-                                    <img id="profileAvatar" class="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%232C5F6F' width='120' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='48' fill='%23E5B95C'%3E👤%3C/text%3E%3C/svg%3E" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
-                                </div>
-                                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
-                                <div onclick="document.getElementById('avatarFileInput').click()" style="position: absolute; bottom: -6px; right: -6px; width: 28px; height: 28px; background: var(--color-gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; border: 2px solid #0a1628; z-index: 3;">📷</div>
-                            </div>
-
-                            <!-- Data fields -->
-                            <div style="flex: 1; min-width: 0;">
-                                <!-- Name -->
-                                <div style="margin-bottom: 0.75rem;">
-                                    <div style="font-size: 0.55rem; color: rgba(229,185,92,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.15rem;">Nombre / Name</div>
-                                    <div style="font-size: 1.3rem; font-weight: 800; color: white; letter-spacing: 0.5px; text-transform: uppercase;" id="profileName">USUARIO</div>
-                                </div>
-
-                                <!-- Two columns -->
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem;">
-                                    <div>
-                                        <div style="font-size: 0.5rem; color: rgba(229,185,92,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.1rem;">Ciudadanía</div>
-                                        <div style="font-size: 0.85rem; font-weight: 700; color: white;" id="citizenshipType">E-Residency</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.5rem; color: rgba(229,185,92,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.1rem;">Ciudad</div>
-                                        <div style="font-size: 0.85rem; font-weight: 700; color: white;" id="citizenshipCity">-</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.5rem; color: rgba(229,185,92,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.1rem;">Emitido / Issued</div>
-                                        <div style="font-size: 0.85rem; font-weight: 700; color: white;" id="statMemberSince">-</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.5rem; color: rgba(229,185,92,0.6); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.1rem;">Méritos LBWM</div>
-                                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-gold);" id="statMerits">0</div>
-                                    </div>
-                                </div>
+                <!-- Profile Header -->
+                <div class="profile-header">
+                    <div class="profile-header-content">
+                        <div class="profile-avatar-container">
+                            <img id="profileAvatar" class="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Crect fill='%232C5F6F' width='120' height='120'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='48' fill='%23E5B95C'%3E👤%3C/text%3E%3C/svg%3E" alt="Avatar">
+                            <input type="file" id="avatarFileInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+                            <div class="profile-avatar-upload" title="Cambiar foto de perfil" onclick="document.getElementById('avatarFileInput').click()">
+                                <span>📷</span>
                             </div>
                         </div>
-
-                        <!-- Bottom bar: ID + npub -->
-                        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(229,185,92,0.15); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                            <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: rgba(229,185,92,0.8); letter-spacing: 1px;" id="profileId">LBWID-XXXXXXXX</div>
-                            <div style="display: flex; align-items: center; gap: 0.4rem;">
-                                <div style="font-size: 0.6rem; color: rgba(255,255,255,0.4); font-family: var(--font-mono); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="profileNpub">npub1...</div>
-                                <button onclick="copyNpubKey()" style="background: rgba(229,185,92,0.2); color: var(--color-gold); border: 1px solid rgba(229,185,92,0.3); border-radius: 4px; padding: 0.15rem 0.4rem; font-size: 0.6rem; cursor: pointer;" id="copyNpubBtn">📋</button>
+                        <div class="profile-info">
+                            <h1 class="profile-name" id="profileName">Usuario</h1>
+                            <div class="profile-citizenship" id="profileCitizenship">
+                                🌐 E-Residency
                             </div>
+                            <div class="profile-id" id="profileId">LBWID-XXXXXXXX</div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                                <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-family: var(--font-mono); opacity: 0.8;" id="profileNpub">npub1...</div>
+                                <button onclick="copyNpubKey()" style="background: var(--color-gold); color: var(--color-teal-dark); border: none; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; white-space: nowrap;" id="copyNpubBtn">📋 Copiar</button>
+                            </div>
+                            <button class="profile-edit-btn" onclick="showCitizenshipModal()">
+                                ✏️ Editar Ciudadanía
+                            </button>
                         </div>
                     </div>
-
-                    <!-- Card footer -->
-                    <div style="background: linear-gradient(90deg, rgba(229,185,92,0.1) 0%, rgba(100,180,255,0.05) 100%); padding: 0.4rem 1.25rem; border-top: 1px solid rgba(229,185,92,0.1); text-align: center; position: relative; z-index: 2;">
-                        <div style="font-size: 0.55rem; color: rgba(229,185,92,0.5); letter-spacing: 2px; text-transform: uppercase;">Decentralized Governance · Global Freedom</div>
-                    </div>
-                </div>
-
-                <!-- Edit button -->
-                <div style="text-align: center; margin-bottom: 2rem;">
-                    <button class="btn btn-secondary" onclick="showCitizenshipModal()" style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
-                        ✏️ Editar Ciudadanía
-                    </button>
                 </div>
 
                 <!-- Stats Grid -->
                 <div class="profile-stats">
                     <div class="stat-card">
-                        <div class="stat-value" id="statMeritsCard">0</div>
+                        <div class="stat-value" id="statMerits">0</div>
                         <div class="stat-label">Méritos LBWM</div>
                     </div>
                     <div class="stat-card">
@@ -4729,8 +4677,23 @@
                         <div class="stat-label">Contribuciones</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="statMemberSinceCard">-</div>
+                        <div class="stat-value" id="statMemberSince">-</div>
                         <div class="stat-label">Miembro Desde</div>
+                    </div>
+                </div>
+
+                <!-- Citizenship Details -->
+                <div class="profile-section">
+                    <h3 class="profile-section-title">🏛️ Detalles de Ciudadanía</h3>
+                    <div class="citizenship-details">
+                        <div class="citizenship-row">
+                            <span class="citizenship-label">Tipo de Ciudadanía:</span>
+                            <span class="citizenship-value" id="citizenshipType">E-Residency</span>
+                        </div>
+                        <div class="citizenship-row">
+                            <span class="citizenship-label">Ciudad Registrada:</span>
+                            <span class="citizenship-value" id="citizenshipCity">-</span>
+                        </div>
                     </div>
                 </div>
 
@@ -8320,16 +8283,14 @@ ${currentUser.privateKey}
             
             // Update stats
             document.getElementById('statMerits').textContent = merits;
-            if (document.getElementById('statMeritsCard')) document.getElementById('statMeritsCard').textContent = merits;
             document.getElementById('statContributions').textContent = totalContributions;
             
             // Format member since
             const regDate = new Date(userProfile.registrationDate);
             const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
                               'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-            const memberSinceText = `${monthNames[regDate.getMonth()]} ${regDate.getFullYear()}`;
-            document.getElementById('statMemberSince').textContent = memberSinceText;
-            if (document.getElementById('statMemberSinceCard')) document.getElementById('statMemberSinceCard').textContent = memberSinceText;
+            document.getElementById('statMemberSince').textContent = 
+                `${monthNames[regDate.getMonth()]} ${regDate.getFullYear()}`;
             
             // Update citizenship details
             document.getElementById('citizenshipType').textContent = userProfile.citizenshipType;
