@@ -263,3 +263,13 @@ function closeAuthModal() {
 }
 
 // Reply state
+
+// Backup: Register all back buttons via event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.back-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            backToMenu();
+        });
+    });
+});
