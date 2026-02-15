@@ -1,5 +1,5 @@
 // ========== LIGHTNING APORTACIÓN ECONÓMICA ==========
-const LN_ADDRESS = 'liberbitworld@blink.sv';
+// LN_ADDRESS already declared in chat.js
 
 function copyLnAddress() {
     navigator.clipboard.writeText(LN_ADDRESS).then(() => {
