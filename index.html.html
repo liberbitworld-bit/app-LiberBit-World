@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0D171E">
     <title>LiberBit World - Ecosistema Descentralizado</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,6 +44,12 @@
             color: var(--color-text-primary);
             overflow-x: hidden;
             min-height: 100vh;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-text-size-adjust: 100%;
         }
 
         .bg-animated {
@@ -75,6 +84,8 @@
             max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
+            box-sizing: border-box;
+            width: 100%;
         }
 
         /* Header */
@@ -2767,6 +2778,378 @@
                 width: 100%;
             }
         }
+
+        /* ===== MOBILE RESPONSIVE - 480px and below ===== */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.5rem;
+            }
+
+            header {
+                padding: 0.75rem 0.25rem !important;
+                gap: 0.5rem !important;
+            }
+
+            .logo-container {
+                gap: 0.5rem;
+            }
+
+            .logo-img {
+                width: 32px;
+                height: 32px;
+            }
+
+            .logo-title {
+                font-size: 1rem !important;
+            }
+
+            .logo-subtitle {
+                font-size: 0.55rem;
+            }
+
+            .user-badge {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+            }
+
+            /* Counters row - horizontal scroll */
+            .counters-row-mobile {
+                display: flex !important;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                gap: 0.35rem !important;
+                padding-bottom: 0.25rem;
+                width: 100%;
+            }
+            .counters-row-mobile::-webkit-scrollbar { display: none; }
+
+            .active-nodes-counter-header {
+                min-width: 72px !important;
+                padding: 0.3rem 0.5rem !important;
+                flex-shrink: 0;
+            }
+
+            .active-nodes-count-header {
+                font-size: 1.1rem !important;
+            }
+
+            .active-nodes-label-header {
+                font-size: 0.5rem !important;
+            }
+
+            /* Welcome row - stack vertically */
+            .welcome-row-mobile {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+                margin-bottom: 1.25rem !important;
+            }
+
+            .welcome-row-mobile .notification-inbox {
+                padding: 0.75rem !important;
+                width: 100%;
+            }
+
+            .welcome-row-mobile .notification-inbox .notification-bell {
+                font-size: 1.5rem;
+            }
+
+            .notification-type-label {
+                font-size: 0.55rem !important;
+            }
+
+            .notification-type-count {
+                font-size: 0.8rem !important;
+            }
+
+            /* Buttons row side by side below notification card */
+            .welcome-btn-mobile {
+                flex: 1 !important;
+                min-width: 0 !important;
+                padding: 0.75rem 0.5rem !important;
+            }
+
+            .welcome-btn-mobile > div:first-child {
+                font-size: 1.8rem !important;
+                margin-bottom: 0.25rem !important;
+            }
+
+            /* Apps grid - 2 columns tighter */
+            .apps-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.65rem !important;
+            }
+
+            .app-card {
+                padding: 1rem 0.65rem !important;
+                border-radius: 14px;
+            }
+
+            .app-icon {
+                font-size: 1.8rem !important;
+            }
+
+            .app-name {
+                font-size: 0.8rem !important;
+            }
+
+            .app-description {
+                font-size: 0.6rem !important;
+            }
+
+            /* Sections inner padding */
+            .chat-section,
+            .profile-container {
+                padding: 0.5rem !important;
+            }
+
+            .back-btn {
+                margin-bottom: 0.75rem;
+                font-size: 0.8rem;
+                padding: 0.4rem 0.75rem;
+            }
+
+            /* Profile */
+            .profile-header-content {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+                text-align: center;
+            }
+
+            .profile-avatar {
+                width: 80px !important;
+                height: 80px !important;
+            }
+
+            .profile-name {
+                font-size: 1.3rem !important;
+            }
+
+            .profile-id {
+                font-size: 0.65rem !important;
+            }
+
+            .profile-stats {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+
+            .stat-card {
+                padding: 0.6rem 0.4rem !important;
+            }
+
+            .stat-value {
+                font-size: 1.2rem !important;
+            }
+
+            .stat-label {
+                font-size: 0.55rem !important;
+            }
+
+            .profile-section {
+                padding: 1rem !important;
+            }
+
+            .profile-section-title {
+                font-size: 1rem !important;
+            }
+
+            /* Chat */
+            .chat-layout {
+                height: calc(100vh - 110px) !important;
+            }
+
+            .chat-sidebar {
+                max-height: 150px !important;
+            }
+
+            .chat-sidebar-tab {
+                font-size: 0.7rem !important;
+                padding: 0.4rem !important;
+            }
+
+            .chat-main-header h3 {
+                font-size: 0.95rem !important;
+            }
+
+            .chat-main-compose {
+                padding: 0.4rem !important;
+            }
+
+            .chat-main-compose textarea {
+                font-size: 0.85rem !important;
+            }
+
+            .chat-send-btn {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 1rem !important;
+            }
+
+            /* Hero / Registration */
+            .hero-welcome-box {
+                padding: 1.25rem 1rem !important;
+                margin: 0.5rem !important;
+            }
+
+            .hero-title {
+                font-size: 1.5rem !important;
+            }
+
+            .hero-subtitle {
+                font-size: 0.85rem !important;
+            }
+
+            .hero-actions {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+
+            .hero-btn {
+                padding: 0.6rem 1.25rem !important;
+                font-size: 0.85rem !important;
+                width: 100%;
+            }
+
+            .auth-modal-content {
+                padding: 1.25rem !important;
+                margin: 0.5rem !important;
+            }
+
+            /* Notifications modal */
+            .notification-modal-content {
+                margin: 0.25rem !important;
+                padding: 0.75rem !important;
+                max-height: 92vh;
+            }
+
+            .notification-modal-header h2 {
+                font-size: 1.1rem !important;
+            }
+
+            .notification-tabs {
+                flex-wrap: wrap;
+                gap: 0.25rem !important;
+            }
+
+            .notification-tab {
+                font-size: 0.7rem !important;
+                padding: 0.35rem 0.5rem !important;
+            }
+
+            .notification-item {
+                padding: 0.75rem !important;
+            }
+
+            .notification-item-title {
+                font-size: 0.85rem !important;
+            }
+
+            .notification-item-content {
+                font-size: 0.8rem !important;
+            }
+
+            /* Inline sections with grid layouts */
+            [style*="grid-template-columns: repeat(3"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+
+            [style*="grid-template-columns: repeat(4"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+
+            [style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Registration form */
+            .form-input, .form-select {
+                font-size: 16px !important; /* Prevents iOS zoom */
+            }
+
+            /* Citizenship modal */
+            .citizenship-modal-content {
+                margin: 0.5rem !important;
+                padding: 1rem !important;
+            }
+
+            /* Section h2 titles */
+            .main-menu h2 {
+                font-size: 1.15rem !important;
+            }
+
+            /* Proposal cards */
+            .proposal-card {
+                padding: 1rem !important;
+            }
+
+            /* Offer cards */
+            .offer-card {
+                padding: 1rem !important;
+            }
+
+            /* Lightning / Aportación section */
+            .sats-amount-btn {
+                padding: 0.5rem 0.25rem !important;
+            }
+
+            /* LBWM tabs */
+            .lbwm-tab {
+                font-size: 0.65rem !important;
+                padding: 0.4rem 0.5rem !important;
+            }
+
+            .lbwm-info-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Leaderboard */
+            .leaderboard-item {
+                padding: 0.75rem !important;
+            }
+
+            /* Governance */
+            .proposal-votes {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            /* Networking user cards */
+            .user-card {
+                padding: 1rem !important;
+            }
+        }
+
+        /* ===== TABLET RESPONSIVE - 481px to 768px ===== */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .welcome-row-mobile {
+                flex-wrap: wrap !important;
+            }
+
+            .welcome-row-mobile .notification-inbox {
+                flex: 1 1 100% !important;
+            }
+
+            .welcome-btn-mobile {
+                flex: 1 !important;
+                min-width: 0 !important;
+            }
+
+            .profile-stats {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+
+            .apps-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2788,7 +3171,7 @@
                     <span id="userName">Usuario</span>
                 </div>
                 <!-- Active Nodes Counter -->
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;" class="counters-row-mobile">
                     <div class="active-nodes-counter-header hidden" id="activeNodesCounterHeader" style="cursor: pointer;" onclick="openApp('infraestructura')">
                         <div class="active-nodes-count-header" id="activeNodesCount">0</div>
                         <div class="active-nodes-label-header">Nodos Activos</div>
@@ -2936,7 +3319,7 @@
         <section class="section" id="mainMenuSection">
             <div class="main-menu">
                 <!-- Welcome row: Card + Aportar Valor button -->
-                <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 2rem;">
+                <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 2rem;" class="welcome-row-mobile">
                     <!-- User Welcome & Notifications Card -->
                     <div class="notification-inbox" onclick="openNotificationCenter()" style="flex: 1; margin-bottom: 0;">
                         <!-- Top: Avatar + User Info -->
@@ -2974,13 +3357,13 @@
                         </div>
                     </div>
                     <!-- Aportar Valor Button -->
-                    <div onclick="openSubApp('merits')" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2) 0%, rgba(229, 185, 92, 0.05) 100%); border: 2px solid var(--color-gold); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(229, 185, 92, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                    <div onclick="openSubApp('merits')" class="welcome-btn-mobile" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2) 0%, rgba(229, 185, 92, 0.05) 100%); border: 2px solid var(--color-gold); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(229, 185, 92, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
                         <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
                         <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-gold); line-height: 1.3;">Aportar<br>Valor</div>
                         <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Ganar LBWM</div>
                     </div>
                     <!-- Aportación Económica Button -->
-                    <div onclick="openApp('aportacionEconomica')" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.05) 100%); border: 2px solid #FF9800; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(255, 152, 0, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                    <div onclick="openApp('aportacionEconomica')" class="welcome-btn-mobile" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.05) 100%); border: 2px solid #FF9800; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(255, 152, 0, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
                         <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">₿</div>
                         <div style="font-size: 0.85rem; font-weight: 700; color: #FFB74D; line-height: 1.3;">Aportación<br>Económica</div>
                         <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Lightning ⚡</div>
@@ -3214,7 +3597,7 @@
                         </p>
 
                         <!-- Stats grid -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;" class="mobile-grid-1col">
                             <div style="text-align: center; padding: 1rem; background: rgba(255, 109, 0, 0.08); border-radius: 12px;">
                                 <div style="font-size: 1.5rem; font-weight: 800; color: #FFB74D;">1</div>
                                 <div style="font-size: 0.7rem; color: var(--color-text-secondary);">LiberBit City Nº</div>
@@ -3303,7 +3686,7 @@
                 </div>
 
                 <!-- Current Stats -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;" class="mobile-grid-1col">
                     <!-- Nodos Card -->
                     <div style="background: var(--color-bg-card); border-radius: 16px; border: 2px solid var(--color-gold); padding: 1.5rem; text-align: center;">
                         <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🖥️</div>
@@ -3383,7 +3766,7 @@
                         <!-- Amount suggestions -->
                         <div style="margin-bottom: 1.5rem;">
                             <label style="display: block; font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Cantidad sugerida</label>
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;" class="mobile-grid-2col">
                                 <button onclick="selectSatsAmount(1000)" class="sats-amount-btn" style="padding: 0.75rem 0.5rem; background: rgba(255, 152, 0, 0.08); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.2s; color: var(--color-text-primary);" onmouseover="this.style.borderColor='#FF9800'; this.style.background='rgba(255,152,0,0.15)'" onmouseout="this.style.borderColor='rgba(255,152,0,0.3)'; this.style.background='rgba(255,152,0,0.08)'">
                                     <div style="font-size: 1.1rem; font-weight: 700; color: #FFB74D;">1K</div>
                                     <div style="font-size: 0.65rem; color: var(--color-text-secondary);">sats</div>
