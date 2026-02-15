@@ -241,6 +241,7 @@ function backToMenu() {
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(sectionId).classList.add('active');
+    window.scrollTo(0, 0);
 }
 
 function showRegisterForm() {

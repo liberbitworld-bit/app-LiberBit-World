@@ -328,8 +328,8 @@ function initializeWallet() {
 
 // Call initialize when opening billetera
 const originalOpenAppBilletera = openApp;
-openApp = function(appName) {
-    originalOpenAppBilletera(appName);
+openApp = async function(appName) {
+    await originalOpenAppBilletera(appName);
     if (appName === 'billetera') {
         initializeWallet();
     }
