@@ -10,12 +10,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Satoshi:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     
     <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Styles -->
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
     <div class="bg-animated">
@@ -63,43 +65,167 @@
 
         <!-- Registration Section -->
         <section class="section active" id="registrationSection">
-            <!-- Hero Header -->
-            <div class="hero-header">
-                <div></div> <!-- Empty space for layout -->
-                <div class="hero-actions">
-                    <button class="hero-btn hero-btn-secondary" onclick="showLoginForm()">Accede</button>
-                    <button class="hero-btn hero-btn-primary" onclick="showRegisterForm()">Registro</button>
+            <!-- ========== LANDING PAGE v0.3 ========== -->
+
+            <!-- Landing Nav -->
+            <div class="landing-nav" id="landingNav">
+                <a href="#landing-manifesto" class="landing-nav-link">Manifiesto</a>
+                <a href="#landing-why" class="landing-nav-link">Por qué</a>
+                <a href="#landing-what" class="landing-nav-link">Qué es</a>
+                <a href="#landing-docs" class="landing-nav-link">Docs</a>
+                <div class="landing-nav-actions">
+                    <button class="landing-nav-btn-outline" onclick="showLoginForm()">Acceder</button>
+                    <button class="landing-nav-btn-solid" onclick="showRegisterForm()">Únete</button>
                 </div>
             </div>
 
-            <!-- Hero Content -->
-            <div class="hero-content">
-                <!-- Background Image -->
-                <div class="hero-background" id="heroBackground"></div>
-                
-                <!-- Welcome Box -->
-                <div class="hero-welcome-box">
-                    <h1 class="hero-title">Bienvenido a LiberBit World</h1>
-                    <p class="hero-subtitle">La libertad no se pide, se construye</p>
-                    <p class="hero-description">
-                        Decentralized Network State
-                    </p>
-                    <div class="hero-features">
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🔐</span>
-                            <span class="hero-feature-text">Identidad Soberana</span>
-                        </div>
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🤝</span>
-                            <span class="hero-feature-text">Red P2P Global</span>
-                        </div>
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🏛️</span>
-                            <span class="hero-feature-text">Gobernanza Transparente</span>
-                        </div>
+            <!-- HERO -->
+            <div class="landing-hero">
+                <div class="landing-hero-glow"></div>
+                <div class="landing-hero-content">
+                    <div class="landing-badge"><span class="landing-badge-dot"></span>v0.3 — Construyendo en abierto</div>
+                    <h1 class="landing-h1">El primer país soberano <em>descentralizado</em></h1>
+                    <p class="landing-sub">Una red global de microestados libres federados. Gobernanza por mérito, economía sin inflación, soberanía individual garantizada por criptografía.</p>
+                    <div class="landing-actions">
+                        <a href="#landing-docs" class="landing-btn-primary">Explorar el proyecto <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+                        <a href="#landing-manifesto" class="landing-btn-secondary">Leer el manifiesto</a>
+                    </div>
+                    <div class="landing-quote">
+                        <blockquote>«La libertad no se pide, se construye.»</blockquote>
+                        <cite>— LiberBit World White Paper</cite>
                     </div>
                 </div>
             </div>
+
+            <!-- MISSION & VISION -->
+            <div class="landing-section">
+                <div class="landing-inner">
+                    <div class="landing-mission-grid">
+                        <div><div class="landing-mission-icon">🔭</div><div class="landing-label">Visión</div><h2 class="landing-mission-title">Construir una nueva civilización basada en la libertad, la privacidad y la soberanía individual.</h2><p class="landing-mission-desc">LiberBit World une tecnología, ética y cooperación para crear el primer país libre y descentralizado del planeta.</p></div>
+                        <div class="landing-mission-divider"></div>
+                        <div><div class="landing-mission-icon">🧭</div><div class="landing-label">Misión</div><h2 class="landing-mission-title">Ofrecer a cada persona la posibilidad de organizar su vida en una comunidad libre, justa y autosoberana.</h2><p class="landing-mission-desc">Promovemos la creación de microestados federados — las LiberBit Cities — donde la democracia y la propiedad son reales.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANIFESTO -->
+            <div class="landing-section landing-section-alt" id="landing-manifesto" style="text-align:center;">
+                <div class="landing-inner">
+                    <div class="landing-label" style="text-align:center;">Manifiesto</div>
+                    <div class="landing-title" style="text-align:center;">No somos súbditos. Somos nodos.</div>
+                    <p class="landing-desc" style="margin:0 auto;text-align:center;">Fragmentos del Manifiesto LiberBit — la declaración de independencia de una nueva civilización digital.</p>
+                    <div class="landing-manifesto-lines">
+                        <div class="landing-verse">Donde ellos imprimen dinero, nosotros escribimos <strong>código.</strong><br>Donde ellos confiscan, nosotros <strong>ciframos.</strong><br>Donde ellos vigilan, nosotros <strong>verificamos.</strong></div>
+                        <div class="landing-verse">La soberanía no vive en parlamentos ni banderas.<br>Vive en el <strong>individuo.</strong></div>
+                        <div class="landing-verse">No buscamos derrocar. Buscamos <strong>ignorar.</strong><br>Mientras ellos regulan el pasado, nosotros desplegamos el <strong>futuro.</strong></div>
+                        <div class="landing-verse">LiberBit es secesión pacífica. Es éxodo digital.<br>Es desobediencia <strong>silenciosa.</strong></div>
+                    </div>
+                    <div class="landing-trinity">
+                        <span class="landing-trinity-item">Código, no coerción</span><span class="landing-trinity-sep">·</span>
+                        <span class="landing-trinity-item">Consenso, no imposición</span><span class="landing-trinity-sep">·</span>
+                        <span class="landing-trinity-item">Libertad, no permiso</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WHY -->
+            <div class="landing-section" id="landing-why">
+                <div class="landing-inner">
+                    <div class="landing-label">Por qué es necesario</div>
+                    <div class="landing-title">Un sistema agotado necesita una alternativa real</div>
+                    <p class="landing-desc">El mundo actual atraviesa una profunda crisis de legitimidad institucional. LiberBit World nace como respuesta estructural y tecnológica.</p>
+                    <div class="landing-why-grid">
+                        <div class="landing-why-card"><div class="landing-why-icon">🏦</div><h3>Fiscalidad confiscatoria</h3><p>La presión fiscal alcanza máximos históricos, confiscando más de la mitad de lo que produce cada individuo. A cambio, los servicios públicos se degradan.</p></div>
+                        <div class="landing-why-card"><div class="landing-why-icon">👁</div><h3>Control social creciente</h3><p>El Euro Digital y la Identidad Digital amenazan con eliminar la privacidad financiera. Cada transacción podrá ser supervisada por una autoridad central.</p></div>
+                        <div class="landing-why-card"><div class="landing-why-icon">📉</div><h3>Colapso económico anunciado</h3><p>Pensiones insostenibles, vivienda inalcanzable, inflación erosionando el ahorro. La expansión monetaria sin control genera pobreza invisible.</p></div>
+                        <div class="landing-why-card"><div class="landing-why-icon">🎭</div><h3>Clase política desconectada</h3><p>La democracia se ha convertido en un teatro sin separación de poderes, eliminando cualquier contrapeso real.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WHAT IS -->
+            <div class="landing-section landing-section-alt" id="landing-what">
+                <div class="landing-inner">
+                    <div class="landing-label">El proyecto</div>
+                    <div class="landing-title">¿Qué es LiberBit World?</div>
+                    <p class="landing-desc">Una Confederación Global de Microestados Libres. Cada LiberBit City es un Estado Federado Soberano con su propia carta constitucional, gobernanza y administración.</p>
+                    <div class="landing-what-list">
+                        <div class="landing-what-item"><div class="landing-what-icon">🏗</div><div><h3>Soberanía individual</h3><p>Cada persona es dueña de su identidad, su trabajo, su capital y su consentimiento. Identidades digitales soberanas y llaves criptográficas personales.</p></div></div>
+                        <div class="landing-what-item"><div class="landing-what-icon">⚖️</div><div><h3>Meritocracia directa</h3><p>Las decisiones se ejecutan mediante votaciones verificadas en blockchain. Los méritos (LBWM) determinan tu influencia.</p></div></div>
+                        <div class="landing-what-item"><div class="landing-what-icon">💰</div><div><h3>Economía sin inflación</h3><p>Basada en la escuela austríaca. Dinero duro y descentralizado, fiscalidad mínima y transparente.</p></div></div>
+                        <div class="landing-what-item"><div class="landing-what-icon">🔗</div><div><h3>Infraestructura descentralizada</h3><p>Construido sobre Bitcoin (Taproot Assets), Lightning Network y Nostr. Sin servidores centrales.</p></div></div>
+                        <div class="landing-what-item"><div class="landing-what-icon">🌐</div><div><h3>Ciudades federadas</h3><p>Cada LiberBit City opera con autonomía plena. La capital fundacional, IberAtlas, se ubica en la Península Ibérica.</p></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRINCIPLES -->
+            <div class="landing-section" id="landing-principles">
+                <div class="landing-inner">
+                    <div class="landing-label">Principios fundamentales</div>
+                    <div class="landing-title">Los pilares de LiberBit World</div>
+                    <div class="landing-principles-grid">
+                        <div class="landing-principle"><span class="landing-principle-num">1</span><h3>Libertad individual</h3><p>Soberanía sobre cuerpo, mente y propiedad.</p></div>
+                        <div class="landing-principle"><span class="landing-principle-num">2</span><h3>Privacidad absoluta</h3><p>Los datos personales son inviolables.</p></div>
+                        <div class="landing-principle"><span class="landing-principle-num">3</span><h3>Responsabilidad personal</h3><p>La libertad solo existe con responsabilidad.</p></div>
+                        <div class="landing-principle"><span class="landing-principle-num">4</span><h3>Meritocracia participativa</h3><p>Todos los ciudadanos pueden decidir.</p></div>
+                        <div class="landing-principle"><span class="landing-principle-num">5</span><h3>Propiedad privada</h3><p>El fruto del trabajo pertenece a quien lo produce.</p></div>
+                        <div class="landing-principle"><span class="landing-principle-num">6</span><h3>Descentralización</h3><p>El poder se distribuye, no se concentra.</p></div>
+                        <div class="landing-principle landing-principle-wide"><span class="landing-principle-num">7</span><h3>Transparencia y código abierto</h3><p>La confianza se basa en verificación, no en autoridad.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MERITS -->
+            <div class="landing-section landing-section-alt">
+                <div class="landing-inner">
+                    <div class="landing-label">Sistema de méritos</div>
+                    <div class="landing-title">Cuatro formas de contribuir</div>
+                    <p class="landing-desc">Los méritos LBWM determinan tu capacidad de influencia. Se obtienen por contribuciones reales y auditables.</p>
+                    <div class="landing-merits-grid">
+                        <div class="landing-merit"><div class="landing-merit-emoji">💰</div><h3>Económica</h3><p>Impuestos, tasas y contribuciones financieras al mantenimiento de la City.</p></div>
+                        <div class="landing-merit"><div class="landing-merit-emoji">⚒️</div><h3>Productiva</h3><p>Trabajo, servicios, creación de valor tangible e innovación en el ecosistema.</p></div>
+                        <div class="landing-merit"><div class="landing-merit-emoji">🎖</div><h3>Responsabilidad</h3><p>Servicio público, mediación de conflictos, participación en gobernanza activa.</p></div>
+                        <div class="landing-merit"><div class="landing-merit-emoji">🏦</div><h3>Financiada</h3><p>Inversión en infraestructura, proyectos comunitarios y desarrollo del ecosistema.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOCS -->
+            <div class="landing-section" id="landing-docs">
+                <div class="landing-inner">
+                    <div class="landing-label">Documentación</div>
+                    <div class="landing-title">Profundiza en el proyecto</div>
+                    <p class="landing-desc">Los documentos fundacionales de LiberBit World. Léelos, estúdialos, compártelos.</p>
+                    <div class="landing-docs-grid">
+                        <a href="#" class="landing-doc-card"><div class="landing-doc-header"><span class="landing-doc-icon">📜</span><span class="landing-doc-tag">Fundacional</span></div><h3>White Paper v1.1</h3><p>Estructura de la confederación, tecnología blockchain, economía del sistema, estrategia de expansión y los siete principios fundamentales.</p><span class="landing-doc-link">Leer documento →</span></a>
+                        <a href="#" class="landing-doc-card"><div class="landing-doc-header"><span class="landing-doc-icon">✊</span><span class="landing-doc-tag">Declaración</span></div><h3>Manifiesto de Independencia</h3><p>Nuestra declaración de separación voluntaria del control estatal. Sobre el Estado, la soberanía, la economía, la identidad y la ley.</p><span class="landing-doc-link">Leer documento →</span></a>
+                        <a href="#" class="landing-doc-card"><div class="landing-doc-header"><span class="landing-doc-icon">💡</span><span class="landing-doc-tag">Análisis</span></div><h3>¿Por qué LiberBit World?</h3><p>El análisis completo del sistema agotado: crisis fiscal, pérdida de soberanía, colapso económico y la alternativa de LBW.</p><span class="landing-doc-link">Leer documento →</span></a>
+                        <a href="#" class="landing-doc-card"><div class="landing-doc-header"><span class="landing-doc-icon">🔥</span><span class="landing-doc-tag">Poético</span></div><h3>Manifiesto Breve</h3><p>La versión breve, poética y combativa. Secesión pacífica, éxodo digital, desobediencia silenciosa.</p><span class="landing-doc-link">Leer documento →</span></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CTA FINAL -->
+            <div class="landing-section" style="text-align:center;">
+                <div class="landing-inner">
+                    <div class="landing-cta-box">
+                        <div class="landing-cta-glow"></div>
+                        <div class="landing-label">Sé parte del éxodo</div>
+                        <div class="landing-cta-title">No pueden detener una idea cuyo tiempo ha <em>llegado</em></div>
+                        <p class="landing-cta-desc">Adopta herramientas de soberanía digital — Bitcoin, identidad autosoberana, contratos digitales — y contribuye a la creación de nodos LiberBit.</p>
+                        <button class="landing-btn-cta" onclick="showRegisterForm()">Crear mi identidad soberana <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="landing-footer">
+                <span>&copy; 2025 LiberBit World · «La libertad no se pide, se construye.»</span>
+                <div class="landing-footer-links"><a href="#">Nostr</a><a href="#">GitHub</a><a href="#">Comunidad</a></div>
+            </div>
+
+            <!-- ========== FIN LANDING PAGE ========== -->
 
             <!-- Registration/Login Forms (Hidden by default) -->
             <div class="auth-modal hidden" id="authModal">
@@ -613,7 +739,7 @@
                             <label style="display: block; font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Dirección Lightning de LiberBit World</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--color-bg-dark); border: 2px solid #FF9800; border-radius: 12px; padding: 1rem;">
                                 <span style="font-size: 1.2rem; flex-shrink: 0;">⚡</span>
-                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;">liberbitworld@blink.sv</code>
+                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8ee2e7ecebfcece7faf9e1fce2eaceece2e7e0e5a0fdf8">[email&#160;protected]</a></code>
                                 <button onclick="copyLnAddress()" style="background: rgba(255, 152, 0, 0.2); border: 1px solid #FF9800; border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; color: #FFB74D; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,152,0,0.4)'" onmouseout="this.style.background='rgba(255,152,0,0.2)'">
                                     📋 Copiar
                                 </button>
@@ -2014,7 +2140,7 @@
 
 
     <!-- JavaScript Modules -->
-    <script src="js/config.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/posts.js"></script>
@@ -2209,13 +2335,4 @@
 
             <div class="notification-list" id="notificationList">
                 <div class="notification-empty">
-                    <div class="notification-empty-icon">📭</div>
-                    <h3>No hay notificaciones</h3>
-                    <p>Cuando recibas mensajes o propuestas aparecerán aquí</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</body>
-</html>
+                    <div class="notification-empty-ic
