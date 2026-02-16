@@ -1,22 +1,22 @@
 /* ============================================================
    LANDING PAGE STYLES - LiberBit World v0.3
+   UNIFIED with app design system
    Añadir DESPUÉS de main.css: <link rel="stylesheet" href="css/landing.css">
-   Fonts requeridas: Instrument Serif + Satoshi (añadir al <head>)
    ============================================================ */
 
 :root {
-    --l-serif: 'Instrument Serif', Georgia, serif;
-    --l-sans: 'Satoshi', -apple-system, BlinkMacSystemFont, sans-serif;
-    --l-accent: #e8590c;
-    --l-accent-hover: #c2410c;
-    --l-accent-light: rgba(232, 89, 12, 0.1);
-    --l-text: #fafaf9;
-    --l-text-2: #a8a29e;
-    --l-text-3: #78716c;
+    --l-accent: #E5B95C;
+    --l-accent-hover: #d4a844;
+    --l-accent-light: rgba(229, 185, 92, 0.1);
+    --l-teal: #2C5F6F;
+    --l-teal-light: #3D7585;
+    --l-text: #E8E6E3;
+    --l-text-2: #8AA4B0;
+    --l-text-3: #5a7a88;
     --l-bg: #0D171E;
-    --l-bg-alt: rgba(255,255,255,0.03);
-    --l-border: rgba(255,255,255,0.08);
-    --l-card: rgba(255,255,255,0.04);
+    --l-bg-alt: rgba(44, 95, 111, 0.08);
+    --l-border: rgba(44, 95, 111, 0.4);
+    --l-card: rgba(44, 95, 111, 0.15);
     --l-radius: 16px;
 }
 
@@ -33,7 +33,7 @@
 .landing-nav-link {
     color: var(--l-text-2);
     text-decoration: none;
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 500;
     padding: 0.375rem 0.75rem;
@@ -50,7 +50,7 @@
     gap: 0.5rem;
 }
 .landing-nav-btn-outline {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.4rem 1rem;
@@ -63,15 +63,15 @@
 }
 .landing-nav-btn-outline:hover {
     color: var(--l-text);
-    border-color: var(--l-text-2);
+    border-color: var(--l-accent);
 }
 .landing-nav-btn-solid {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
     font-weight: 700;
     padding: 0.4rem 1rem;
     background: var(--l-accent);
-    color: white;
+    color: #0D171E;
     border: none;
     border-radius: 9px;
     cursor: pointer;
@@ -100,7 +100,7 @@
     transform: translateX(-50%);
     width: 700px;
     height: 700px;
-    background: radial-gradient(circle, rgba(232, 89, 12, 0.06) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(229, 185, 92, 0.06) 0%, rgba(44, 95, 111, 0.04) 40%, transparent 65%);
     pointer-events: none;
 }
 .landing-hero-content {
@@ -115,9 +115,9 @@
     gap: 0.5rem;
     padding: 0.3rem 0.875rem;
     background: var(--l-accent-light);
-    border: 1px solid rgba(232, 89, 12, 0.2);
+    border: 1px solid rgba(229, 185, 92, 0.25);
     border-radius: 100px;
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--l-accent);
@@ -132,22 +132,22 @@
     animation: lpulse 2s ease-in-out infinite;
 }
 .landing-h1 {
-    font-family: var(--l-serif) !important;
-    font-size: clamp(2.5rem, 6vw, 4.5rem) !important;
-    line-height: 1.06 !important;
-    font-weight: 400 !important;
+    font-family: var(--font-body) !important;
+    font-size: clamp(2.5rem, 6vw, 4rem) !important;
+    line-height: 1.1 !important;
+    font-weight: 800 !important;
     letter-spacing: -0.03em !important;
     color: var(--l-text) !important;
     margin-bottom: 1.5rem !important;
     animation: lfadeUp 0.8s 0.1s ease both;
 }
 .landing-h1 em {
-    font-style: italic;
+    font-style: normal;
     color: var(--l-accent);
 }
 .landing-sub {
-    font-family: var(--l-sans);
-    font-size: 1.0625rem;
+    font-family: var(--font-body);
+    font-size: 1rem;
     color: var(--l-text-2);
     max-width: 540px;
     margin: 0 auto 2.5rem;
@@ -164,12 +164,12 @@
     flex-wrap: wrap;
 }
 .landing-btn-primary {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.875rem;
     font-weight: 700;
     padding: 0.8rem 1.75rem;
-    background: var(--l-text);
-    color: var(--l-bg);
+    background: var(--l-accent);
+    color: #0D171E;
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -181,10 +181,11 @@
 }
 .landing-btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(255,255,255,0.1);
+    box-shadow: 0 8px 30px rgba(229, 185, 92, 0.25);
+    filter: brightness(1.1);
 }
 .landing-btn-secondary {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.875rem;
     font-weight: 500;
     padding: 0.8rem 1.75rem;
@@ -197,9 +198,11 @@
     text-decoration: none;
 }
 .landing-btn-secondary:hover {
-    border-color: var(--l-text-2);
+    border-color: var(--l-teal-light);
     transform: translateY(-2px);
 }
+
+/* ============ QUOTE ============ */
 .landing-quote {
     margin-top: 3.5rem;
     padding-top: 2.5rem;
@@ -207,18 +210,19 @@
     animation: lfadeUp 0.8s 0.5s ease both;
 }
 .landing-quote blockquote {
-    font-family: var(--l-serif);
-    font-size: 1.3rem;
+    font-family: var(--font-body);
+    font-size: 1.2rem;
     font-style: italic;
     color: var(--l-text-2);
     line-height: 1.55;
+    font-weight: 300;
 }
 .landing-quote cite {
     display: block;
     margin-top: 0.625rem;
-    font-family: var(--l-sans);
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 400;
     font-style: normal;
     color: var(--l-text-3);
     text-transform: uppercase;
@@ -241,25 +245,26 @@
     margin: 0 auto;
 }
 .landing-label {
-    font-family: var(--l-sans);
+    font-family: var(--font-mono);
     font-size: 0.6875rem;
-    font-weight: 800;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--l-accent);
     margin-bottom: 0.75rem;
 }
 .landing-title {
-    font-family: var(--l-serif);
-    font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+    font-family: var(--font-body);
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     line-height: 1.15;
     letter-spacing: -0.02em;
     color: var(--l-text);
     margin-bottom: 0.875rem;
+    font-weight: 800;
 }
 .landing-desc {
-    font-family: var(--l-sans);
-    font-size: 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
     color: var(--l-text-2);
     max-width: 560px;
     line-height: 1.6;
@@ -279,18 +284,21 @@
     align-self: stretch;
     margin: 0.5rem 0;
 }
-.landing-mission-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
+.landing-mission-icon {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+}
 .landing-mission-title {
-    font-family: var(--l-serif);
-    font-size: 1.375rem;
+    font-family: var(--font-body);
+    font-size: 1.25rem;
     line-height: 1.35;
     color: var(--l-text);
     margin-bottom: 0.75rem;
-    font-weight: 400;
+    font-weight: 700;
 }
 .landing-mission-desc {
-    font-family: var(--l-sans);
-    font-size: 0.875rem;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
     color: var(--l-text-2);
     line-height: 1.6;
     max-width: 380px;
@@ -306,16 +314,17 @@
     gap: 1.5rem;
 }
 .landing-verse {
-    font-family: var(--l-serif);
-    font-size: 1.15rem;
+    font-family: var(--font-body);
+    font-size: 1.05rem;
     line-height: 1.6;
     color: var(--l-text-2);
     font-style: italic;
+    font-weight: 300;
 }
 .landing-verse strong {
-    color: var(--l-text);
+    color: var(--l-accent);
     font-style: normal;
-    font-weight: 400;
+    font-weight: 700;
 }
 .landing-trinity {
     display: flex;
@@ -327,13 +336,15 @@
     flex-wrap: wrap;
 }
 .landing-trinity-item {
-    font-family: var(--l-sans);
-    font-size: 0.8rem;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--l-accent);
 }
-.landing-trinity-sep { color: var(--l-text-3); }
+.landing-trinity-sep {
+    color: var(--l-text-3);
+}
 
 /* ============ WHY ============ */
 .landing-why-grid {
@@ -344,26 +355,29 @@
 }
 .landing-why-card {
     background: var(--l-card);
-    border: 1px solid var(--l-border);
+    border: 1.5px solid var(--l-border);
     border-radius: var(--l-radius);
     padding: 1.5rem;
     transition: all 0.3s;
 }
 .landing-why-card:hover {
     transform: translateY(-2px);
-    border-color: rgba(232, 89, 12, 0.2);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    border-color: var(--l-accent);
+    box-shadow: 0 8px 30px rgba(229, 185, 92, 0.1);
 }
-.landing-why-icon { font-size: 1.375rem; margin-bottom: 0.75rem; }
+.landing-why-icon {
+    font-size: 1.375rem;
+    margin-bottom: 0.75rem;
+}
 .landing-why-card h3 {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--l-text);
     margin-bottom: 0.375rem;
 }
 .landing-why-card p {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.825rem;
     color: var(--l-text-2);
     line-height: 1.55;
@@ -385,8 +399,8 @@
     flex-shrink: 0;
     width: 40px;
     height: 40px;
-    background: var(--l-accent-light);
-    border: 1px solid rgba(232, 89, 12, 0.15);
+    background: linear-gradient(135deg, rgba(44, 95, 111, 0.3), rgba(44, 95, 111, 0.1));
+    border: 1px solid var(--l-border);
     border-radius: 11px;
     display: flex;
     align-items: center;
@@ -394,14 +408,14 @@
     font-size: 1rem;
 }
 .landing-what-item h3 {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.9rem;
     font-weight: 700;
     color: var(--l-text);
     margin-bottom: 0.25rem;
 }
 .landing-what-item p {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.825rem;
     color: var(--l-text-2);
     line-height: 1.55;
@@ -417,7 +431,7 @@
 }
 .landing-principle {
     background: var(--l-card);
-    border: 1px solid var(--l-border);
+    border: 1.5px solid var(--l-border);
     border-radius: 14px;
     padding: 1.25rem;
     text-align: center;
@@ -428,29 +442,30 @@
 .landing-principle:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-color: var(--l-accent);
 }
 .landing-principle-num {
-    font-family: var(--l-serif);
-    font-size: 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
     color: var(--l-accent);
     line-height: 1;
     margin-bottom: 0.5rem;
     display: block;
+    font-weight: 600;
 }
 .landing-principle h3 {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 700;
     color: var(--l-text);
     margin-bottom: 0.25rem;
 }
 .landing-principle p {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
     color: var(--l-text-2);
     line-height: 1.45;
 }
-
 
 /* ============ MERITS ============ */
 .landing-merits-grid {
@@ -461,7 +476,7 @@
 }
 .landing-merit {
     background: var(--l-card);
-    border: 1px solid var(--l-border);
+    border: 1.5px solid var(--l-border);
     border-radius: var(--l-radius);
     padding: 1.25rem;
     text-align: center;
@@ -470,17 +485,21 @@
 .landing-merit:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-color: var(--l-accent);
 }
-.landing-merit-emoji { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.landing-merit-emoji {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
 .landing-merit h3 {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 700;
     color: var(--l-text);
     margin-bottom: 0.25rem;
 }
 .landing-merit p {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
     color: var(--l-text-2);
     line-height: 1.45;
@@ -495,7 +514,7 @@
 }
 .landing-doc-card {
     background: var(--l-card);
-    border: 1px solid var(--l-border);
+    border: 1.5px solid var(--l-border);
     border-radius: var(--l-radius);
     padding: 1.5rem;
     text-decoration: none;
@@ -514,7 +533,7 @@
     left: 0;
     right: 0;
     height: 2.5px;
-    background: var(--l-accent);
+    background: linear-gradient(90deg, var(--l-accent), var(--l-teal-light));
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.4s;
@@ -522,9 +541,11 @@
 .landing-doc-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 40px rgba(0,0,0,0.25);
-    border-color: rgba(232, 89, 12, 0.25);
+    border-color: var(--l-accent);
 }
-.landing-doc-card:hover::after { transform: scaleX(1); }
+.landing-doc-card:hover::after {
+    transform: scaleX(1);
+}
 .landing-doc-header {
     display: flex;
     align-items: center;
@@ -533,7 +554,7 @@
 .landing-doc-icon {
     width: 40px;
     height: 40px;
-    background: var(--l-accent-light);
+    background: linear-gradient(135deg, rgba(44, 95, 111, 0.3), rgba(44, 95, 111, 0.1));
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -541,40 +562,40 @@
     font-size: 1rem;
 }
 .landing-doc-tag {
-    font-family: var(--l-sans);
+    font-family: var(--font-mono);
     padding: 0.15rem 0.5rem;
     background: var(--l-bg-alt);
     border: 1px solid var(--l-border);
     border-radius: 5px;
     font-size: 0.6rem;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--l-text-3);
 }
 .landing-doc-card h3 {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.9375rem;
     font-weight: 700;
 }
 .landing-doc-card p {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.8125rem;
     color: var(--l-text-2);
     line-height: 1.5;
     flex-grow: 1;
 }
 .landing-doc-link {
-    font-family: var(--l-sans);
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
     color: var(--l-accent);
 }
 
 /* ============ CTA ============ */
 .landing-cta-box {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--l-border);
+    background: linear-gradient(145deg, rgba(44, 95, 111, 0.2), rgba(44, 95, 111, 0.05));
+    border: 1.5px solid var(--l-border);
     border-radius: 24px;
     padding: 4rem 2.5rem;
     position: relative;
@@ -586,33 +607,38 @@
     right: -15%;
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(232, 89, 12, 0.12) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(229, 185, 92, 0.1) 0%, transparent 65%);
     pointer-events: none;
 }
 .landing-cta-title {
-    font-family: var(--l-serif);
-    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    font-family: var(--font-body);
+    font-size: clamp(1.75rem, 3.5vw, 2.25rem);
     line-height: 1.15;
     color: var(--l-text);
     max-width: 550px;
     margin: 0 auto 0.875rem;
+    font-weight: 800;
 }
-.landing-cta-title em { color: var(--l-accent); }
+.landing-cta-title em {
+    color: var(--l-accent);
+    font-style: normal;
+}
 .landing-cta-desc {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.9375rem;
     color: var(--l-text-2);
     max-width: 480px;
     margin: 0 auto 2rem;
     line-height: 1.6;
+    font-weight: 300;
 }
 .landing-btn-cta {
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.875rem;
     font-weight: 700;
     padding: 0.875rem 2rem;
     background: var(--l-accent);
-    color: white;
+    color: #0D171E;
     border: none;
     border-radius: 12px;
     cursor: pointer;
@@ -624,7 +650,7 @@
 .landing-btn-cta:hover {
     background: var(--l-accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(232, 89, 12, 0.3);
+    box-shadow: 0 8px 30px rgba(229, 185, 92, 0.25);
 }
 
 /* ============ FOOTER ============ */
@@ -634,7 +660,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-family: var(--l-sans);
+    font-family: var(--font-body);
     font-size: 0.7rem;
     color: var(--l-text-3);
     flex-wrap: wrap;
@@ -650,7 +676,9 @@
     font-size: 0.7rem;
     transition: color 0.2s;
 }
-.landing-footer-links a:hover { color: var(--l-text); }
+.landing-footer-links a:hover {
+    color: var(--l-accent);
+}
 
 /* ============ ANIMATIONS ============ */
 @keyframes lfadeUp {
@@ -664,15 +692,8 @@
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 768px) {
-    .landing-mission-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    .landing-mission-divider {
-        width: 100%;
-        height: 1px;
-        margin: 0;
-    }
+    .landing-mission-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+    .landing-mission-divider { width: 100%; height: 1px; margin: 0; }
     .landing-why-grid { grid-template-columns: 1fr; }
     .landing-merits-grid { grid-template-columns: 1fr 1fr; }
     .landing-section-alt { margin: 0 -1rem; padding: 3.5rem 1rem; }
