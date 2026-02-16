@@ -1,13 +1,147 @@
-console.log('🚀 LiberBit World - Iniciando...');
+/**
+ * LiberBit World - Supabase Proxy Client
+ * 
+ * Reemplaza las llamadas directas a supabaseClient con llamadas
+ * al proxy de Vercel. Las credenciales NUNCA llegan al navegador.
+ * 
+ * USO: Se usa exactamente igual que el supabaseClient original:
+ *   supabaseClient.from('users').select('*').eq('id', 123)
+ *   → se convierte en una petición POST al proxy
+ */
 
-// Supabase Configuration
-const SUPABASE_URL = 'https://wyrwoxizjlamxdiuxaxd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_yOijPJfoSWOoXAagMb9pvQ_XjdfP4EY';
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000/api'
+    : 'https://liberbit-api.vercel.app/api'; ;  // ← CAMBIAR por tu URL de Vercel
 
-// Initialize Supabase client
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log('🔒 LiberBit World - Modo seguro (API proxy)');
 
-console.log('✅ Supabase client initialized');
+class SupabaseProxyQuery {
+    constructor(table) {
+        this._table = table;
+        this._operation = null;
+        this._data = null;
+        this._select = '*';
+        this._filters = [];
+        this._options = {};
+    }
+
+    select(columns = '*') {
+        if (this._operation === null) {
+            this._operation = 'select';
+            this._select = columns;
+        } else {
+            // .select() after .insert() or .update() → return inserted/updated data
+            this._options.select = true;
+        }
+        return this;
+    }
+
+    insert(data) {
+        this._operation = 'insert';
+        this._data = data;
+        return this;
+    }
+
+    update(data) {
+        this._operation = 'update';
+        this._data = data;
+        return this;
+    }
+
+    delete() {
+        this._operation = 'delete';
+        return this;
+    }
+
+    // Filter methods
+    eq(col, val)    { this._filters.push({ method: 'eq', args: [col, val] }); return this; }
+    neq(col, val)   { this._filters.push({ method: 'neq', args: [col, val] }); return this; }
+    gt(col, val)    { this._filters.push({ method: 'gt', args: [col, val] }); return this; }
+    gte(col, val)   { this._filters.push({ method: 'gte', args: [col, val] }); return this; }
+    lt(col, val)    { this._filters.push({ method: 'lt', args: [col, val] }); return this; }
+    lte(col, val)   { this._filters.push({ method: 'lte', args: [col, val] }); return this; }
+    like(col, val)  { this._filters.push({ method: 'like', args: [col, val] }); return this; }
+    ilike(col, val) { this._filters.push({ method: 'ilike', args: [col, val] }); return this; }
+    in(col, val)    { this._filters.push({ method: 'in', args: [col, val] }); return this; }
+    is(col, val)    { this._filters.push({ method: 'is', args: [col, val] }); return this; }
+    or(expr)        { this._filters.push({ method: 'or', args: [expr] }); return this; }
+    order(col, opts){ this._filters.push({ method: 'order', args: [col, opts] }); return this; }
+    limit(n)        { this._filters.push({ method: 'limit', args: [n] }); return this; }
+    range(from, to) { this._filters.push({ method: 'range', args: [from, to] }); return this; }
+    
+    single() {
+        this._filters.push({ method: 'single', args: [] });
+        return this;
+    }
+
+    maybeSingle() {
+        this._filters.push({ method: 'maybeSingle', args: [] });
+        return this;
+    }
+
+    // Execute the query (called implicitly by await)
+    async then(resolve, reject) {
+        try {
+            const result = await this._execute();
+            resolve(result);
+        } catch (err) {
+            if (reject) reject(err);
+            else resolve({ data: null, error: err.message });
+        }
+    }
+
+    async _execute() {
+        const payload = {
+            table: this._table,
+            operation: this._operation || 'select',
+            select: this._select,
+            filters: this._filters,
+            data: this._data,
+            options: this._options
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/db`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            
+            // Handle single() filter client-side if needed
+            const hasSingle = this._filters.some(f => f.method === 'single');
+            const hasMaybeSingle = this._filters.some(f => f.method === 'maybeSingle');
+            
+            if (hasSingle && result.data && Array.isArray(result.data)) {
+                result.data = result.data[0] || null;
+                if (!result.data) {
+                    result.error = 'Row not found';
+                }
+            } else if (hasMaybeSingle && result.data && Array.isArray(result.data)) {
+                result.data = result.data[0] || null;
+            }
+
+            return result;
+        } catch (err) {
+            console.error('API proxy error:', err);
+            return { data: null, error: err.message };
+        }
+    }
+}
+
+// Proxy client that mimics supabaseClient interface
+const supabaseClient = {
+    from(table) {
+        return new SupabaseProxyQuery(table);
+    }
+};
+
+console.log('✅ Supabase proxy client initialized');
+
+// ================================================
+// Everything below is unchanged from original config.js
+// ================================================
 
 // Function to count and display active nodes
 async function updateActiveNodesCounter() {
@@ -19,7 +153,6 @@ async function updateActiveNodesCounter() {
             .select('id');
         
         if (error) {
-            // Silent fallback - no noisy console warnings
             const savedKeys = localStorage.getItem('liberbit_keys');
             if (savedKeys) userCount = 1;
         } else if (data) {
@@ -34,7 +167,6 @@ async function updateActiveNodesCounter() {
             animateCounter(counter, currentValue, userCount, 1500);
         }
     } catch (err) {
-        // Silent fallback for DataCloneError and similar
         const counter = document.getElementById('activeNodesCount');
         if (counter && counter.textContent === '0') {
             counter.textContent = '1';
@@ -45,7 +177,7 @@ async function updateActiveNodesCounter() {
 // Function to animate counter
 function animateCounter(element, start, end, duration) {
     const range = end - start;
-    const increment = range / (duration / 16); // 60 FPS
+    const increment = range / (duration / 16);
     let current = start;
     
     const timer = setInterval(() => {
@@ -89,15 +221,10 @@ async function updateIdentitiesCounter() {
     }
 }
 
-// Load hero background image
-const heroImageData = 'HERO_IMAGE_PLACEHOLDER';
-
-// Set background when page loads
+// Load hero background
 window.addEventListener('DOMContentLoaded', () => {
     const heroBackground = document.getElementById('heroBackground');
     if (heroBackground) {
-        // For now, use a gradient background
-        // The uploaded image will need to be hosted or embedded
         heroBackground.style.background = `
             linear-gradient(135deg, rgba(44, 95, 111, 0.8) 0%, rgba(13, 23, 30, 0.9) 100%),
             url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"%3E%3Crect fill="%232C5F6F" width="1200" height="800"/%3E%3C/svg%3E')
@@ -106,7 +233,6 @@ window.addEventListener('DOMContentLoaded', () => {
         heroBackground.style.backgroundPosition = 'center';
     }
 });
-
 
 let currentUser = null;
 let allPosts = [];
