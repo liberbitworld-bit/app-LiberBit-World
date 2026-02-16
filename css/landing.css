@@ -409,8 +409,9 @@
 
 /* ============ PRINCIPLES ============ */
 .landing-principles-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 0.875rem;
     margin-top: 2.5rem;
 }
@@ -421,6 +422,8 @@
     padding: 1.25rem;
     text-align: center;
     transition: all 0.3s;
+    width: calc(25% - 0.66rem);
+    min-width: 180px;
 }
 .landing-principle:hover {
     transform: translateY(-2px);
@@ -447,11 +450,7 @@
     color: var(--l-text-2);
     line-height: 1.45;
 }
-.landing-principle-wide {
-    grid-column: 1 / -1;
-    max-width: 260px;
-    margin: 0 auto;
-}
+
 
 /* ============ MERITS ============ */
 .landing-merits-grid {
@@ -685,7 +684,7 @@
 }
 @media (max-width: 480px) {
     .landing-merits-grid { grid-template-columns: 1fr; }
-    .landing-principles-grid { grid-template-columns: 1fr 1fr; }
+    .landing-principles-grid .landing-principle { width: calc(50% - 0.5rem); min-width: 0; }
     .landing-actions { flex-direction: column; }
     .landing-actions a, .landing-actions button { width: 100%; justify-content: center; text-align: center; }
     .landing-trinity { flex-direction: column; gap: 0.5rem; }
