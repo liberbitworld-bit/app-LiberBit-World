@@ -2156,6 +2156,14 @@
                         <div id="gaugeLevelBloc" style="font-size:0.7rem;color:var(--color-text-secondary);margin-top:0.5rem;">Bloque: Comunidad</div>
                         
                         <!-- Next level motivating card -->
+                        <style>
+                            @keyframes nextShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+                            #gaugeNextWrap::before {
+                                content:''; position:absolute; top:0; left:0; right:0; bottom:0;
+                                background:linear-gradient(90deg,transparent,rgba(229,185,92,0.06),transparent);
+                                animation:nextShimmer 3s infinite; pointer-events:none;
+                            }
+                        </style>
                         <div id="gaugeNextWrap" style="display:flex;align-items:center;gap:0.75rem;margin-top:1rem;padding:0.75rem 1rem;background:linear-gradient(135deg,rgba(229,185,92,0.08),rgba(91,164,181,0.06));border:1px solid rgba(229,185,92,0.2);border-radius:14px;position:relative;overflow:hidden;transition:border-color 0.5s,background 0.5s;">
                             <div id="gaugeNextIcon" style="font-size:1.8rem;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(255,255,255,0.15));">🪪</div>
                             <div style="flex:1;min-width:0;text-align:left;">

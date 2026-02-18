@@ -16,12 +16,12 @@ function getCitizenshipLevel(merits) {
 // Citizenship Gauge Visualization (Canvas)
 // ============================================
 const GAUGE_SEGS = [
-    { label:'Amigo',            shortLabel:'Amigo',    icon:'\u{1F44B}', color:'#4CAF50', bloc:'Comunidad',  min:0 },
-    { label:'E-Residency',      shortLabel:'E-Res.',   icon:'\u{1FAAA}', color:'#8BC34A', bloc:'Comunidad',  min:100 },
-    { label:'Colaborador',      shortLabel:'Colabor.',  icon:'\u{1F91D}', color:'#CDDC39', bloc:'Comunidad',  min:500 },
-    { label:'Ciudadano Senior', shortLabel:'C.Senior', icon:'\u{1F6C2}', color:'#FF9800', bloc:'Ciudadan\u00eda', min:1000 },
-    { label:'Embajador',        shortLabel:'Embajad.', icon:'\u{1F30D}', color:'#FF5722', bloc:'Ciudadan\u00eda', min:2000 },
-    { label:'Gobernador',       shortLabel:'Gobern.',  icon:'\u{1F451}', color:'#9C27B0', bloc:'Gobernanza', min:3000 },
+    { label:'Amigo',            shortLabel:'Amigo',    icon:'👋', color:'#4CAF50', bloc:'Comunidad',  min:0 },
+    { label:'E-Residency',      shortLabel:'E-Res.',   icon:'🪪', color:'#8BC34A', bloc:'Comunidad',  min:100 },
+    { label:'Colaborador',      shortLabel:'Colabor.',  icon:'🤝', color:'#CDDC39', bloc:'Comunidad',  min:500 },
+    { label:'Ciudadano Senior', shortLabel:'C.Senior', icon:'🛂', color:'#FF9800', bloc:'Ciudadanía', min:1000 },
+    { label:'Embajador',        shortLabel:'Embajad.', icon:'🌍', color:'#FF5722', bloc:'Ciudadanía', min:2000 },
+    { label:'Gobernador',       shortLabel:'Gobern.',  icon:'👑', color:'#9C27B0', bloc:'Gobernanza', min:3000 },
 ];
 const GAUGE_THRESH = GAUGE_SEGS.map(s=>s.min);
 const GAUGE_RANGES = [100,400,500,1000,1000,500];
@@ -154,11 +154,11 @@ function updateCitizenshipGauge(merits) {
     const nNum = document.getElementById('gaugeNextNumber');
     if (level.idx >= 5) {
         if (pBar) { pBar.style.width='100%'; pBar.style.background='linear-gradient(90deg,'+level.color+','+level.color+'aa)'; }
-        if (pPct) pPct.textContent = '\u2705 MAX';
-        if (pLbl) pLbl.textContent = 'Nivel m\u00e1ximo alcanzado';
-        if (nIcon) nIcon.textContent = '\u{1F451}';
-        if (nTitle) { nTitle.textContent = 'NIVEL M\u00c1XIMO'; nTitle.style.color = level.color; }
-        if (nNum) { nNum.textContent = '\u2705'; nNum.style.color = level.color; }
+        if (pPct) pPct.textContent = '✅ MAX';
+        if (pLbl) pLbl.textContent = 'Nivel máximo alcanzado';
+        if (nIcon) nIcon.textContent = '👑';
+        if (nTitle) { nTitle.textContent = 'NIVEL MÁXIMO'; nTitle.style.color = level.color; }
+        if (nNum) { nNum.textContent = '✅'; nNum.style.color = level.color; }
         if (nw) nw.style.borderColor = level.color + '40';
     } else {
         const curMin = GAUGE_THRESH[level.idx], nxtMin = GAUGE_THRESH[level.idx+1];
