@@ -18,10 +18,39 @@ function getCitizenshipLevel(merits) {
 function updateCitizenshipGauge(merits) {
     const citizenship = getCitizenshipLevel(merits);
     
-    // Needle rotation: -90° (left/0 merits) to +90° (right/3000+ merits)
-    // Map merits 0-3000 to angle -90 to +90
-    const clampedMerits = Math.min(merits, 3500);
-    const angle = -90 + (clampedMerits / 3500) * 180;
+    // The SVG arc goes from angle -90° (left, 0 merits) to +90° (right, 3000+ merits)
+    // But the segments are NOT equal width - they represent different merit ranges:
+    // Amigo:     0-99     (100 merits)  → small segment
+    // E-Res:     100-499  (400 merits)  → medium
+    // Colabor:   500-999  (500 merits)  → medium
+    // Ciud.Sr:   1000-1999 (1000 merits) → large
+    // Embajador: 2000-2999 (1000 merits) → large
+    // Gobernador: 3000+   (uncapped)    → small segment
+    
+    // Each segment gets equal arc space (30° each for 6 segments = 180° total)
+    const segmentAngle = 30; // degrees per segment
+    const thresholds = [0, 100, 500, 1000, 2000, 3000];
+    const ranges =     [100, 400, 500, 1000, 1000, 500]; // last one is visual cap
+    
+    let angle = -90; // start at left
+    
+    if (merits >= 3000) {
+        // Gobernador - needle at last segment
+        const extra = Math.min(merits - 3000, 500);
+        angle = -90 + (5 * segmentAngle) + (extra / ranges[5]) * segmentAngle;
+    } else {
+        // Find which segment we're in
+        for (let i = 0; i < 5; i++) {
+            if (merits < thresholds[i + 1]) {
+                const progressInSegment = (merits - thresholds[i]) / ranges[i];
+                angle = -90 + (i * segmentAngle) + (progressInSegment * segmentAngle);
+                break;
+            }
+        }
+    }
+    
+    // Clamp angle
+    angle = Math.max(-90, Math.min(90, angle));
     
     const needle = document.getElementById('gaugeNeedle');
     if (needle) {
@@ -38,7 +67,6 @@ function updateCitizenshipGauge(merits) {
     const titleEl = document.getElementById('gaugeLevelTitle');
     if (titleEl) {
         titleEl.textContent = `${citizenship.icon} ${citizenship.title.toUpperCase()}`;
-        // Color based on level
         const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722', '#9C27B0'];
         titleEl.style.color = colors[citizenship.level - 1] || 'var(--color-gold)';
     }
@@ -50,23 +78,19 @@ function updateCitizenshipGauge(merits) {
     }
     
     // Progress to next level
-    const thresholds = [0, 100, 500, 1000, 2000, 3000];
-    const nextIdx = citizenship.level < 6 ? citizenship.level : 5;
-    const currentThreshold = thresholds[citizenship.level - 1];
-    const nextThreshold = thresholds[nextIdx];
-    
     const progressBar = document.getElementById('gaugeProgressBar');
     const progressPct = document.getElementById('gaugeProgressPct');
     const progressLabel = document.getElementById('gaugeProgressLabel');
     const nextLevelEl = document.getElementById('gaugeLevelNext');
     
     if (citizenship.level >= 6) {
-        // Max level
         if (progressBar) progressBar.style.width = '100%';
         if (progressPct) progressPct.textContent = '✅ MAX';
         if (progressLabel) progressLabel.textContent = 'Nivel máximo alcanzado';
         if (nextLevelEl) nextLevelEl.textContent = 'Los merits adicionales se registran como histórico';
     } else {
+        const currentThreshold = thresholds[citizenship.level - 1];
+        const nextThreshold = thresholds[citizenship.level];
         const range = nextThreshold - currentThreshold;
         const progress = merits - currentThreshold;
         const pct = Math.min(100, Math.round((progress / range) * 100));
@@ -225,12 +249,6 @@ function updateProfileDisplay() {
 function showCitizenshipModal() {
     const modal = document.getElementById('citizenshipModal');
     modal.classList.add('active');
-    
-    // Hide citizenship type selector (auto-calculated now)
-    const typeSelect = document.getElementById('citizenshipTypeSelect');
-    if (typeSelect) {
-        typeSelect.closest('.form-group, div')?.style && (typeSelect.parentElement.style.display = 'none');
-    }
     
     // Pre-fill city
     if (userProfile) {
