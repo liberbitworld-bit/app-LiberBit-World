@@ -1,11 +1,117 @@
 // Profile Functions
+
+// ============================================
+// LBWM v2.0 Citizenship Scale (auto-calculated)
+// ============================================
+function getCitizenshipLevel(merits) {
+    if (merits >= 3000) return { level: 6, title: 'Gobernador', icon: '👑', bloc: 'Gobernanza' };
+    if (merits >= 2000) return { level: 5, title: 'Embajador', icon: '🌍', bloc: 'Ciudadanía' };
+    if (merits >= 1000) return { level: 4, title: 'Ciudadano Senior', icon: '🛂', bloc: 'Ciudadanía' };
+    if (merits >= 500)  return { level: 3, title: 'Colaborador', icon: '🤝', bloc: 'Comunidad' };
+    if (merits >= 100)  return { level: 2, title: 'E-Residency', icon: '🪪', bloc: 'Comunidad' };
+    return { level: 1, title: 'Amigo', icon: '👋', bloc: 'Comunidad' };
+}
+
+// ============================================
+// Citizenship Gauge Visualization
+// ============================================
+function updateCitizenshipGauge(merits) {
+    const citizenship = getCitizenshipLevel(merits);
+    
+    // The SVG arc goes from angle -90° (left, 0 merits) to +90° (right, 3000+ merits)
+    // But the segments are NOT equal width - they represent different merit ranges:
+    // Amigo:     0-99     (100 merits)  → small segment
+    // E-Res:     100-499  (400 merits)  → medium
+    // Colabor:   500-999  (500 merits)  → medium
+    // Ciud.Sr:   1000-1999 (1000 merits) → large
+    // Embajador: 2000-2999 (1000 merits) → large
+    // Gobernador: 3000+   (uncapped)    → small segment
+    
+    // Each segment gets equal arc space (30° each for 6 segments = 180° total)
+    const segmentAngle = 30; // degrees per segment
+    const thresholds = [0, 100, 500, 1000, 2000, 3000];
+    const ranges =     [100, 400, 500, 1000, 1000, 500]; // last one is visual cap
+    
+    let angle = -90; // start at left
+    
+    if (merits >= 3000) {
+        // Gobernador - needle at last segment
+        const extra = Math.min(merits - 3000, 500);
+        angle = -90 + (5 * segmentAngle) + (extra / ranges[5]) * segmentAngle;
+    } else {
+        // Find which segment we're in
+        for (let i = 0; i < 5; i++) {
+            if (merits < thresholds[i + 1]) {
+                const progressInSegment = (merits - thresholds[i]) / ranges[i];
+                angle = -90 + (i * segmentAngle) + (progressInSegment * segmentAngle);
+                break;
+            }
+        }
+    }
+    
+    // Clamp angle
+    angle = Math.max(-90, Math.min(90, angle));
+    
+    const needle = document.getElementById('gaugeNeedle');
+    if (needle) {
+        needle.setAttribute('transform', `rotate(${angle}, 150, 165)`);
+    }
+    
+    // Update merit count
+    const countEl = document.getElementById('gaugeMeritCount');
+    if (countEl) {
+        countEl.textContent = merits.toLocaleString('es-ES');
+    }
+    
+    // Update level title
+    const titleEl = document.getElementById('gaugeLevelTitle');
+    if (titleEl) {
+        titleEl.textContent = `${citizenship.icon} ${citizenship.title.toUpperCase()}`;
+        const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722', '#9C27B0'];
+        titleEl.style.color = colors[citizenship.level - 1] || 'var(--color-gold)';
+    }
+    
+    // Update bloc
+    const blocEl = document.getElementById('gaugeLevelBloc');
+    if (blocEl) {
+        blocEl.textContent = `Bloque: ${citizenship.bloc}`;
+    }
+    
+    // Progress to next level
+    const progressBar = document.getElementById('gaugeProgressBar');
+    const progressPct = document.getElementById('gaugeProgressPct');
+    const progressLabel = document.getElementById('gaugeProgressLabel');
+    const nextLevelEl = document.getElementById('gaugeLevelNext');
+    
+    if (citizenship.level >= 6) {
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressPct) progressPct.textContent = '✅ MAX';
+        if (progressLabel) progressLabel.textContent = 'Nivel máximo alcanzado';
+        if (nextLevelEl) nextLevelEl.textContent = 'Los merits adicionales se registran como histórico';
+    } else {
+        const currentThreshold = thresholds[citizenship.level - 1];
+        const nextThreshold = thresholds[citizenship.level];
+        const range = nextThreshold - currentThreshold;
+        const progress = merits - currentThreshold;
+        const pct = Math.min(100, Math.round((progress / range) * 100));
+        const remaining = nextThreshold - merits;
+        
+        const nextLevel = getCitizenshipLevel(nextThreshold);
+        
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (progressPct) progressPct.textContent = pct + '%';
+        if (progressLabel) progressLabel.textContent = `Progreso a ${nextLevel.title}`;
+        if (nextLevelEl) nextLevelEl.textContent = `Faltan ${remaining.toLocaleString('es-ES')} merits para ${nextLevel.icon} ${nextLevel.title}`;
+    }
+}
+
 function initializeUserProfile() {
     if (!currentUser) return;
     
     // Initialize profile if not exists
     if (!userProfile) {
         userProfile = {
-            citizenshipType: 'E-Residency',
+            citizenshipType: 'Amigo',
             city: '',
             registrationDate: new Date().toISOString()
         };
@@ -34,7 +140,7 @@ async function loadUserProfile() {
         
         if (data) {
             userProfile = {
-                citizenshipType: data.citizenship_type || 'E-Residency',
+                citizenshipType: data.citizenship_type || 'Amigo',
                 city: data.city || '',
                 registrationDate: data.registration_date || new Date().toISOString(),
                 avatarUrl: data.avatar_url || null
@@ -74,6 +180,10 @@ async function loadUserProfile() {
     }
     
     updateProfileDisplay();
+    
+    // Re-update after a delay to catch late-loaded posts/offers/votes data
+    setTimeout(() => updateProfileDisplay(), 2000);
+    setTimeout(() => updateProfileDisplay(), 5000);
 }
 
 function updateProfileDisplay() {
@@ -82,11 +192,33 @@ function updateProfileDisplay() {
     // Update profile header
     document.getElementById('profileName').textContent = currentUser.name;
     
-    // Update citizenship badge
+    // Calculate merits for citizenship level
+    const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts)) ? allPosts.filter(p => p.author === currentUser.name).length : 0;
+    const userOffers = (typeof allOffers !== 'undefined' && Array.isArray(allOffers)) ? allOffers.filter(o => o.author === currentUser.name).length : 0;
+    const userVotes = (typeof allVotes !== 'undefined' && Array.isArray(allVotes)) ? allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length : 0;
+    const userProposals = (typeof allProposals !== 'undefined' && Array.isArray(allProposals)) ? allProposals.filter(p => p.author === currentUser.name).length : 0;
+    
+    const totalContributions = userPosts + userOffers + userVotes + userProposals;
+    const merits = totalContributions * 10; // 10 LBWM por contribución
+    
+    // Auto-calculate citizenship level based on merits (LBWM v2.0)
+    const citizenship = getCitizenshipLevel(merits);
+    
+    console.log(`🏛️ Profile: ${totalContributions} contributions, ${merits} merits → ${citizenship.title}`);
+    console.log(`🏛️ Posts: ${userPosts}, Offers: ${userOffers}, Votes: ${userVotes}, Proposals: ${userProposals}`);
+    
+    // Update citizenship gauge visualization
+    updateCitizenshipGauge(merits);
+    
+    // FORCE update citizenship badge (override any DB value)
     const citizenshipBadge = document.getElementById('profileCitizenship');
-    const icon = userProfile.citizenshipType === 'E-Residency' ? '🌐' :
-                userProfile.citizenshipType === 'Pasaporte LBW' ? '🛂' : '🌍';
-    citizenshipBadge.textContent = `${icon} ${userProfile.citizenshipType}`;
+    if (citizenshipBadge) {
+        citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
+        console.log(`🏛️ Badge updated to: ${citizenship.icon} ${citizenship.title}`);
+    }
+    
+    // Update citizenship type in profile (auto-calculated, not editable)
+    userProfile.citizenshipType = citizenship.title;
     
     // Update LBWID
     const pubKey = currentUser.pubkey || currentUser.publicKey;
@@ -101,15 +233,6 @@ function updateProfileDisplay() {
         document.getElementById('profileNpub').textContent = pubKey.substring(0, 16) + '...';
     }
     
-    // Calculate stats
-    const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
-    const userOffers = allOffers.filter(o => o.author === currentUser.name).length;
-    const userVotes = allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length;
-    const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
-    
-    const totalContributions = userPosts + userOffers + userVotes + userProposals;
-    const merits = totalContributions * 10; // 10 LBWM por contribución
-    
     // Update stats
     document.getElementById('statMerits').textContent = merits;
     document.getElementById('statContributions').textContent = totalContributions;
@@ -121,8 +244,8 @@ function updateProfileDisplay() {
     document.getElementById('statMemberSince').textContent = 
         `${monthNames[regDate.getMonth()]} ${regDate.getFullYear()}`;
     
-    // Update citizenship details
-    document.getElementById('citizenshipType').textContent = userProfile.citizenshipType;
+    // Update citizenship details (auto-calculated)
+    document.getElementById('citizenshipType').textContent = `${citizenship.icon} Nv.${citizenship.level} — ${citizenship.title}`;
     document.getElementById('citizenshipCity').textContent = userProfile.city || 'No registrada';
     
     // Update activity counts
@@ -132,15 +255,13 @@ function updateProfileDisplay() {
     document.getElementById('activityProposals').textContent = userProposals;
 }
 
+// Citizenship modal now only edits City (level is auto-calculated)
 function showCitizenshipModal() {
     const modal = document.getElementById('citizenshipModal');
     modal.classList.add('active');
     
-    // Pre-fill current values
+    // Pre-fill city
     if (userProfile) {
-        document.getElementById('citizenshipTypeSelect').value = userProfile.citizenshipType;
-        
-        // Check if city is in predefined list
         const citySelect = document.getElementById('citizenshipCitySelect');
         const options = Array.from(citySelect.options).map(o => o.value);
         
@@ -216,7 +337,7 @@ async function handleAvatarUpload(event) {
                     public_key: pubKey,
                     name: currentUser.name,
                     avatar_url: base64Image,
-                    citizenship_type: 'E-Residency'
+                    citizenship_type: 'Amigo'
                 }])
                 .select()
                 .single();
@@ -310,8 +431,8 @@ function compressAndConvertImage(file) {
     });
 }
 
+// saveCitizenship now only saves City (citizenship type is auto-calculated)
 async function saveCitizenship() {
-    const typeSelect = document.getElementById('citizenshipTypeSelect');
     const citySelect = document.getElementById('citizenshipCitySelect');
     const customCity = document.getElementById('customCityInput');
     
@@ -328,6 +449,15 @@ async function saveCitizenship() {
             return;
         }
     }
+    
+    // Auto-calculate citizenship level
+    const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
+    const userOffers = allOffers.filter(o => o.author === currentUser.name).length;
+    const userVotes = allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length;
+    const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
+    const totalContributions = userPosts + userOffers + userVotes + userProposals;
+    const merits = totalContributions * 10;
+    const citizenship = getCitizenshipLevel(merits);
     
     try {
         const pubKey = currentUser.pubkey || currentUser.publicKey;
@@ -347,7 +477,7 @@ async function saveCitizenship() {
                     id: generateUUID(),
                     public_key: pubKey,
                     name: currentUser.name,
-                    citizenship_type: typeSelect.value,
+                    citizenship_type: citizenship.title,
                     city: city
                 }])
                 .select()
@@ -366,7 +496,7 @@ async function saveCitizenship() {
             const { data, error } = await supabaseClient
                 .from('users')
                 .update({
-                    citizenship_type: typeSelect.value,
+                    citizenship_type: citizenship.title,
                     city: city
                 })
                 .eq('public_key', pubKey)
@@ -381,7 +511,7 @@ async function saveCitizenship() {
         }
 
         // Update local profile
-        userProfile.citizenshipType = typeSelect.value;
+        userProfile.citizenshipType = citizenship.title;
         userProfile.city = city;
         
         // Also save to localStorage as backup
@@ -394,10 +524,9 @@ async function saveCitizenship() {
         closeCitizenshipModal();
         
         // Show confirmation
-        showNotification('✅ Ciudadanía actualizada correctamente');
+        showNotification('✅ Ciudad actualizada correctamente');
     } catch (err) {
         console.error('Error:', err);
-        showNotification('Error al actualizar ciudadanía', 'error');
+        showNotification('Error al actualizar ciudad', 'error');
     }
 }
-
