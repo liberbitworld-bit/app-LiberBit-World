@@ -2157,22 +2157,62 @@
                         
                         <!-- Next level motivating card -->
                         <style>
-                            @keyframes nextShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+                            @keyframes nextShimmer { 
+                                0% { transform:translateX(-100%); } 
+                                100% { transform:translateX(100%); } 
+                            }
+                            #gaugeNextWrap {
+                                display:flex !important;
+                                align-items:center;
+                                gap:0.75rem;
+                                margin-top:1rem;
+                                padding:0.85rem 1.1rem;
+                                background:linear-gradient(135deg, rgba(229,185,92,0.12), rgba(91,164,181,0.08));
+                                border:1.5px solid rgba(229,185,92,0.35);
+                                border-radius:14px;
+                                position:relative;
+                                overflow:hidden;
+                                transition:border-color 0.5s, background 0.5s;
+                                box-shadow: 0 2px 12px rgba(229,185,92,0.08), inset 0 1px 0 rgba(229,185,92,0.1);
+                            }
                             #gaugeNextWrap::before {
-                                content:''; position:absolute; top:0; left:0; right:0; bottom:0;
-                                background:linear-gradient(90deg,transparent,rgba(229,185,92,0.06),transparent);
-                                animation:nextShimmer 3s infinite; pointer-events:none;
+                                content:''; 
+                                position:absolute; 
+                                top:0; left:0; right:0; bottom:0;
+                                background:linear-gradient(90deg, transparent 0%, rgba(229,185,92,0.15) 50%, transparent 100%);
+                                animation:nextShimmer 2.5s ease-in-out infinite; 
+                                pointer-events:none;
+                            }
+                            .gauge-next-icon {
+                                font-size:2rem;
+                                flex-shrink:0;
+                                filter:drop-shadow(0 0 8px rgba(255,255,255,0.2));
+                                animation: pulse-icon 2s ease-in-out infinite;
+                            }
+                            @keyframes pulse-icon {
+                                0%, 100% { transform: scale(1); }
+                                50% { transform: scale(1.08); }
+                            }
+                            .gauge-next-remain {
+                                text-align:center;
+                                flex-shrink:0;
+                                background:rgba(0,0,0,0.3);
+                                border-radius:12px;
+                                padding:0.5rem 0.8rem;
+                                min-width:70px;
+                                border:1px solid rgba(229,185,92,0.15);
                             }
                         </style>
-                        <div id="gaugeNextWrap" style="display:flex;align-items:center;gap:0.75rem;margin-top:1rem;padding:0.75rem 1rem;background:linear-gradient(135deg,rgba(229,185,92,0.08),rgba(91,164,181,0.06));border:1px solid rgba(229,185,92,0.2);border-radius:14px;position:relative;overflow:hidden;transition:border-color 0.5s,background 0.5s;">
-                            <div id="gaugeNextIcon" style="font-size:1.8rem;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(255,255,255,0.15));">🪪</div>
+                        <div id="gaugeNextWrap">
+                            <div id="gaugeNextIcon" class="gauge-next-icon">🪪</div>
                             <div style="flex:1;min-width:0;text-align:left;">
-                                <div style="font-size:0.6rem;font-weight:600;color:var(--color-text-secondary);letter-spacing:1.5px;text-transform:uppercase;">Siguiente nivel</div>
-                                <div id="gaugeNextTitle" style="font-size:0.85rem;font-weight:800;color:var(--color-gold);letter-spacing:0.5px;margin-top:0.1rem;transition:color 0.5s;">E-RESIDENCY</div>
+                                <div style="font-size:0.6rem;font-weight:700;color:var(--color-text-secondary);letter-spacing:1.5px;text-transform:uppercase;">⭐ Siguiente nivel</div>
+                                <div id="gaugeNextTitle" style="font-size:0.9rem;font-weight:800;color:var(--color-gold);letter-spacing:0.5px;margin-top:0.15rem;transition:color 0.5s;">E-RESIDENCY</div>
+                                <div id="gaugeNextRemaining" style="font-size:0.65rem;color:var(--color-text-secondary);margin-top:0.1rem;">Faltan <strong id="gaugeNextRemainText" style="color:var(--color-gold);">100</strong> méritos</div>
                             </div>
-                            <div style="text-align:center;flex-shrink:0;background:rgba(0,0,0,0.25);border-radius:10px;padding:0.4rem 0.7rem;min-width:65px;">
-                                <div id="gaugeNextNumber" style="font-size:1.3rem;font-weight:900;color:var(--color-gold);font-family:var(--font-mono);line-height:1;transition:color 0.5s;">0</div>
-                                <div style="font-size:0.5rem;font-weight:600;color:var(--color-text-secondary);letter-spacing:1px;text-transform:uppercase;margin-top:0.1rem;">merits</div>
+                            <div class="gauge-next-remain">
+                                <div id="gaugeNextNumber" style="font-size:1.4rem;font-weight:900;color:var(--color-gold);font-family:var(--font-mono);line-height:1;transition:color 0.5s;">0</div>
+                                <div style="font-size:0.5rem;font-weight:600;color:var(--color-text-secondary);letter-spacing:1px;text-transform:uppercase;margin-top:0.15rem;">merits</div>
                             </div>
                         </div>
                         

@@ -152,14 +152,17 @@ function updateCitizenshipGauge(merits) {
     const nIcon = document.getElementById('gaugeNextIcon');
     const nTitle = document.getElementById('gaugeNextTitle');
     const nNum = document.getElementById('gaugeNextNumber');
+    const nRemainText = document.getElementById('gaugeNextRemainText');
+    const nRemaining = document.getElementById('gaugeNextRemaining');
     if (level.idx >= 5) {
         if (pBar) { pBar.style.width='100%'; pBar.style.background='linear-gradient(90deg,'+level.color+','+level.color+'aa)'; }
         if (pPct) pPct.textContent = '✅ MAX';
         if (pLbl) pLbl.textContent = 'Nivel máximo alcanzado';
         if (nIcon) nIcon.textContent = '👑';
-        if (nTitle) { nTitle.textContent = 'NIVEL MÁXIMO'; nTitle.style.color = level.color; }
+        if (nTitle) { nTitle.textContent = '¡NIVEL MÁXIMO!'; nTitle.style.color = level.color; }
         if (nNum) { nNum.textContent = '✅'; nNum.style.color = level.color; }
-        if (nw) nw.style.borderColor = level.color + '40';
+        if (nw) { nw.style.borderColor = level.color + '60'; nw.style.background = 'linear-gradient(135deg,'+level.color+'18,'+level.color+'0a)'; }
+        if (nRemaining) nRemaining.innerHTML = '<strong style="color:'+level.color+'">¡Felicidades!</strong> Has alcanzado el máximo';
     } else {
         const curMin = GAUGE_THRESH[level.idx], nxtMin = GAUGE_THRESH[level.idx+1];
         const range = nxtMin - curMin;
@@ -172,7 +175,8 @@ function updateCitizenshipGauge(merits) {
         if (nIcon) nIcon.textContent = nl.icon;
         if (nTitle) { nTitle.textContent = nl.label.toUpperCase(); nTitle.style.color = nl.color; }
         if (nNum) { nNum.textContent = rem.toLocaleString('es-ES'); nNum.style.color = nl.color; }
-        if (nw) nw.style.borderColor = nl.color + '40';
+        if (nw) { nw.style.borderColor = nl.color + '50'; nw.style.background = 'linear-gradient(135deg,'+nl.color+'15,'+nl.color+'08)'; }
+        if (nRemaining) nRemaining.innerHTML = 'Faltan <strong style="color:'+nl.color+'">'+rem.toLocaleString('es-ES')+'</strong> méritos';
     }
 }
 
