@@ -180,6 +180,10 @@ async function loadUserProfile() {
     }
     
     updateProfileDisplay();
+    
+    // Re-update after a delay to catch late-loaded posts/offers/votes data
+    setTimeout(() => updateProfileDisplay(), 2000);
+    setTimeout(() => updateProfileDisplay(), 5000);
 }
 
 function updateProfileDisplay() {
@@ -189,10 +193,10 @@ function updateProfileDisplay() {
     document.getElementById('profileName').textContent = currentUser.name;
     
     // Calculate merits for citizenship level
-    const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
-    const userOffers = allOffers.filter(o => o.author === currentUser.name).length;
-    const userVotes = allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length;
-    const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
+    const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts)) ? allPosts.filter(p => p.author === currentUser.name).length : 0;
+    const userOffers = (typeof allOffers !== 'undefined' && Array.isArray(allOffers)) ? allOffers.filter(o => o.author === currentUser.name).length : 0;
+    const userVotes = (typeof allVotes !== 'undefined' && Array.isArray(allVotes)) ? allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length : 0;
+    const userProposals = (typeof allProposals !== 'undefined' && Array.isArray(allProposals)) ? allProposals.filter(p => p.author === currentUser.name).length : 0;
     
     const totalContributions = userPosts + userOffers + userVotes + userProposals;
     const merits = totalContributions * 10; // 10 LBWM por contribución
@@ -203,9 +207,9 @@ function updateProfileDisplay() {
     // Update citizenship gauge visualization
     updateCitizenshipGauge(merits);
     
-    // Update citizenship badge with auto-calculated level
+    // FORCE update citizenship badge (override any DB value)
     const citizenshipBadge = document.getElementById('profileCitizenship');
-    citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
+    if (citizenshipBadge) citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
     
     // Update citizenship type in profile (auto-calculated, not editable)
     userProfile.citizenshipType = citizenship.title;
