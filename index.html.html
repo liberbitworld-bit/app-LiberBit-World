@@ -73,6 +73,7 @@
                 <a href="#landing-what" class="landing-nav-link">Qué es</a>
                 <a href="#landing-docs" class="landing-nav-link">Docs</a>
                 <div class="landing-nav-actions">
+                    <button class="landing-nav-btn-outline" id="landingBackToApp" onclick="showSection('mainMenuSection')" style="display:none;">← Volver a la App</button>
                     <button class="landing-nav-btn-outline" onclick="showLoginForm()">Acceder</button>
                     <button class="landing-nav-btn-solid" onclick="showRegisterForm()">Únete</button>
                 </div>
@@ -325,6 +326,10 @@
         <!-- Main Menu Section -->
         <section class="section" id="mainMenuSection">
             <div class="main-menu">
+                <!-- Landing Page Button -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                    <button onclick="document.getElementById('landingBackToApp').style.display='inline-block'; showSection('registrationSection')" style="background: transparent; border: 1.5px solid var(--color-border); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 9px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--font-body);" onmouseover="this.style.borderColor='var(--color-gold)';this.style.color='var(--color-gold)'" onmouseout="this.style.borderColor='var(--color-border)';this.style.color='var(--color-text-secondary)'">🏠 Ver Landing</button>
+                </div>
                 <!-- Welcome row: Card + Aportar Valor button -->
                 <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 2rem;" class="welcome-row-mobile">
                     <!-- User Welcome & Notifications Card -->
