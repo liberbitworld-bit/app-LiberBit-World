@@ -12,6 +12,75 @@ function getCitizenshipLevel(merits) {
     return { level: 1, title: 'Amigo', icon: '👋', bloc: 'Comunidad' };
 }
 
+// ============================================
+// Citizenship Gauge Visualization
+// ============================================
+function updateCitizenshipGauge(merits) {
+    const citizenship = getCitizenshipLevel(merits);
+    
+    // Needle rotation: -90° (left/0 merits) to +90° (right/3000+ merits)
+    // Map merits 0-3000 to angle -90 to +90
+    const clampedMerits = Math.min(merits, 3500);
+    const angle = -90 + (clampedMerits / 3500) * 180;
+    
+    const needle = document.getElementById('gaugeNeedle');
+    if (needle) {
+        needle.setAttribute('transform', `rotate(${angle}, 150, 165)`);
+    }
+    
+    // Update merit count
+    const countEl = document.getElementById('gaugeMeritCount');
+    if (countEl) {
+        countEl.textContent = merits.toLocaleString('es-ES');
+    }
+    
+    // Update level title
+    const titleEl = document.getElementById('gaugeLevelTitle');
+    if (titleEl) {
+        titleEl.textContent = `${citizenship.icon} ${citizenship.title.toUpperCase()}`;
+        // Color based on level
+        const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722', '#9C27B0'];
+        titleEl.style.color = colors[citizenship.level - 1] || 'var(--color-gold)';
+    }
+    
+    // Update bloc
+    const blocEl = document.getElementById('gaugeLevelBloc');
+    if (blocEl) {
+        blocEl.textContent = `Bloque: ${citizenship.bloc}`;
+    }
+    
+    // Progress to next level
+    const thresholds = [0, 100, 500, 1000, 2000, 3000];
+    const nextIdx = citizenship.level < 6 ? citizenship.level : 5;
+    const currentThreshold = thresholds[citizenship.level - 1];
+    const nextThreshold = thresholds[nextIdx];
+    
+    const progressBar = document.getElementById('gaugeProgressBar');
+    const progressPct = document.getElementById('gaugeProgressPct');
+    const progressLabel = document.getElementById('gaugeProgressLabel');
+    const nextLevelEl = document.getElementById('gaugeLevelNext');
+    
+    if (citizenship.level >= 6) {
+        // Max level
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressPct) progressPct.textContent = '✅ MAX';
+        if (progressLabel) progressLabel.textContent = 'Nivel máximo alcanzado';
+        if (nextLevelEl) nextLevelEl.textContent = 'Los merits adicionales se registran como histórico';
+    } else {
+        const range = nextThreshold - currentThreshold;
+        const progress = merits - currentThreshold;
+        const pct = Math.min(100, Math.round((progress / range) * 100));
+        const remaining = nextThreshold - merits;
+        
+        const nextLevel = getCitizenshipLevel(nextThreshold);
+        
+        if (progressBar) progressBar.style.width = pct + '%';
+        if (progressPct) progressPct.textContent = pct + '%';
+        if (progressLabel) progressLabel.textContent = `Progreso a ${nextLevel.title}`;
+        if (nextLevelEl) nextLevelEl.textContent = `Faltan ${remaining.toLocaleString('es-ES')} merits para ${nextLevel.icon} ${nextLevel.title}`;
+    }
+}
+
 function initializeUserProfile() {
     if (!currentUser) return;
     
@@ -106,6 +175,9 @@ function updateProfileDisplay() {
     
     // Auto-calculate citizenship level based on merits (LBWM v2.0)
     const citizenship = getCitizenshipLevel(merits);
+    
+    // Update citizenship gauge visualization
+    updateCitizenshipGauge(merits);
     
     // Update citizenship badge with auto-calculated level
     const citizenshipBadge = document.getElementById('profileCitizenship');
