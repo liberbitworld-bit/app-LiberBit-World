@@ -204,12 +204,18 @@ function updateProfileDisplay() {
     // Auto-calculate citizenship level based on merits (LBWM v2.0)
     const citizenship = getCitizenshipLevel(merits);
     
+    console.log(`🏛️ Profile: ${totalContributions} contributions, ${merits} merits → ${citizenship.title}`);
+    console.log(`🏛️ Posts: ${userPosts}, Offers: ${userOffers}, Votes: ${userVotes}, Proposals: ${userProposals}`);
+    
     // Update citizenship gauge visualization
     updateCitizenshipGauge(merits);
     
     // FORCE update citizenship badge (override any DB value)
     const citizenshipBadge = document.getElementById('profileCitizenship');
-    if (citizenshipBadge) citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
+    if (citizenshipBadge) {
+        citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
+        console.log(`🏛️ Badge updated to: ${citizenship.icon} ${citizenship.title}`);
+    }
     
     // Update citizenship type in profile (auto-calculated, not editable)
     userProfile.citizenshipType = citizenship.title;
