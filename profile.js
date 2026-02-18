@@ -13,97 +13,169 @@ function getCitizenshipLevel(merits) {
 }
 
 // ============================================
-// Citizenship Gauge Visualization
+// Citizenship Gauge Visualization (Canvas)
 // ============================================
-function updateCitizenshipGauge(merits) {
-    const citizenship = getCitizenshipLevel(merits);
-    
-    // The SVG arc goes from angle -90° (left, 0 merits) to +90° (right, 3000+ merits)
-    // But the segments are NOT equal width - they represent different merit ranges:
-    // Amigo:     0-99     (100 merits)  → small segment
-    // E-Res:     100-499  (400 merits)  → medium
-    // Colabor:   500-999  (500 merits)  → medium
-    // Ciud.Sr:   1000-1999 (1000 merits) → large
-    // Embajador: 2000-2999 (1000 merits) → large
-    // Gobernador: 3000+   (uncapped)    → small segment
-    
-    // Each segment gets equal arc space (30° each for 6 segments = 180° total)
-    const segmentAngle = 30; // degrees per segment
-    const thresholds = [0, 100, 500, 1000, 2000, 3000];
-    const ranges =     [100, 400, 500, 1000, 1000, 500]; // last one is visual cap
-    
-    let angle = -90; // start at left
-    
-    if (merits >= 3000) {
-        // Gobernador - needle at last segment
-        const extra = Math.min(merits - 3000, 500);
-        angle = -90 + (5 * segmentAngle) + (extra / ranges[5]) * segmentAngle;
-    } else {
-        // Find which segment we're in
-        for (let i = 0; i < 5; i++) {
-            if (merits < thresholds[i + 1]) {
-                const progressInSegment = (merits - thresholds[i]) / ranges[i];
-                angle = -90 + (i * segmentAngle) + (progressInSegment * segmentAngle);
-                break;
-            }
+const GAUGE_SEGS = [
+    { label:'Amigo',            shortLabel:'Amigo',    icon:'\u{1F44B}', color:'#4CAF50', bloc:'Comunidad',  min:0 },
+    { label:'E-Residency',      shortLabel:'E-Res.',   icon:'\u{1FAAA}', color:'#8BC34A', bloc:'Comunidad',  min:100 },
+    { label:'Colaborador',      shortLabel:'Colabor.',  icon:'\u{1F91D}', color:'#CDDC39', bloc:'Comunidad',  min:500 },
+    { label:'Ciudadano Senior', shortLabel:'C.Senior', icon:'\u{1F6C2}', color:'#FF9800', bloc:'Ciudadan\u00eda', min:1000 },
+    { label:'Embajador',        shortLabel:'Embajad.', icon:'\u{1F30D}', color:'#FF5722', bloc:'Ciudadan\u00eda', min:2000 },
+    { label:'Gobernador',       shortLabel:'Gobern.',  icon:'\u{1F451}', color:'#9C27B0', bloc:'Gobernanza', min:3000 },
+];
+const GAUGE_THRESH = GAUGE_SEGS.map(s=>s.min);
+const GAUGE_RANGES = [100,400,500,1000,1000,500];
+const GAUGE_N = GAUGE_SEGS.length;
+const GAUGE_SEG_ANG = Math.PI / GAUGE_N;
+const GAUGE_GAP = 0.02;
+let gaugeNeedleAngle = Math.PI;
+let gaugeTargetAngle = Math.PI;
+let gaugeCurrentMerits = 0;
+let gaugeAnimFrame;
+
+function gaugeGetLevel(m) {
+    for (let i=GAUGE_N-1; i>=0; i--) if (m >= GAUGE_SEGS[i].min) return {...GAUGE_SEGS[i], idx:i};
+    return {...GAUGE_SEGS[0], idx:0};
+}
+
+function gaugeMeritsToAngle(m) {
+    if (m >= 3000) {
+        const extra = Math.min(m-3000, GAUGE_RANGES[5]);
+        return Math.PI - 5*GAUGE_SEG_ANG - (extra/GAUGE_RANGES[5])*GAUGE_SEG_ANG;
+    }
+    for (let i=0; i<5; i++) {
+        if (m < GAUGE_THRESH[i+1]) {
+            const p = (m - GAUGE_THRESH[i]) / GAUGE_RANGES[i];
+            return Math.PI - i*GAUGE_SEG_ANG - p*GAUGE_SEG_ANG;
         }
     }
-    
-    // Clamp angle
-    angle = Math.max(-90, Math.min(90, angle));
-    
-    const needle = document.getElementById('gaugeNeedle');
-    if (needle) {
-        needle.setAttribute('transform', `rotate(${angle}, 150, 165)`);
+    return 0;
+}
+
+function drawGaugeCanvas(merits, needleAng) {
+    const canvas = document.getElementById('gaugeCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const CX = W/2, CY = H - 30, R = 220, BAND = 40;
+    const level = gaugeGetLevel(merits);
+    ctx.clearRect(0, 0, W, H);
+    for (let i=0; i<GAUGE_N; i++) {
+        const aStart = Math.PI - i*GAUGE_SEG_ANG - GAUGE_GAP;
+        const aEnd = Math.PI - (i+1)*GAUGE_SEG_ANG + GAUGE_GAP;
+        const isActive = i <= level.idx, isCurrent = i === level.idx;
+        ctx.beginPath(); ctx.arc(CX, CY, R, -aStart, -aEnd, false);
+        ctx.lineWidth = BAND; ctx.strokeStyle = GAUGE_SEGS[i].color;
+        ctx.globalAlpha = isActive ? (isCurrent ? 0.85 : 0.55) : 0.15;
+        ctx.lineCap = 'butt'; ctx.stroke();
+        if (isCurrent) {
+            ctx.beginPath(); ctx.arc(CX, CY, R, -aStart, -aEnd, false);
+            ctx.lineWidth = BAND + 15; ctx.strokeStyle = GAUGE_SEGS[i].color;
+            ctx.globalAlpha = 0.15; ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        const midAng = (aStart + aEnd) / 2;
+        const lx = CX + (R + BAND/2 + 18) * Math.cos(midAng);
+        const ly = CY - (R + BAND/2 + 18) * Math.sin(midAng);
+        ctx.save(); ctx.translate(lx, ly);
+        let rot = -midAng + Math.PI/2;
+        if (rot > Math.PI/2) rot -= Math.PI;
+        if (rot < -Math.PI/2) rot += Math.PI;
+        ctx.rotate(rot); ctx.font = '600 14px Poppins';
+        ctx.fillStyle = GAUGE_SEGS[i].color;
+        ctx.globalAlpha = isActive ? 0.9 : 0.5;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(GAUGE_SEGS[i].shortLabel, 0, 0);
+        ctx.restore(); ctx.globalAlpha = 1;
+        if (i > 0) {
+            const tickAng = Math.PI - i*GAUGE_SEG_ANG;
+            ctx.beginPath();
+            ctx.moveTo(CX+(R-BAND/2-5)*Math.cos(tickAng), CY-(R-BAND/2-5)*Math.sin(tickAng));
+            ctx.lineTo(CX+(R+BAND/2+5)*Math.cos(tickAng), CY-(R+BAND/2+5)*Math.sin(tickAng));
+            ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5; ctx.stroke();
+        }
+        const numAng = Math.PI - i*GAUGE_SEG_ANG;
+        ctx.font = '400 11px JetBrains Mono'; ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(GAUGE_THRESH[i] >= 1000 ? (GAUGE_THRESH[i]/1000)+'K' : GAUGE_THRESH[i].toString(),
+            CX+(R-BAND/2-20)*Math.cos(numAng), CY-(R-BAND/2-20)*Math.sin(numAng));
     }
-    
-    // Update merit count
-    const countEl = document.getElementById('gaugeMeritCount');
-    if (countEl) {
-        countEl.textContent = merits.toLocaleString('es-ES');
-    }
-    
-    // Update level title
-    const titleEl = document.getElementById('gaugeLevelTitle');
-    if (titleEl) {
-        titleEl.textContent = `${citizenship.icon} ${citizenship.title.toUpperCase()}`;
-        const colors = ['#4CAF50', '#8BC34A', '#FFC107', '#FF9800', '#FF5722', '#9C27B0'];
-        titleEl.style.color = colors[citizenship.level - 1] || 'var(--color-gold)';
-    }
-    
-    // Update bloc
-    const blocEl = document.getElementById('gaugeLevelBloc');
-    if (blocEl) {
-        blocEl.textContent = `Bloque: ${citizenship.bloc}`;
-    }
-    
-    // Progress to next level
-    const progressBar = document.getElementById('gaugeProgressBar');
-    const progressPct = document.getElementById('gaugeProgressPct');
-    const progressLabel = document.getElementById('gaugeProgressLabel');
-    const nextLevelEl = document.getElementById('gaugeLevelNext');
-    
-    if (citizenship.level >= 6) {
-        if (progressBar) progressBar.style.width = '100%';
-        if (progressPct) progressPct.textContent = '✅ MAX';
-        if (progressLabel) progressLabel.textContent = 'Nivel máximo alcanzado';
-        if (nextLevelEl) nextLevelEl.textContent = 'Los merits adicionales se registran como histórico';
+    ctx.font='400 11px JetBrains Mono'; ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.textAlign='center';
+    ctx.fillText('3K+', CX+(R-BAND/2-20), CY);
+    const tipX=CX+(R-15)*Math.cos(needleAng), tipY=CY-(R-15)*Math.sin(needleAng);
+    const bOX=5*Math.cos(needleAng+Math.PI/2), bOY=5*Math.sin(needleAng+Math.PI/2);
+    ctx.beginPath(); ctx.moveTo(tipX,tipY); ctx.lineTo(CX+bOX,CY-bOY); ctx.lineTo(CX-bOX,CY+bOY); ctx.closePath();
+    ctx.fillStyle='rgba(229,185,92,0.3)'; ctx.shadowColor='#E5B95C'; ctx.shadowBlur=15; ctx.fill(); ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.moveTo(tipX,tipY); ctx.lineTo(CX+bOX,CY-bOY); ctx.lineTo(CX-bOX,CY+bOY); ctx.closePath();
+    ctx.fillStyle='#E5B95C'; ctx.fill();
+    ctx.beginPath(); ctx.arc(CX,CY,16,0,Math.PI*2);
+    const hg=ctx.createRadialGradient(CX,CY-4,2,CX,CY,16); hg.addColorStop(0,'#2a4a56'); hg.addColorStop(1,'#0D171E');
+    ctx.fillStyle=hg; ctx.fill(); ctx.strokeStyle='#E5B95C'; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,CY,6,0,Math.PI*2); ctx.fillStyle='#E5B95C'; ctx.fill();
+    ctx.beginPath(); ctx.arc(CX,CY-2,2.5,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+}
+
+function gaugeAnimate() {
+    const diff = gaugeTargetAngle - gaugeNeedleAngle;
+    if (Math.abs(diff) > 0.002) {
+        gaugeNeedleAngle += diff * 0.08;
+        drawGaugeCanvas(gaugeCurrentMerits, gaugeNeedleAngle);
+        gaugeAnimFrame = requestAnimationFrame(gaugeAnimate);
     } else {
-        const currentThreshold = thresholds[citizenship.level - 1];
-        const nextThreshold = thresholds[citizenship.level];
-        const range = nextThreshold - currentThreshold;
-        const progress = merits - currentThreshold;
-        const pct = Math.min(100, Math.round((progress / range) * 100));
-        const remaining = nextThreshold - merits;
-        
-        const nextLevel = getCitizenshipLevel(nextThreshold);
-        
-        if (progressBar) progressBar.style.width = pct + '%';
-        if (progressPct) progressPct.textContent = pct + '%';
-        if (progressLabel) progressLabel.textContent = `Progreso a ${nextLevel.title}`;
-        if (nextLevelEl) nextLevelEl.textContent = `Faltan ${remaining.toLocaleString('es-ES')} merits para ${nextLevel.icon} ${nextLevel.title}`;
+        gaugeNeedleAngle = gaugeTargetAngle;
+        drawGaugeCanvas(gaugeCurrentMerits, gaugeNeedleAngle);
     }
 }
+
+function updateCitizenshipGauge(merits) {
+    gaugeCurrentMerits = merits;
+    const level = gaugeGetLevel(merits);
+    gaugeTargetAngle = gaugeMeritsToAngle(merits);
+    if (gaugeAnimFrame) cancelAnimationFrame(gaugeAnimFrame);
+    gaugeAnimate();
+    const glow = document.getElementById('gaugeGlow');
+    if (glow) glow.style.background = level.color;
+    const mVal = document.getElementById('gaugeMeritCount');
+    if (mVal) mVal.textContent = merits.toLocaleString('es-ES');
+    const bIcon = document.getElementById('gaugeLevelIcon');
+    const bTitle = document.getElementById('gaugeLevelTitle');
+    const badge = document.getElementById('gaugeLevelBadge');
+    if (bIcon) bIcon.textContent = level.icon;
+    if (bTitle) bTitle.textContent = level.label.toUpperCase();
+    if (badge) { badge.style.borderColor=level.color; badge.style.color=level.color; badge.style.background=level.color+'18'; }
+    const bloc = document.getElementById('gaugeLevelBloc');
+    if (bloc) bloc.textContent = 'Bloque: ' + level.bloc;
+    const pBar = document.getElementById('gaugeProgressBar');
+    const pPct = document.getElementById('gaugeProgressPct');
+    const pLbl = document.getElementById('gaugeProgressLabel');
+    const nw = document.getElementById('gaugeNextWrap');
+    const nIcon = document.getElementById('gaugeNextIcon');
+    const nTitle = document.getElementById('gaugeNextTitle');
+    const nNum = document.getElementById('gaugeNextNumber');
+    if (level.idx >= 5) {
+        if (pBar) { pBar.style.width='100%'; pBar.style.background='linear-gradient(90deg,'+level.color+','+level.color+'aa)'; }
+        if (pPct) pPct.textContent = '\u2705 MAX';
+        if (pLbl) pLbl.textContent = 'Nivel m\u00e1ximo alcanzado';
+        if (nIcon) nIcon.textContent = '\u{1F451}';
+        if (nTitle) { nTitle.textContent = 'NIVEL M\u00c1XIMO'; nTitle.style.color = level.color; }
+        if (nNum) { nNum.textContent = '\u2705'; nNum.style.color = level.color; }
+        if (nw) nw.style.borderColor = level.color + '40';
+    } else {
+        const curMin = GAUGE_THRESH[level.idx], nxtMin = GAUGE_THRESH[level.idx+1];
+        const range = nxtMin - curMin;
+        const pct = Math.min(100, Math.round((merits - curMin) / range * 100));
+        const rem = nxtMin - merits;
+        const nl = gaugeGetLevel(nxtMin);
+        if (pBar) { pBar.style.width=pct+'%'; pBar.style.background='linear-gradient(90deg,'+level.color+','+nl.color+')'; }
+        if (pPct) pPct.textContent = pct+'%';
+        if (pLbl) pLbl.textContent = 'Progreso a ' + nl.label;
+        if (nIcon) nIcon.textContent = nl.icon;
+        if (nTitle) { nTitle.textContent = nl.label.toUpperCase(); nTitle.style.color = nl.color; }
+        if (nNum) { nNum.textContent = rem.toLocaleString('es-ES'); nNum.style.color = nl.color; }
+        if (nw) nw.style.borderColor = nl.color + '40';
+    }
+}
+
 
 function initializeUserProfile() {
     if (!currentUser) return;
