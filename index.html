@@ -15,8 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/landing.css">
+    <link rel="stylesheet" href="css/main.css?v=20260219">
+    <link rel="stylesheet" href="css/landing.css?v=20260219">
 </head>
 <body>
     <div class="bg-animated">
@@ -2138,74 +2138,92 @@
 
                 <!-- Citizenship Level Gauge -->
                 <div class="profile-section">
-                    <h3 class="profile-section-title">🏛️ Nivel de Ciudadanía</h3>
+                    <div style="text-align:center;font-size:0.75rem;font-weight:600;color:var(--color-text-secondary);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:0.5rem;">Nivel de Ciudadanía</div>
+                                        <div style="position:relative;width:100%;">
+                        <div id="gaugeGlow" style="position:absolute;width:150px;height:150px;border-radius:50%;filter:blur(50px);opacity:0.2;top:5%;left:50%;transform:translateX(-50%);pointer-events:none;transition:background 0.5s;"></div>
+                        <canvas id="gaugeCanvas" width="600" height="360" style="width:100%;"></canvas>
+                    </div>
                     
-                    <!-- SVG Gauge -->
-                    <div style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem 0;">
-                        <div id="citizenshipGauge" style="width: 100%; max-width: 360px; position: relative;">
-                            <svg viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg" style="width: 100%;">
-                                <!-- Background arc segments -->
-                                <!-- Amigo: 0-99 -->
-                                <path d="M 38 160 A 120 120 0 0 1 71 87" stroke="#4CAF50" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                <!-- E-Residency: 100-499 -->
-                                <path d="M 71 87 A 120 120 0 0 1 118 47" stroke="#8BC34A" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                <!-- Colaborador: 500-999 -->
-                                <path d="M 118 47 A 120 120 0 0 1 182 47" stroke="#FFC107" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                <!-- Ciudadano Senior: 1000-1999 -->
-                                <path d="M 182 47 A 120 120 0 0 1 229 87" stroke="#FF9800" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                <!-- Embajador: 2000-2999 -->
-                                <path d="M 229 87 A 120 120 0 0 1 255 130" stroke="#FF5722" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                <!-- Gobernador: 3000+ -->
-                                <path d="M 255 130 A 120 120 0 0 1 262 160" stroke="#9C27B0" stroke-width="22" fill="none" stroke-linecap="butt" opacity="0.3"/>
-                                
-                                <!-- Active arc (filled portion) -->
-                                <path id="gaugeActiveArc" d="" stroke="url(#gaugeGradient)" stroke-width="22" fill="none" stroke-linecap="round"/>
-                                
-                                <!-- Gradient definition -->
-                                <defs>
-                                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" style="stop-color:#4CAF50"/>
-                                        <stop offset="25%" style="stop-color:#FFC107"/>
-                                        <stop offset="50%" style="stop-color:#FF9800"/>
-                                        <stop offset="75%" style="stop-color:#FF5722"/>
-                                        <stop offset="100%" style="stop-color:#9C27B0"/>
-                                    </linearGradient>
-                                </defs>
-                                
-                                <!-- Level labels (curved along arc) -->
-                                <text x="32" y="170" font-size="8" fill="#4CAF50" font-family="Poppins, sans-serif" font-weight="600">Amigo</text>
-                                <text x="52" y="80" font-size="7.5" fill="#8BC34A" font-family="Poppins, sans-serif" font-weight="600" transform="rotate(-55, 62, 80)">E-Residency</text>
-                                <text x="115" y="32" font-size="7.5" fill="#FFC107" font-family="Poppins, sans-serif" font-weight="600">Colaborador</text>
-                                <text x="185" y="38" font-size="7" fill="#FF9800" font-family="Poppins, sans-serif" font-weight="600" transform="rotate(30, 205, 38)">Ciud. Senior</text>
-                                <text x="236" y="92" font-size="7" fill="#FF5722" font-family="Poppins, sans-serif" font-weight="600" transform="rotate(55, 245, 92)">Embajador</text>
-                                <text x="252" y="170" font-size="7" fill="#9C27B0" font-family="Poppins, sans-serif" font-weight="600">Gobernador</text>
-                                
-                                <!-- Needle -->
-                                <line id="gaugeNeedle" x1="150" y1="165" x2="150" y2="55" stroke="var(--color-gold, #E5B95C)" stroke-width="2.5" stroke-linecap="round" transform="rotate(-90, 150, 165)"/>
-                                <circle cx="150" cy="165" r="6" fill="var(--color-gold, #E5B95C)"/>
-                                <circle cx="150" cy="165" r="3" fill="var(--color-bg-dark, #0D171E)"/>
-                                
-                                <!-- Center merit count -->
-                                <text id="gaugeMeritCount" x="150" y="145" text-anchor="middle" font-size="28" font-weight="800" fill="var(--color-gold, #E5B95C)" font-family="Poppins, sans-serif">0</text>
-                                <text x="150" y="158" text-anchor="middle" font-size="9" fill="var(--color-text-secondary, #8899A6)" font-family="Poppins, sans-serif" font-weight="600" letter-spacing="0.5">LBWM</text>
-                            </svg>
+                    <div style="text-align:center;position:relative;margin-top:-0.25rem;">
+                        <div id="gaugeMeritCount" style="font-size:2.5rem;font-weight:900;color:var(--color-gold);line-height:1;text-shadow:0 0 20px rgba(229,185,92,0.2);">0</div>
+                        <div style="font-size:0.6rem;font-weight:700;color:var(--color-text-secondary);letter-spacing:3px;text-transform:uppercase;margin-top:0.1rem;">Méritos LBWM</div>
+                        
+                        <div id="gaugeLevelBadge" style="display:inline-flex;align-items:center;gap:0.4rem;margin-top:1rem;padding:0.4rem 1.1rem;border-radius:50px;font-size:0.8rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;border:1.5px solid;transition:all 0.5s;">
+                            <span id="gaugeLevelIcon">👋</span>
+                            <span id="gaugeLevelTitle">AMIGO</span>
                         </div>
                         
-                        <!-- Current level display -->
-                        <div style="text-align: center; margin-top: 0.5rem;">
-                            <div id="gaugeLevelTitle" style="font-size: 1.3rem; font-weight: 800; color: var(--color-gold); letter-spacing: 0.5px;">AMIGO</div>
-                            <div id="gaugeLevelBloc" style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Bloque: Comunidad</div>
-                            <div id="gaugeLevelNext" style="font-size: 0.7rem; color: var(--color-teal-light); margin-top: 0.5rem;"></div>
+                        <div id="gaugeLevelBloc" style="font-size:0.7rem;color:var(--color-text-secondary);margin-top:0.5rem;">Bloque: Comunidad</div>
+                        
+                        <!-- Next level motivating card -->
+                        <style>
+                            @keyframes nextShimmer { 
+                                0% { transform:translateX(-100%); } 
+                                100% { transform:translateX(100%); } 
+                            }
+                            #gaugeNextWrap {
+                                display:flex !important;
+                                align-items:center;
+                                gap:0.75rem;
+                                margin-top:1rem;
+                                padding:0.85rem 1.1rem;
+                                background:linear-gradient(135deg, rgba(229,185,92,0.12), rgba(91,164,181,0.08));
+                                border:1.5px solid rgba(229,185,92,0.35);
+                                border-radius:14px;
+                                position:relative;
+                                overflow:hidden;
+                                transition:border-color 0.5s, background 0.5s;
+                                box-shadow: 0 2px 12px rgba(229,185,92,0.08), inset 0 1px 0 rgba(229,185,92,0.1);
+                            }
+                            #gaugeNextWrap::before {
+                                content:''; 
+                                position:absolute; 
+                                top:0; left:0; right:0; bottom:0;
+                                background:linear-gradient(90deg, transparent 0%, rgba(229,185,92,0.15) 50%, transparent 100%);
+                                animation:nextShimmer 2.5s ease-in-out infinite; 
+                                pointer-events:none;
+                            }
+                            .gauge-next-icon {
+                                font-size:2rem;
+                                flex-shrink:0;
+                                filter:drop-shadow(0 0 8px rgba(255,255,255,0.2));
+                                animation: pulse-icon 2s ease-in-out infinite;
+                            }
+                            @keyframes pulse-icon {
+                                0%, 100% { transform: scale(1); }
+                                50% { transform: scale(1.08); }
+                            }
+                            .gauge-next-remain {
+                                text-align:center;
+                                flex-shrink:0;
+                                background:rgba(0,0,0,0.3);
+                                border-radius:12px;
+                                padding:0.5rem 0.8rem;
+                                min-width:70px;
+                                border:1px solid rgba(229,185,92,0.15);
+                            }
+                        </style>
+                        <div id="gaugeNextWrap">
+                            <div id="gaugeNextIcon" class="gauge-next-icon">🪪</div>
+                            <div style="flex:1;min-width:0;text-align:left;">
+                                <div style="font-size:0.6rem;font-weight:700;color:var(--color-text-secondary);letter-spacing:1.5px;text-transform:uppercase;">⭐ Siguiente nivel</div>
+                                <div id="gaugeNextTitle" style="font-size:0.9rem;font-weight:800;color:var(--color-gold);letter-spacing:0.5px;margin-top:0.15rem;transition:color 0.5s;">E-RESIDENCY</div>
+                                <div id="gaugeNextRemaining" style="font-size:0.65rem;color:var(--color-text-secondary);margin-top:0.1rem;">Faltan <strong id="gaugeNextRemainText" style="color:var(--color-gold);">100</strong> méritos</div>
+                            </div>
+                            <div class="gauge-next-remain">
+                                <div id="gaugeNextNumber" style="font-size:1.4rem;font-weight:900;color:var(--color-gold);font-family:var(--font-mono);line-height:1;transition:color 0.5s;">0</div>
+                                <div style="font-size:0.5rem;font-weight:600;color:var(--color-text-secondary);letter-spacing:1px;text-transform:uppercase;margin-top:0.15rem;">merits</div>
+                            </div>
                         </div>
-
-                        <!-- Progress bar to next level -->
-                        <div style="width: 100%; max-width: 300px; margin-top: 1rem;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--color-text-secondary); margin-bottom: 0.3rem;">
-                                <span id="gaugeProgressLabel">Progreso al siguiente nivel</span>
+                        
+                        <!-- Progress bar -->
+                        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(44,95,111,0.4);">
+                            <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--color-text-secondary);margin-bottom:0.4rem;">
+                                <span id="gaugeProgressLabel">Progreso</span>
                                 <span id="gaugeProgressPct">0%</span>
                             </div>
-                            <div style="background: var(--color-bg-dark); border-radius: 8px; height: 6px; overflow: hidden;">
-                                <div id="gaugeProgressBar" style="background: linear-gradient(90deg, var(--color-gold), #d4a84e); height: 100%; width: 0%; transition: width 1s ease; border-radius: 8px;"></div>
+                            <div style="background:rgba(13,23,30,0.8);border-radius:10px;height:7px;overflow:hidden;border:1px solid rgba(44,95,111,0.2);">
+                                <div id="gaugeProgressBar" style="height:100%;border-radius:10px;transition:width 1s ease;width:0%;"></div>
                             </div>
                         </div>
                     </div>
@@ -2287,19 +2305,19 @@
 
 
     <!-- JavaScript Modules -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/posts.js"></script>
-    <script src="js/marketplace.js"></script>
-    <script src="js/notifications.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/lightning.js"></script>
-    <script src="js/governance.js"></script>
-    <script src="js/merits.js"></script>
-    <script src="js/profile.js"></script>
-    <script src="js/wallet.js"></script>
-    <script src="js/verification.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=20260219"></script>
+    <script src="js/auth.js?v=20260219"></script>
+    <script src="js/ui.js?v=20260219"></script>
+    <script src="js/posts.js?v=20260219"></script>
+    <script src="js/marketplace.js?v=20260219"></script>
+    <script src="js/notifications.js?v=20260219"></script>
+    <script src="js/chat.js?v=20260219"></script>
+    <script src="js/lightning.js?v=20260219"></script>
+    <script src="js/governance.js?v=20260219"></script>
+    <script src="js/merits.js?v=20260219"></script>
+    <script src="js/profile.js?v=20260219"></script>
+    <script src="js/wallet.js?v=20260219"></script>
+    <script src="js/verification.js?v=20260219"></script>
 
     <!-- Verification Options Modal -->
     <div class="modal" id="verificationOptionsModal" style="display: none;">
