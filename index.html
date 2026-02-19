@@ -15,8 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Styles -->
-    <link rel="stylesheet" href="css/main.css?v=20260219">
-    <link rel="stylesheet" href="css/landing.css?v=20260219">
+    <link rel="stylesheet" href="css/main.css?v=20260219b">
+    <link rel="stylesheet" href="css/landing.css?v=20260219b">
 </head>
 <body>
     <div class="bg-animated">
@@ -2113,9 +2113,6 @@
                                 <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-family: var(--font-mono); opacity: 0.8;" id="profileNpub">npub1...</div>
                                 <button onclick="copyNpubKey()" style="background: var(--color-gold); color: var(--color-teal-dark); border: none; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; white-space: nowrap;" id="copyNpubBtn">📋 Copiar</button>
                             </div>
-                            <button class="profile-edit-btn" onclick="showCitizenshipModal()">
-                                ✏️ Editar Ciudad
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -2234,9 +2231,12 @@
                             <span class="citizenship-label">Nivel de Ciudadanía:</span>
                             <span class="citizenship-value" id="citizenshipType">Amigo</span>
                         </div>
-                        <div class="citizenship-row">
+                        <div class="citizenship-row" style="display:flex;align-items:center;justify-content:space-between;">
                             <span class="citizenship-label">Ciudad Registrada:</span>
-                            <span class="citizenship-value" id="citizenshipCity">-</span>
+                            <span style="display:flex;align-items:center;gap:0.5rem;">
+                                <span class="citizenship-value" id="citizenshipCity">-</span>
+                                <button onclick="showCitizenshipModal()" style="background:rgba(229,185,92,0.15);color:var(--color-gold);border:1px solid rgba(229,185,92,0.3);border-radius:8px;padding:0.2rem 0.6rem;font-size:0.65rem;font-weight:700;cursor:pointer;font-family:var(--font-display);letter-spacing:0.5px;transition:all 0.3s;">✏️ Editar</button>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -2272,7 +2272,7 @@
                 <h2 class="modal-title">📍 Configurar Ciudad</h2>
                 
                 <div class="citizenship-info">
-                    💡 <strong>Tu nivel de ciudadanía se calcula automáticamente</strong> según tus méritos LBWM acumulados. Aquí puedes configurar tu ciudad de registro.
+                    🌍 <strong>¿Por qué registrar tu ciudad?</strong> Tu ubicación nos ayuda a identificar concentraciones de ciudadanos en una misma zona. Cuando se alcanza una masa crítica de miembros en una región, LiberBit estudia la viabilidad de crear una nueva <strong>LiberBit City</strong> — un microestado libre federado en tu territorio. ¡Registra tu ciudad y acerca el futuro!
                 </div>
 
                 <div class="form-group">
@@ -2305,19 +2305,19 @@
 
 
     <!-- JavaScript Modules -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=20260219"></script>
-    <script src="js/auth.js?v=20260219"></script>
-    <script src="js/ui.js?v=20260219"></script>
-    <script src="js/posts.js?v=20260219"></script>
-    <script src="js/marketplace.js?v=20260219"></script>
-    <script src="js/notifications.js?v=20260219"></script>
-    <script src="js/chat.js?v=20260219"></script>
-    <script src="js/lightning.js?v=20260219"></script>
-    <script src="js/governance.js?v=20260219"></script>
-    <script src="js/merits.js?v=20260219"></script>
-    <script src="js/profile.js?v=20260219"></script>
-    <script src="js/wallet.js?v=20260219"></script>
-    <script src="js/verification.js?v=20260219"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=20260219b"></script>
+    <script src="js/auth.js?v=20260219b"></script>
+    <script src="js/ui.js?v=20260219b"></script>
+    <script src="js/posts.js?v=20260219b"></script>
+    <script src="js/marketplace.js?v=20260219b"></script>
+    <script src="js/notifications.js?v=20260219b"></script>
+    <script src="js/chat.js?v=20260219b"></script>
+    <script src="js/lightning.js?v=20260219b"></script>
+    <script src="js/governance.js?v=20260219b"></script>
+    <script src="js/merits.js?v=20260219b"></script>
+    <script src="js/profile.js?v=20260219b"></script>
+    <script src="js/wallet.js?v=20260219b"></script>
+    <script src="js/verification.js?v=20260219b"></script>
 
     <!-- Verification Options Modal -->
     <div class="modal" id="verificationOptionsModal" style="display: none;">
