@@ -1058,11 +1058,142 @@
         </div>
 
         <section class="section" id="sosSection">
-            <div class="placeholder">
+            <div class="chat-section">
                 <button class="back-btn" onclick="backToMenu()">← Volver</button>
-                <h3>🚨 SOS - Sistema de Emergencias</h3>
-                <p>Funcionalidad en desarrollo</p>
-                <p style="margin-top: 1rem; font-size: 0.9rem;">Respuesta inmediata y seguridad comunitaria</p>
+
+                <!-- Header -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🚨</div>
+                    <h2 style="color: #FF4444; margin-bottom: 0.5rem; font-size: 1.5rem;">SOS - Emergencias</h2>
+                    <p style="color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                        Sistema de ayuda mutua entre ciudadanos.<br>Pulsa el tipo de emergencia y los vecinos cercanos acudirán en tu ayuda.
+                    </p>
+                </div>
+
+                <!-- Tipo de emergencia -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 1rem; text-align: center; font-size: 0.95rem;">Tipo de Emergencia</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; max-width: 450px; margin: 0 auto;">
+                        
+                        <div class="sos-type-card" onclick="selectSOSType('medica')" style="
+                            background: var(--color-bg-card); border: 2px solid var(--color-border);
+                            border-radius: 14px; padding: 1.1rem 0.75rem; text-align: center;
+                            cursor: pointer; transition: all 0.25s ease;
+                        " onmouseover="this.style.borderColor='#FF6B6B';this.style.background='rgba(255,107,107,0.08)'"
+                           onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-bg-card)'">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏥</div>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Médica</div>
+                            <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Salud / Herida</div>
+                        </div>
+
+                        <div class="sos-type-card" onclick="selectSOSType('seguridad')" style="
+                            background: var(--color-bg-card); border: 2px solid var(--color-border);
+                            border-radius: 14px; padding: 1.1rem 0.75rem; text-align: center;
+                            cursor: pointer; transition: all 0.25s ease;
+                        " onmouseover="this.style.borderColor='#FFB020';this.style.background='rgba(255,176,32,0.08)'"
+                           onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-bg-card)'">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Seguridad</div>
+                            <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Amenaza / Peligro</div>
+                        </div>
+
+                        <div class="sos-type-card" onclick="selectSOSType('desastre')" style="
+                            background: var(--color-bg-card); border: 2px solid var(--color-border);
+                            border-radius: 14px; padding: 1.1rem 0.75rem; text-align: center;
+                            cursor: pointer; transition: all 0.25s ease;
+                        " onmouseover="this.style.borderColor='#FF8C00';this.style.background='rgba(255,140,0,0.08)'"
+                           onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-bg-card)'">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌊</div>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Desastre Natural</div>
+                            <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Inundación / Sismo</div>
+                        </div>
+
+                        <div class="sos-type-card" onclick="selectSOSType('asistencia')" style="
+                            background: var(--color-bg-card); border: 2px solid var(--color-border);
+                            border-radius: 14px; padding: 1.1rem 0.75rem; text-align: center;
+                            cursor: pointer; transition: all 0.25s ease;
+                        " onmouseover="this.style.borderColor='var(--color-teal-light)';this.style.background='rgba(44,95,111,0.12)'"
+                           onmouseout="this.style.borderColor='var(--color-border)';this.style.background='var(--color-bg-card)'">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔧</div>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Asistencia</div>
+                            <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Avería / Accidente</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resident-only message (hidden by default) -->
+                <div id="sosResidentMsg" style="display: none; max-width: 450px; margin: 0 auto 2rem;">
+                    <div style="background: rgba(255,68,68,0.08); border: 2px solid rgba(255,68,68,0.3); border-radius: 14px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🏘️</div>
+                        <div style="font-size: 1rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Solo para Residentes</div>
+                        <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.6;">
+                            Esta aplicación está disponible exclusivamente para ciudadanos residentes de una <span style="color: var(--color-gold); font-weight: 600;">LiberBit City</span>.
+                        </p>
+                        <p style="font-size: 0.78rem; color: var(--color-text-secondary); margin-top: 0.75rem; line-height: 1.5;">
+                            Si eres residente y tienes una emergencia real, contacta con los servicios de emergencia locales (112).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Status Info -->
+                <div style="max-width: 450px; margin: 0 auto 2rem;">
+                    <div style="background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 14px; padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                            <div style="width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; box-shadow: 0 0 8px rgba(76,175,80,0.5); flex-shrink: 0;"></div>
+                            <span style="font-size: 0.85rem; color: var(--color-text-primary); font-weight: 600;">Sistema Activo</span>
+                            <span style="font-size: 0.75rem; color: var(--color-text-secondary); margin-left: auto;">Radio: 2 km</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; text-align: center;">
+                            <div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: var(--color-gold);">0</div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Ciudadanos<br>Cercanos</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: var(--color-accent-green);">0</div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Alertas<br>Hoy</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.4rem; font-weight: 800; color: var(--color-teal-light);">~3 min</div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Tiempo<br>Respuesta</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How it works -->
+                <div style="max-width: 450px; margin: 0 auto 1.5rem;">
+                    <h4 style="color: var(--color-text-primary); margin-bottom: 1rem; text-align: center; font-size: 0.95rem;">¿Cómo funciona?</h4>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; background: var(--color-bg-card); padding: 0.9rem 1rem; border-radius: 12px; border: 1px solid var(--color-border);">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,68,68,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #FF4444; flex-shrink: 0;">1</div>
+                            <div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Selecciona el tipo de emergencia</div>
+                                <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Elige la categoría que mejor describe tu situación</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; background: var(--color-bg-card); padding: 0.9rem 1rem; border-radius: 12px; border: 1px solid var(--color-border);">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,176,32,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #FFB020; flex-shrink: 0;">2</div>
+                            <div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Ciudadanos cercanos reciben la alerta</div>
+                                <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Tu ubicación se comparte con vecinos en un radio de 2 km</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; background: var(--color-bg-card); padding: 0.9rem 1rem; border-radius: 12px; border: 1px solid var(--color-border);">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(76,175,80,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #4CAF50; flex-shrink: 0;">3</div>
+                            <div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--color-text-primary);">Ayuda en camino</div>
+                                <div style="font-size: 0.72rem; color: var(--color-text-secondary);">Los voluntarios confirman y acuden a tu ubicación</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coming soon note -->
+                <div style="text-align: center; padding: 1rem; max-width: 450px; margin: 0 auto;">
+                    <p style="font-size: 0.78rem; color: var(--color-text-secondary); opacity: 0.7; font-style: italic;">
+                        ⚙️ Sistema en desarrollo — Disponible pronto con geolocalización P2P y notificaciones vía Nostr
+                    </p>
+                </div>
             </div>
         </section>
 
@@ -2328,6 +2459,17 @@
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=20260219b"></script>
     <script src="js/auth.js?v=20260219b"></script>
     <script src="js/ui.js?v=20260219b"></script>
+    <!-- SOS Functions -->
+    <script>
+        function selectSOSType(type) {
+            var msg = document.getElementById('sosResidentMsg');
+            if (msg) {
+                msg.style.display = 'block';
+                msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    </script>
+
     <script src="js/posts.js?v=20260219b"></script>
     <script src="js/marketplace.js?v=20260219b"></script>
     <script src="js/notifications.js?v=20260219b"></script>
