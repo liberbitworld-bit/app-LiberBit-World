@@ -133,25 +133,19 @@ const LBW_NostrBridge = (() => {
         // Listen for privacy mode changes
         window.addEventListener('nostr-privacy-mode', (e) => {
             const strict = e.detail.strict;
-            // Header indicator
+            // Header badge indicator
             const indicator = document.getElementById('privacyModeIndicator');
             if (indicator) {
                 indicator.textContent = strict ? '🔒 Strict' : '🌐 Normal';
-                indicator.style.color = strict ? '#ff4444' : 'var(--color-text-secondary)';
+                indicator.className = strict
+                    ? 'badge badge-sm badge-error' : 'badge badge-sm badge-ghost';
             }
-            // Header toggle button border
-            const toggleBtn = document.getElementById('privacyToggleBtn');
-            if (toggleBtn) {
-                toggleBtn.style.borderColor = strict ? '#ff4444' : 'var(--color-border)';
-            }
-            // Profile section button
-            const profileBtn = document.getElementById('privacyStrictBtn');
-            if (profileBtn) {
-                profileBtn.textContent = strict ? '🌐 Modo Normal' : '🔒 Privacy Strict';
-                profileBtn.style.borderColor = strict ? 'var(--color-teal-light)' : '#ff4444';
-                profileBtn.style.color = strict ? 'var(--color-teal-light)' : '#ff4444';
-                profileBtn.style.background = strict ? 'rgba(44,95,111,0.15)' : 'rgba(255,68,68,0.15)';
-            }
+            // Profile DaisyUI toggle checkbox
+            const toggle = document.getElementById('privacyStrictToggle');
+            if (toggle) toggle.checked = strict;
+            // Profile label
+            const label = document.getElementById('privacyStrictLabel');
+            if (label) label.textContent = strict ? '🔒 Privacy Strict ON' : '🔒 Privacy Strict';
             // Refresh relay indicators
             _updateRelayIndicators(LBW_Nostr.getRelayStatus());
         });
@@ -447,10 +441,10 @@ const LBW_NostrBridge = (() => {
         const info = LBW_DM.getEncryptionInfo();
         if (info.preferred === 'nip44') {
             badge.textContent = '🔐 NIP-44 activo';
-            badge.style.color = '#4CAF50';
+            badge.className = 'badge badge-success badge-xs gap-1';
         } else {
             badge.textContent = '🔒 NIP-04 (NIP-44 no disponible)';
-            badge.style.color = '#CE93D8';
+            badge.className = 'badge badge-secondary badge-xs gap-1';
         }
     }
 
@@ -512,19 +506,19 @@ const LBW_NostrBridge = (() => {
         if (!c) return;
         const mine = msg.from === LBW_Nostr.getPubkey();
         const t = new Date(msg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-        // Handle both sync path (msg.nip44: bool) and LBW_DM path (msg.encryption: string)
         const isNip44 = msg.encryption === 'nip44' || msg.nip44 === true;
-        const nip = isNip44 ? '🔐44' : '🔒04';
+        const nipBadge = isNip44 ? 'badge-success' : 'badge-secondary';
+        const nipLabel = isNip44 ? '44' : '04';
         const el = document.createElement('div');
-        el.style.cssText = `display:flex;justify-content:${mine ? 'flex-end' : 'flex-start'};margin-bottom:0.5rem;`;
+        el.className = `chat ${mine ? 'chat-end' : 'chat-start'}`;
         el.innerHTML = `
-            <div style="max-width:75%;padding:0.6rem 0.9rem;border-radius:${mine ? '12px 12px 4px 12px' : '12px 12px 12px 4px'};
-                background:${mine ? 'rgba(229,185,92,0.15)' : 'rgba(44,95,111,0.15)'};
-                border:1px solid ${mine ? 'rgba(229,185,92,0.25)' : 'rgba(44,95,111,0.25)'};">
-                <div style="font-size:0.85rem;color:var(--color-text-primary);line-height:1.4;word-break:break-word;">${_esc(msg.content)}</div>
-                <div style="font-size:0.65rem;color:var(--color-text-secondary);text-align:right;margin-top:0.2rem;">
-                    <span title="NIP-${isNip44 ? '44' : '04'} cifrado" style="cursor:help;">${nip}</span> ${t} ${mine ? '✓' : ''}
-                </div>
+            <div class="chat-bubble ${mine ? 'chat-bubble-warning' : 'chat-bubble-info'}" style="min-width:60px;">
+                <div class="text-sm" style="word-break:break-word;">${_esc(msg.content)}</div>
+            </div>
+            <div class="chat-footer opacity-50 text-xs flex items-center gap-1 mt-0.5">
+                <span class="badge ${nipBadge} gap-0.5" style="font-size:0.55rem; height:14px; min-height:14px; padding:0 4px;" title="NIP-${nipLabel} cifrado">🔐${nipLabel}</span>
+                <span>${t}</span>
+                ${mine ? '<span>✓</span>' : ''}
             </div>`;
         c.appendChild(el);
         c.scrollTop = c.scrollHeight;
