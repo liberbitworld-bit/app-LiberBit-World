@@ -355,7 +355,7 @@
                     </div>
                 </div>
 
-                <button class="btn btn-secondary" onclick="logout()">Cerrar Sesión</button>
+                <button class="btn btn-secondary" onclick="try{LBW_NostrBridge.handleLogout();}catch(e){} try{logout();}catch(e){} location.reload();">Cerrar Sesión</button>
             </div>
         </section>
 
@@ -2304,16 +2304,7 @@
             if (hasExt && btn2) { btn2.classList.remove('hidden'); btn2.style.display = ''; }
         }, 600);
 
-        // Wire logout to also disconnect Nostr
-        const _originalLogout = typeof logout === 'function' ? logout : null;
-        if (_originalLogout) window._origLogoutFn = _originalLogout;
-        window.enhancedLogout = function() {
-            LBW_NostrBridge.handleLogout();
-            if (window._origLogoutFn) window._origLogoutFn();
-        };
-        document.querySelectorAll('[onclick="logout()"]').forEach(el => {
-            el.setAttribute('onclick', 'enhancedLogout()');
-        });
+        // Logout is handled directly in the button onclick
 
         // Debug: expose stats in console
         window.lbwDebug = async () => {
