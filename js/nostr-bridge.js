@@ -450,6 +450,7 @@ const LBW_NostrBridge = (() => {
             _updateDMBadge();
         });
 
+        console.log('[Bridge] 📬 DMs suscritos, conversaciones:', Object.keys(_dmConversations).length);
         // Update DM encryption badge
         _updateDMEncryptionBadge();
     }

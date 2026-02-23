@@ -297,8 +297,9 @@ const LBW_Nostr = (() => {
             }
         }
 
-        // Fallback: our write relays (system private if none)
-        return myWrite.length > 0 ? myWrite : [...SYSTEM_PRIVATE_RELAYS];
+        // Fallback: our write relays + public relays (DMs are encrypted)
+        if (myWrite.length > 0) return [...new Set([...myWrite, ...SYSTEM_PUBLIC_RELAYS])];
+        return [...SYSTEM_ALL_RELAYS];
     }
 
     // ── Privacy Strict Mode ──────────────────────────────────
@@ -903,10 +904,14 @@ const LBW_Nostr = (() => {
     }
 
     function subscribeDirectMessages(onMessage) {
-        // Determine DM relays (user write or system private)
+        // DMs are encrypted (NIP-44/NIP-04), so subscribing on public
+        // relays doesn't leak content. We need to listen broadly because
+        // the sender publishes to shared relays (our write ∩ their read).
         const dmRelays = _getUserWriteRelays().length > 0
-            ? _getUserWriteRelays()
-            : [...SYSTEM_PRIVATE_RELAYS];
+            ? [...new Set([..._getUserWriteRelays(), ...SYSTEM_PUBLIC_RELAYS])]
+            : [...SYSTEM_ALL_RELAYS];
+
+        console.log('[Nostr] 📬 DM subscription → ' + dmRelays.length + ' relays');
 
         const subIn = subscribe(
             { kinds: [EVENT_KINDS.ENCRYPTED_DM], '#p': [_pubkey], limit: 100 },
