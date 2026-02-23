@@ -489,7 +489,10 @@ const LBW_NostrBridge = (() => {
         const ph = document.getElementById('privatePlaceholder');
         const ac = document.getElementById('privateActiveChat');
         if (ph) ph.style.display = 'none';
-        if (ac) ac.style.display = 'flex';
+        if (ac) {
+            ac.style.display = 'flex';
+            ac.dataset.activePubkey = pk; // DOM backup
+        }
         _resolveName(pk).then(name => {
             const n = document.getElementById('privateChatName');
             const i = document.getElementById('privateChatId');
@@ -499,6 +502,7 @@ const LBW_NostrBridge = (() => {
         const c = document.getElementById('privateChatMessages');
         if (c) c.innerHTML = '';
         (_dmConversations[pk] || []).forEach(m => _renderDMMessage(m));
+        console.log('[Bridge] openDMConversation:', pk.substring(0, 12));
     }
 
     function _renderDMMessage(msg) {
@@ -525,6 +529,14 @@ const LBW_NostrBridge = (() => {
     }
 
     async function sendDM() {
+        // Recover pubkey from DOM if closure variable got lost
+        if (!_activeDMPubkey) {
+            const ac = document.getElementById('privateActiveChat');
+            if (ac && ac.dataset.activePubkey) {
+                _activeDMPubkey = ac.dataset.activePubkey;
+                console.log('[Bridge] sendDM: recovered pubkey from DOM:', _activeDMPubkey.substring(0, 12));
+            }
+        }
         if (!_activeDMPubkey) {
             console.warn('[Bridge] sendDM: no _activeDMPubkey');
             alert('⚠️ No hay conversación activa. Selecciona un contacto primero.');
@@ -536,10 +548,7 @@ const LBW_NostrBridge = (() => {
             return;
         }
         const content = ta.value.trim();
-        if (!content) {
-            console.warn('[Bridge] sendDM: empty content');
-            return;
-        }
+        if (!content) return;
         try {
             console.log('[Bridge] sendDM →', _activeDMPubkey.substring(0, 12), content.substring(0, 20));
             await LBW_DM.send(_activeDMPubkey, content);
