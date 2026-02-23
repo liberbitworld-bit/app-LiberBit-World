@@ -489,9 +489,9 @@
                     </div>
 
                     <div class="compose-box">
-                        <textarea id="dmContent" placeholder="Escribe un mensaje..." style="min-height: 80px;"></textarea>
+                        <textarea id="dmContentLegacy" placeholder="Escribe un mensaje..." style="min-height: 80px;"></textarea>
                         <div class="compose-actions">
-                            <button class="btn btn-primary" onclick="sendDirectMessage()">Enviar Mensaje</button>
+                            <button class="btn btn-primary" onclick="sendLegacyDM()">Enviar Mensaje</button>
                         </div>
                     </div>
                 </div>
@@ -2307,10 +2307,10 @@
         // Wire logout to also disconnect Nostr
         const _originalLogout = typeof logout === 'function' ? logout : null;
         if (_originalLogout) window._origLogoutFn = _originalLogout;
-        function enhancedLogout() {
+        window.enhancedLogout = function() {
             LBW_NostrBridge.handleLogout();
             if (window._origLogoutFn) window._origLogoutFn();
-        }
+        };
         document.querySelectorAll('[onclick="logout()"]').forEach(el => {
             el.setAttribute('onclick', 'enhancedLogout()');
         });
@@ -2322,11 +2322,36 @@
             return stats;
         };
 
+        // Bridge for legacy DM section (directMessagesSection)
+        window.sendLegacyDM = async function() {
+            const ta = document.getElementById('dmContentLegacy');
+            const idEl = document.getElementById('chatWithId');
+            if (!ta || !idEl) return;
+            const content = ta.value.trim();
+            if (!content) { alert('Escribe un mensaje'); return; }
+            const npubOrHex = idEl.textContent.trim().replace('...', '');
+            if (!npubOrHex || npubOrHex === 'npub') { alert('No hay destinatario seleccionado'); return; }
+            try {
+                // Try to resolve full pubkey — if it's truncated, use bridge
+                if (LBW_NostrBridge && typeof LBW_NostrBridge.sendDM === 'function') {
+                    // Set active DM pubkey via bridge and send
+                    LBW_NostrBridge.startDMWith(npubOrHex);
+                    // Small delay to let the bridge set _activeDMPubkey
+                    setTimeout(async () => {
+                        try {
+                            await LBW_DM.send(npubOrHex, content);
+                            ta.value = '';
+                        } catch (e2) { alert('❌ ' + e2.message); }
+                    }, 100);
+                }
+            } catch (e) { alert('❌ ' + e.message); }
+        }
+
         // ── NIP-65 Relay Management UI ───────────────────────
         let _pendingRelayList = [];
 
         // Render current relay list in profile
-        async function renderRelayList() {
+        window.renderRelayList = async function() {
             const container = document.getElementById('relayListEntries');
             if (!container) return;
 
@@ -2380,7 +2405,7 @@
             });
         }
 
-        function addRelayToList() {
+        window.addRelayToList = function() {
             const urlInput = document.getElementById('newRelayUrl');
             const modeSelect = document.getElementById('newRelayMode');
             if (!urlInput) return;
@@ -2393,12 +2418,12 @@
             renderRelayList();
         }
 
-        function removeRelayFromList(url) {
+        window.removeRelayFromList = function(url) {
             _pendingRelayList = _pendingRelayList.filter(r => r.url !== url);
             renderRelayList();
         }
 
-        async function publishMyRelayList() {
+        window.publishMyRelayList = async function() {
             if (!LBW_Nostr.isLoggedIn()) { alert('Inicia sesión primero'); return; }
             const relays = _pendingRelayList.map(r => ({ url: r.url, mode: r.mode }));
             if (relays.length === 0) { alert('Añade al menos un relay'); return; }
@@ -2412,7 +2437,7 @@
         }
 
         // ── NIP-44 + Cache Status ────────────────────────────
-        async function updateProfileStatus() {
+        window.updateProfileStatus = async function() {
             // NIP-44 detection
             const nip44El = document.getElementById('nip44StatusProfile');
             if (nip44El) {
