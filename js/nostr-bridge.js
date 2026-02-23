@@ -199,6 +199,9 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name: '', method: 'nsec', loginTime: Date.now()
         };
+        // Store nsec in sessionStorage (cleared on tab close, secure enough)
+        // This enables session restore on page reload within same tab
+        try { sessionStorage.setItem('lbw_nsec_session', input); } catch (e) {}
         setTimeout(async () => {
             const p = await LBW_Sync.resolveProfile(result.pubkeyHex);
             if (p) {
@@ -220,6 +223,7 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name, method: 'created', loginTime: Date.now()
         };
+        try { sessionStorage.setItem('lbw_nsec_session', result.nsec); } catch (e) {}
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _updateLoginModeUI('created');
         await _startAllFeeds();
@@ -233,8 +237,10 @@ const LBW_NostrBridge = (() => {
         _marketplaceListings = [];
         _seenChatIds.clear();
         _seenMarketIds.clear();
+        _activeDMPubkey = null;
         _updateLoginModeUI(null);
         localStorage.removeItem('lbw_nostr_session');
+        try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
     }
 
     async function restoreSession() {
@@ -249,6 +255,20 @@ const LBW_NostrBridge = (() => {
                     _updateLoginModeUI('extension');
                     await _startAllFeeds();
                     return true;
+                }
+            } else if (s.method === 'nsec' || s.method === 'created') {
+                // Restore nsec from sessionStorage (survives reload, not tab close)
+                const nsec = sessionStorage.getItem('lbw_nsec_session');
+                if (nsec) {
+                    LBW_Nostr.loginWithPrivateKey(nsec);
+                    _applyLoginToUI(s);
+                    _updateLoginModeUI('nsec');
+                    await _startAllFeeds();
+                    console.log('[Bridge] ✅ Sesión nsec restaurada');
+                    return true;
+                } else {
+                    console.warn('[Bridge] Sesión nsec guardada pero clave no disponible (tab nuevo). Re-login necesario.');
+                    localStorage.removeItem('lbw_nostr_session');
                 }
             }
             return false;
