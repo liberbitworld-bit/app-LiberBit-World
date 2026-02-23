@@ -353,8 +353,8 @@ const LBW_NostrBridge = (() => {
                 </div>
                 <div style="font-size:0.9rem;color:var(--color-text-primary);line-height:1.5;word-break:break-word;">${_esc(msg.content)}</div>
                 <div style="display:flex;gap:0.75rem;margin-top:0.4rem;">
-                    <button onclick="LBW_NostrBridge.replyToMessage('${msg.id}','${_esc(name)}')" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">↩️ Responder</button>
-                    <button onclick="LBW_Nostr.reactToEvent('${msg.id}','${msg.pubkey}','🤙')" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">🤙 Zap</button>
+                    <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">↩️ Responder</button>
+                    <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">🤙 Zap</button>
                 </div>`;
 
             // Insert sorted by created_at
@@ -525,16 +525,29 @@ const LBW_NostrBridge = (() => {
     }
 
     async function sendDM() {
-        if (!_activeDMPubkey) return;
+        if (!_activeDMPubkey) {
+            console.warn('[Bridge] sendDM: no _activeDMPubkey');
+            alert('⚠️ No hay conversación activa. Selecciona un contacto primero.');
+            return;
+        }
         const ta = document.getElementById('dmContent');
-        if (!ta) return;
+        if (!ta) {
+            console.warn('[Bridge] sendDM: textarea #dmContent not found');
+            return;
+        }
         const content = ta.value.trim();
-        if (!content) return;
+        if (!content) {
+            console.warn('[Bridge] sendDM: empty content');
+            return;
+        }
         try {
-            // Route through LBW_DM abstraction (kind 4 now, kind 14 future)
+            console.log('[Bridge] sendDM →', _activeDMPubkey.substring(0, 12), content.substring(0, 20));
             await LBW_DM.send(_activeDMPubkey, content);
             ta.value = '';
-        } catch (e) { alert('❌ ' + e.message); }
+        } catch (e) {
+            console.error('[Bridge] sendDM error:', e);
+            alert('❌ ' + e.message);
+        }
     }
 
     function startDMWith(npubOrHex) {
