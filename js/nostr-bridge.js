@@ -272,7 +272,7 @@ const LBW_NostrBridge = (() => {
                 }
             }
             return false;
-        } catch (e) { return false; }
+        } catch (e) { console.error('[Bridge] ❌ restoreSession error:', e); return false; }
     }
 
     function _applyLoginToUI(session) {
@@ -304,9 +304,16 @@ const LBW_NostrBridge = (() => {
 
     // ── Feature Lifecycle ────────────────────────────────────
     async function _startAllFeeds() {
-        await startCommunityChat();
-        await startDirectMessages();
-        await startMarketplace();
+        try {
+            await startCommunityChat();
+        } catch (e) { console.error('[Bridge] ❌ Community chat failed:', e); }
+        try {
+            await startDirectMessages();
+        } catch (e) { console.error('[Bridge] ❌ DMs failed:', e); }
+        try {
+            await startMarketplace();
+        } catch (e) { console.error('[Bridge] ❌ Marketplace failed:', e); }
+        console.log('[Bridge] ✅ All feeds started');
     }
 
     function _stopAllFeeds() {
