@@ -2482,6 +2482,36 @@
                 }
             };
         }
+
+        // Hook openPrivateChat to also set Nostr bridge pubkey
+        // This connects Supabase conversations with Nostr DMs
+        const _origOpenPrivateChat = typeof openPrivateChat === 'function' ? openPrivateChat : null;
+        if (_origOpenPrivateChat) {
+            window.openPrivateChat = function(userId, userName) {
+                // Call original Supabase function
+                _origOpenPrivateChat(userId, userName);
+                
+                // Also set Nostr bridge pubkey
+                if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+                    let hexPk = null;
+                    try {
+                        if (userId.startsWith('npub1')) {
+                            hexPk = LBW_Nostr.npubToHex(userId);
+                        } else if (/^[0-9a-f]{64}$/i.test(userId)) {
+                            hexPk = userId;
+                        }
+                    } catch (e) { console.warn('[Hook] npub decode error:', e); }
+                    
+                    if (hexPk) {
+                        LBW_NostrBridge.openDMConversation(hexPk);
+                        console.log('[Hook] ✅ openPrivateChat → Nostr bridge connected:', hexPk.substring(0, 12));
+                    } else {
+                        console.warn('[Hook] userId no es hex ni npub:', userId.substring(0, 16));
+                    }
+                }
+            };
+            console.log('[Hook] ✅ openPrivateChat hooked for Nostr bridge');
+        }
     </script>
 
     <!-- Verification Options Modal -->
