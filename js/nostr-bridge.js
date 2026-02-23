@@ -557,24 +557,41 @@ const LBW_NostrBridge = (() => {
     }
 
     async function sendDM() {
-        // Recover pubkey from DOM if closure variable got lost
+        // Recover pubkey: closure var → DOM backup → visible header npub
         if (!_activeDMPubkey) {
             const ac = document.getElementById('privateActiveChat');
             if (ac && ac.dataset.activePubkey) {
                 _activeDMPubkey = ac.dataset.activePubkey;
-                console.log('[Bridge] sendDM: recovered pubkey from DOM:', _activeDMPubkey.substring(0, 12));
+            }
+        }
+        if (!_activeDMPubkey) {
+            // Last resort: extract npub from visible chat header
+            const idEl = document.getElementById('privateChatId');
+            if (idEl) {
+                const text = idEl.textContent.trim();
+                if (text.startsWith('npub1')) {
+                    try {
+                        // The displayed npub might be truncated, try to use it
+                        // If it's truncated (has ...), we can't use it directly
+                        if (!text.includes('...')) {
+                            _activeDMPubkey = LBW_Nostr.npubToHex(text);
+                        }
+                    } catch (e) {}
+                }
+            }
+            // Also check the full npub stored as data attribute
+            const nameEl = document.getElementById('privateChatName');
+            if (!_activeDMPubkey && nameEl && nameEl.dataset.pubkey) {
+                _activeDMPubkey = nameEl.dataset.pubkey;
             }
         }
         if (!_activeDMPubkey) {
             console.warn('[Bridge] sendDM: no _activeDMPubkey');
-            alert('⚠️ No hay conversación activa. Selecciona un contacto primero.');
+            alert('⚠️ No hay conversación Nostr activa.\n\nUsa el buscador (🔍) → pega un npub1... → pulsa 💬 para abrir un DM cifrado.');
             return;
         }
         const ta = document.getElementById('dmContent');
-        if (!ta) {
-            console.warn('[Bridge] sendDM: textarea #dmContent not found');
-            return;
-        }
+        if (!ta) return;
         const content = ta.value.trim();
         if (!content) return;
         try {
