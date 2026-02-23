@@ -376,7 +376,8 @@
                         <!-- Search bar -->
                         <div class="p-2 border-b border-base-300">
                             <div class="join w-full">
-                                <input type="text" id="chatUserSearch" placeholder="🔍 Buscar usuario..." class="input input-bordered input-sm join-item flex-1" oninput="handleChatUserSearch(this.value)">
+                                <input type="text" id="chatUserSearch" placeholder="🔍 npub1... o buscar usuario" class="input input-bordered input-sm join-item flex-1" oninput="handleChatUserSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window._startNostrDMFromSearch();}">
+                                <button onclick="window._startNostrDMFromSearch()" class="btn btn-sm btn-info join-item" title="Abrir DM Nostr">💬</button>
                                 <button onclick="clearChatSearch()" class="btn btn-ghost btn-sm join-item" title="Limpiar">✕</button>
                             </div>
                             <div id="chatSearchResults" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 0.4rem;"></div>
@@ -2320,6 +2321,37 @@
         // Logout is handled directly in the button onclick
 
         // Debug: expose stats in console
+        // Start Nostr DM from search field (accepts npub or hex pubkey)
+        window._startNostrDMFromSearch = function() {
+            const input = document.getElementById('chatUserSearch');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) { alert('Escribe un npub1... para iniciar DM cifrado'); return; }
+
+            if (!LBW_Nostr.isLoggedIn()) { alert('⚠️ Primero haz login con tu clave Nostr'); return; }
+
+            let hexPk;
+            try {
+                if (val.startsWith('npub1')) {
+                    hexPk = LBW_Nostr.npubToHex(val);
+                } else if (/^[0-9a-f]{64}$/i.test(val)) {
+                    hexPk = val;
+                } else {
+                    alert('Introduce un npub1... válido para iniciar DM Nostr');
+                    return;
+                }
+            } catch (e) {
+                alert('npub inválido: ' + e.message);
+                return;
+            }
+
+            // Switch to private tab and open conversation
+            if (typeof switchChatTab === 'function') switchChatTab('private');
+            LBW_NostrBridge.openDMConversation(hexPk);
+            input.value = '';
+            console.log('[UI] DM Nostr abierto con:', hexPk.substring(0, 12));
+        };
+
         window.lbwDebug = async () => {
             const stats = await LBW_NostrBridge.getDebugStats();
             console.table(stats);
