@@ -457,46 +457,6 @@
             </div>
         </section>
 
-        <!-- Direct Messages Section -->
-        <section class="section" id="directMessagesSection">
-            <div class="chat-section">
-                <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
-                
-                <h2 style="color: var(--color-gold); margin-bottom: 2rem;">💬 Mensajes Directos</h2>
-
-                <!-- Conversations List -->
-                <div id="conversationsList" style="display: block;">
-                    <div class="placeholder">
-                        <h3>📭 No tienes conversaciones</h3>
-                        <p>Contacta con alguien desde el Networking para empezar</p>
-                    </div>
-                </div>
-
-                <!-- Active Chat View -->
-                <div id="activeChat" style="display: none;">
-                    <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--color-border);">
-                        <div>
-                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-gold);" id="chatWithName">Usuario</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary); font-family: var(--font-mono);" id="chatWithId">npub...</div>
-                        </div>
-                        <button class="btn btn-secondary" onclick="closeActiveChat()" style="padding: 0.5rem 1rem;">
-                            ← Volver a conversaciones
-                        </button>
-                    </div>
-
-                    <div id="chatMessages" style="background: var(--color-bg-card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; min-height: 400px; max-height: 500px; overflow-y: auto; border: 2px solid var(--color-border);">
-                        <!-- Messages will appear here -->
-                    </div>
-
-                    <div class="compose-box">
-                        <textarea id="dmContentLegacy" placeholder="Escribe un mensaje..." style="min-height: 80px;"></textarea>
-                        <div class="compose-actions">
-                            <button class="btn btn-primary" onclick="sendLegacyDM()">Enviar Mensaje</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- LiberBit City's en Desarrollo Section -->
         <section class="section" id="citiesInDevSection">
@@ -2312,31 +2272,6 @@
             console.table(stats);
             return stats;
         };
-
-        // Bridge for legacy DM section (directMessagesSection)
-        window.sendLegacyDM = async function() {
-            const ta = document.getElementById('dmContentLegacy');
-            const idEl = document.getElementById('chatWithId');
-            if (!ta || !idEl) return;
-            const content = ta.value.trim();
-            if (!content) { alert('Escribe un mensaje'); return; }
-            const npubOrHex = idEl.textContent.trim().replace('...', '');
-            if (!npubOrHex || npubOrHex === 'npub') { alert('No hay destinatario seleccionado'); return; }
-            try {
-                // Try to resolve full pubkey — if it's truncated, use bridge
-                if (LBW_NostrBridge && typeof LBW_NostrBridge.sendDM === 'function') {
-                    // Set active DM pubkey via bridge and send
-                    LBW_NostrBridge.startDMWith(npubOrHex);
-                    // Small delay to let the bridge set _activeDMPubkey
-                    setTimeout(async () => {
-                        try {
-                            await LBW_DM.send(npubOrHex, content);
-                            ta.value = '';
-                        } catch (e2) { alert('❌ ' + e2.message); }
-                    }, 100);
-                }
-            } catch (e) { alert('❌ ' + e.message); }
-        }
 
         // ── NIP-65 Relay Management UI ───────────────────────
         let _pendingRelayList = [];
