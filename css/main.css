@@ -1831,7 +1831,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
+            z-index: 10000;
             align-items: center;
             justify-content: center;
             animation: fadeIn 0.3s ease-out;
@@ -1840,6 +1840,8 @@
         .modal.active {
             display: flex;
             opacity: 1;
+            pointer-events: auto;
+            z-index: 10001;
         }
 
         .modal-content {
@@ -1851,6 +1853,8 @@
             max-height: 90vh;
             overflow-y: auto;
             animation: slideUp 0.3s ease-out;
+            pointer-events: auto;
+            position: relative;
         }
 
         @keyframes slideUp {
