@@ -472,7 +472,7 @@ const LBW_Nostr = (() => {
         return _pool;
     }
 
-    function connectToRelays(relayUrls = null) {
+    async function connectToRelays(relayUrls = null) {
         const pool = _getPool();
 
         // Determine targets: explicit > user NIP-65 > system defaults
@@ -500,41 +500,84 @@ const LBW_Nostr = (() => {
         targets.forEach(url => { _relayStatusMap[url] = 'connecting'; });
         _emitRelayStatus();
 
-        // Real WebSocket connectivity test per relay
-        targets.forEach(url => {
+        // Phase 1: Test real connectivity via WebSocket
+        const connectivityResults = {};
+        const probePromises = targets.map(url => new Promise(resolve => {
             try {
                 const ws = new WebSocket(url);
                 const timeout = setTimeout(() => {
-                    if (_relayStatusMap[url] === 'connecting') {
-                        _relayStatusMap[url] = 'timeout';
-                        _emitRelayStatus();
-                        try { ws.close(); } catch (e) {}
-                    }
-                }, 6000);
+                    connectivityResults[url] = false;
+                    try { ws.close(); } catch (e) {}
+                    resolve();
+                }, 5000);
 
                 ws.onopen = () => {
-                    _relayStatusMap[url] = 'connected';
-                    _emitRelayStatus();
+                    connectivityResults[url] = true;
                     clearTimeout(timeout);
-                    ws.close(); // We only needed to test connectivity
+                    ws.close();
+                    resolve();
                 };
 
                 ws.onerror = () => {
-                    if (_relayStatusMap[url] !== 'connected') {
-                        _relayStatusMap[url] = 'error';
-                        _emitRelayStatus();
-                    }
+                    connectivityResults[url] = false;
                     clearTimeout(timeout);
+                    resolve();
                 };
+            } catch (e) {
+                connectivityResults[url] = false;
+                resolve();
+            }
+        }));
 
-                ws.onclose = () => {
-                    // Don't overwrite connected status
+        // Wait for all probes (max 5s)
+        await Promise.allSettled(probePromises);
+
+        // Phase 2: Connect SimplePool only to reachable relays
+        const reachable = targets.filter(url => connectivityResults[url] === true);
+        const unreachable = targets.filter(url => connectivityResults[url] !== true);
+
+        unreachable.forEach(url => {
+            _relayStatusMap[url] = 'error';
+        });
+
+        if (reachable.length === 0) {
+            console.warn('[Nostr] ⚠️ No reachable relays found');
+            _emitRelayStatus();
+            return;
+        }
+
+        // Force SimplePool connections via lightweight subscription
+        const dummyAuthor = _pubkey || '0'.repeat(64);
+        const probeFilter = { kinds: [0], limit: 1, authors: [dummyAuthor] };
+
+        reachable.forEach(url => {
+            try {
+                const sub = pool.subscribeMany(
+                    [url],
+                    [probeFilter],
+                    {
+                        onevent: () => {},
+                        oneose: () => {
+                            _relayStatusMap[url] = 'connected';
+                            _emitRelayStatus();
+                            sub.close();
+                        },
+                        onclose: () => {
+                            // Don't overwrite connected (sub.close triggers this)
+                            if (_relayStatusMap[url] !== 'connected') {
+                                _relayStatusMap[url] = 'disconnected';
+                                _emitRelayStatus();
+                            }
+                        }
+                    }
+                );
+                // Mark connected after sub opens (SimplePool handles WebSocket)
+                setTimeout(() => {
                     if (_relayStatusMap[url] === 'connecting') {
-                        _relayStatusMap[url] = 'disconnected';
+                        _relayStatusMap[url] = 'connected';
                         _emitRelayStatus();
                     }
-                    clearTimeout(timeout);
-                };
+                }, 2000);
             } catch (e) {
                 _relayStatusMap[url] = 'error';
                 _emitRelayStatus();
