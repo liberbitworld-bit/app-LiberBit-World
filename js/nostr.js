@@ -1,4 +1,4 @@
-// ============================================================
+    // ============================================================
 // LiberBit World — Nostr Integration Layer v2.0 (nostr.js)
 // 
 // CHANGES v2.0:
@@ -22,15 +22,19 @@ const LBW_Nostr = (() => {
     // System relays: defaults when user has no NIP-65 relay list.
     // PRIVATE: LiberBit infrastructure only (governance, DMs, merits)
     const SYSTEM_PRIVATE_RELAYS = [
-        'wss://relay.liberbit.world',
-        'wss://relay2.liberbit.world',
-        'wss://relay3.liberbit.world'
+        // TODO: Reactivar cuando los relays estén operativos
+        // 'wss://relay.liberbit.world',
+        // 'wss://relay2.liberbit.world',
+        // 'wss://relay3.liberbit.world'
     ];
 
     // PUBLIC: Community content + profile discovery fallback
+    // TEMPORAL: Usando públicos hasta que los privados estén listos
     const SYSTEM_PUBLIC_RELAYS = [
         'wss://relay.damus.io',
-        'wss://nos.lol'
+        'wss://nos.lol',
+        'wss://relay.nostr.band',
+        'wss://purplepag.es'
     ];
 
     const SYSTEM_ALL_RELAYS = [...SYSTEM_PRIVATE_RELAYS, ...SYSTEM_PUBLIC_RELAYS];
@@ -1232,3 +1236,5 @@ const LBW_Nostr = (() => {
 })();
 
 window.LBW_Nostr = LBW_Nostr;
+
+    
