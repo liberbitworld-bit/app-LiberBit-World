@@ -112,8 +112,25 @@ const LBW_Nostr = (() => {
             case EVENT_KINDS.LBW_CONFIG:
             case EVENT_KINDS.APP_STATE:
                 // Use user write relays if set, else system private
-                return _privacyStrict ? [...SYSTEM_PRIVATE_RELAYS]
-                    : (_userWriteRelays.length > 0 ? [..._userWriteRelays] : [...SYSTEM_PRIVATE_RELAYS]);
+                // FALLBACK: if no private relays are actually connected, use all connected relays
+                {
+                    let privateTargets;
+                    if (_privacyStrict) {
+                        privateTargets = [...SYSTEM_PRIVATE_RELAYS];
+                    } else {
+                        privateTargets = _userWriteRelays.length > 0 ? [..._userWriteRelays] : [...SYSTEM_PRIVATE_RELAYS];
+                    }
+                    // Check if any private target is actually connected
+                    const connectedPrivate = privateTargets.filter(u => _relayStatusMap[u] === 'connected');
+                    if (connectedPrivate.length > 0) return connectedPrivate;
+                    // Fallback: use ANY connected relay so data isn't lost
+                    const anyConnected = Object.keys(_relayStatusMap).filter(u => _relayStatusMap[u] === 'connected');
+                    if (anyConnected.length > 0) {
+                        console.warn(`[Nostr] ⚠️ Private relays unavailable for kind ${kind}, fallback to ${anyConnected.length} connected relays`);
+                        return anyConnected;
+                    }
+                    return privateTargets; // Last resort: try anyway
+                }
 
             // === DISCOVERABLE (user relays + optionally public) ===
             case EVENT_KINDS.METADATA:
