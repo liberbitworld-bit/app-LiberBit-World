@@ -1,4 +1,4 @@
-        :root {
+:root {
             --color-gold: #E5B95C;
             --color-teal: #2C5F6F;
             --color-teal-dark: #1a3d4a;
@@ -1839,6 +1839,7 @@
 
         .modal.active {
             display: flex;
+            opacity: 1;
         }
 
         .modal-content {
