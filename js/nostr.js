@@ -100,58 +100,12 @@ const LBW_Nostr = (() => {
     }
 
     function _getRelaysForKind(kind) {
-        switch (kind) {
-            // === PRIVATE ONLY (always) ===
-            case EVENT_KINDS.ENCRYPTED_DM:
-            case EVENT_KINDS.LBW_PROPOSAL:
-            case EVENT_KINDS.LBW_VOTE:
-            case EVENT_KINDS.LBW_MERIT:
-            case EVENT_KINDS.LBW_CONTRIB:
-            case EVENT_KINDS.LBW_DELEGATE:
-            case EVENT_KINDS.LBW_SNAPSHOT:
-            case EVENT_KINDS.LBW_CONFIG:
-            case EVENT_KINDS.APP_STATE:
-                // Use user write relays if set, else system private
-                // FALLBACK: if no private relays are actually connected, use all connected relays
-                {
-                    let privateTargets;
-                    if (_privacyStrict) {
-                        privateTargets = [...SYSTEM_PRIVATE_RELAYS];
-                    } else {
-                        privateTargets = _userWriteRelays.length > 0 ? [..._userWriteRelays] : [...SYSTEM_PRIVATE_RELAYS];
-                    }
-                    // Check if any private target is actually connected
-                    const connectedPrivate = privateTargets.filter(u => _relayStatusMap[u] === 'connected');
-                    if (connectedPrivate.length > 0) return connectedPrivate;
-                    // Fallback: use ANY connected relay so data isn't lost
-                    const anyConnected = Object.keys(_relayStatusMap).filter(u => _relayStatusMap[u] === 'connected');
-                    if (anyConnected.length > 0) {
-                        console.warn(`[Nostr] ⚠️ Private relays unavailable for kind ${kind}, fallback to ${anyConnected.length} connected relays`);
-                        return anyConnected;
-                    }
-                    return privateTargets; // Last resort: try anyway
-                }
-
-            // === DISCOVERABLE (user relays + optionally public) ===
-            case EVENT_KINDS.METADATA:
-            case EVENT_KINDS.TEXT_NOTE:
-            case EVENT_KINDS.REACTION:
-            case EVENT_KINDS.DELETE:
-            case EVENT_KINDS.MARKETPLACE:
-            case EVENT_KINDS.RELAY_LIST:
-                if (_privacyStrict) return _getUserWriteRelays();
-                // User write relays + system public for discoverability
-                const write = _getUserWriteRelays();
-                if (!_privacyStrict) {
-                    SYSTEM_PUBLIC_RELAYS.forEach(r => {
-                        if (!write.includes(r)) write.push(r);
-                    });
-                }
-                return write;
-
-            default:
-                return _getUserWriteRelays();
-        }
+        // SIMPLE MODE: all events go to all connected relays
+        // TODO: Re-enable private routing when relay.liberbit.world is operational
+        const connected = Object.keys(_relayStatusMap).filter(u => _relayStatusMap[u] === 'connected');
+        if (connected.length > 0) return connected;
+        // Nothing connected yet — return all system relays
+        return [...SYSTEM_ALL_RELAYS];
     }
 
     function getRelaysForKind(kind) {
@@ -472,7 +426,7 @@ const LBW_Nostr = (() => {
         return _pool;
     }
 
-    async function connectToRelays(relayUrls = null) {
+    function connectToRelays(relayUrls = null) {
         const pool = _getPool();
 
         // Determine targets: explicit > user NIP-65 > system defaults
@@ -500,57 +454,11 @@ const LBW_Nostr = (() => {
         targets.forEach(url => { _relayStatusMap[url] = 'connecting'; });
         _emitRelayStatus();
 
-        // Phase 1: Test real connectivity via WebSocket
-        const connectivityResults = {};
-        const probePromises = targets.map(url => new Promise(resolve => {
-            try {
-                const ws = new WebSocket(url);
-                const timeout = setTimeout(() => {
-                    connectivityResults[url] = false;
-                    try { ws.close(); } catch (e) {}
-                    resolve();
-                }, 5000);
-
-                ws.onopen = () => {
-                    connectivityResults[url] = true;
-                    clearTimeout(timeout);
-                    ws.close();
-                    resolve();
-                };
-
-                ws.onerror = () => {
-                    connectivityResults[url] = false;
-                    clearTimeout(timeout);
-                    resolve();
-                };
-            } catch (e) {
-                connectivityResults[url] = false;
-                resolve();
-            }
-        }));
-
-        // Wait for all probes (max 5s)
-        await Promise.allSettled(probePromises);
-
-        // Phase 2: Connect SimplePool only to reachable relays
-        const reachable = targets.filter(url => connectivityResults[url] === true);
-        const unreachable = targets.filter(url => connectivityResults[url] !== true);
-
-        unreachable.forEach(url => {
-            _relayStatusMap[url] = 'error';
-        });
-
-        if (reachable.length === 0) {
-            console.warn('[Nostr] ⚠️ No reachable relays found');
-            _emitRelayStatus();
-            return;
-        }
-
-        // Force SimplePool connections via lightweight subscription
+        // Probe each relay to force SimplePool connection
         const dummyAuthor = _pubkey || '0'.repeat(64);
         const probeFilter = { kinds: [0], limit: 1, authors: [dummyAuthor] };
 
-        reachable.forEach(url => {
+        targets.forEach(url => {
             try {
                 const sub = pool.subscribeMany(
                     [url],
@@ -563,7 +471,6 @@ const LBW_Nostr = (() => {
                             sub.close();
                         },
                         onclose: () => {
-                            // Don't overwrite connected (sub.close triggers this)
                             if (_relayStatusMap[url] !== 'connected') {
                                 _relayStatusMap[url] = 'disconnected';
                                 _emitRelayStatus();
@@ -571,13 +478,13 @@ const LBW_Nostr = (() => {
                         }
                     }
                 );
-                // Mark connected after sub opens (SimplePool handles WebSocket)
                 setTimeout(() => {
                     if (_relayStatusMap[url] === 'connecting') {
-                        _relayStatusMap[url] = 'connected';
+                        _relayStatusMap[url] = 'timeout';
                         _emitRelayStatus();
+                        try { sub.close(); } catch (e) {}
                     }
-                }, 2000);
+                }, 8000);
             } catch (e) {
                 _relayStatusMap[url] = 'error';
                 _emitRelayStatus();
@@ -681,7 +588,7 @@ const LBW_Nostr = (() => {
                 // Intersection of relay sets for all requested kinds
                 const sets = kinds.map(k => _getRelaysForKind(k));
                 targetRelays = sets.reduce((acc, s) => acc.filter(r => s.includes(r)), sets[0] || ALL_RELAYS);
-                if (targetRelays.length === 0) targetRelays = [...PRIVATE_RELAYS];
+                if (targetRelays.length === 0) targetRelays = [...ALL_RELAYS];
             } else {
                 targetRelays = [...ALL_RELAYS];
             }
@@ -754,48 +661,22 @@ const LBW_Nostr = (() => {
 
         // Route: explicit override > kind-based routing
         const targetRelays = relayUrlsOverride || _getRelaysForKind(event.kind);
-        const isPrivateOnly = targetRelays.every(r => SYSTEM_PRIVATE_RELAYS.includes(r) || (_userWriteRelays.includes(r) && !SYSTEM_PUBLIC_RELAYS.includes(r)));
 
         const results = [];
-        let published = false;
         try {
             const promises = pool.publish(targetRelays, signed);
             const settled = await Promise.allSettled(promises);
             settled.forEach((r, i) => {
-                const success = r.status === 'fulfilled';
-                results.push({ relay: targetRelays[i], success });
-                if (success) published = true;
+                results.push({ relay: targetRelays[i], success: r.status === 'fulfilled' });
             });
         } catch (e) {
             console.warn('[Nostr] Error publicando:', e);
             targetRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
         }
 
-        // FALLBACK: if publish failed on all targets AND we haven't tried public relays yet
-        if (!published && !relayUrlsOverride && isPrivateOnly) {
-            const fallbackRelays = Object.keys(_relayStatusMap).filter(u =>
-                _relayStatusMap[u] === 'connected' && !targetRelays.includes(u)
-            );
-            if (fallbackRelays.length > 0) {
-                console.warn(`[Nostr] ⚠️ Publish failed on ${targetRelays.length} relays, retrying on ${fallbackRelays.length} fallback relays`);
-                try {
-                    const fbPromises = pool.publish(fallbackRelays, signed);
-                    const fbSettled = await Promise.allSettled(fbPromises);
-                    fbSettled.forEach((r, i) => {
-                        const success = r.status === 'fulfilled';
-                        results.push({ relay: fallbackRelays[i], success, fallback: true });
-                        if (success) published = true;
-                    });
-                } catch (e) {
-                    console.warn('[Nostr] Fallback also failed:', e);
-                }
-            }
-        }
-
-        const routeLabel = relayUrlsOverride ? '🤝 SHARED' : (isPrivateOnly ? '🔒 PRIVADO' : '🌐 PÚBLICO+PRIVADO');
         const successCount = results.filter(r => r.success).length;
-        console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${results.length} relays OK [${routeLabel}]`);
-        return { event: signed, results, published };
+        console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${targetRelays.length} relays OK`);
+        return { event: signed, results };
     }
 
     async function _signEvent(eventTemplate) {
