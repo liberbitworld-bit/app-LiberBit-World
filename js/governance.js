@@ -1,4 +1,4 @@
-    // ========== GOVERNANCE FUNCTIONS (Nostr-integrated) ==========
+// ========== GOVERNANCE FUNCTIONS (Nostr-integrated) ==========
 // All data flows through LBW_Governance → Nostr relays
 // Zero Supabase dependencies
 
@@ -247,6 +247,11 @@ async function showProposalDetail(proposalIdentifier) {
         }).catch(() => {});
     }
 
+    // Cerrar modales anteriores de propuesta (los que no tienen ID)
+    document.querySelectorAll('.modal.active').forEach(m => {
+        if (!m.id) m.remove();
+    });
+
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.innerHTML = `
@@ -376,5 +381,3 @@ function getTimeLeft(endTime) {
     if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
     return 'Menos de 1 hora';
 }
-
-    
