@@ -500,39 +500,41 @@ const LBW_Nostr = (() => {
         targets.forEach(url => { _relayStatusMap[url] = 'connecting'; });
         _emitRelayStatus();
 
-        // Probe each relay with a lightweight sub to force connection
-        const dummyAuthor = _pubkey || '0'.repeat(64);
-        const probeFilter = { kinds: [0], limit: 1, authors: [dummyAuthor] };
-
+        // Real WebSocket connectivity test per relay
         targets.forEach(url => {
             try {
-                const sub = pool.subscribeMany(
-                    [url],
-                    [probeFilter],
-                    {
-                        onevent: () => {},
-                        oneose: () => {
-                            _relayStatusMap[url] = 'connected';
-                            _emitRelayStatus();
-                            sub.close();
-                        },
-                        onclose: (reason) => {
-                            // Don't overwrite 'connected' — sub.close() after EOSE triggers this
-                            if (_relayStatusMap[url] === 'connected') return;
-                            const isErr = typeof reason === 'string' && reason.includes('error');
-                            _relayStatusMap[url] = isErr ? 'error' : 'disconnected';
-                            _emitRelayStatus();
-                        }
-                    }
-                );
-                // Timeout
-                setTimeout(() => {
+                const ws = new WebSocket(url);
+                const timeout = setTimeout(() => {
                     if (_relayStatusMap[url] === 'connecting') {
                         _relayStatusMap[url] = 'timeout';
                         _emitRelayStatus();
-                        try { sub.close(); } catch (e) {}
+                        try { ws.close(); } catch (e) {}
                     }
-                }, 8000);
+                }, 6000);
+
+                ws.onopen = () => {
+                    _relayStatusMap[url] = 'connected';
+                    _emitRelayStatus();
+                    clearTimeout(timeout);
+                    ws.close(); // We only needed to test connectivity
+                };
+
+                ws.onerror = () => {
+                    if (_relayStatusMap[url] !== 'connected') {
+                        _relayStatusMap[url] = 'error';
+                        _emitRelayStatus();
+                    }
+                    clearTimeout(timeout);
+                };
+
+                ws.onclose = () => {
+                    // Don't overwrite connected status
+                    if (_relayStatusMap[url] === 'connecting') {
+                        _relayStatusMap[url] = 'disconnected';
+                        _emitRelayStatus();
+                    }
+                    clearTimeout(timeout);
+                };
             } catch (e) {
                 _relayStatusMap[url] = 'error';
                 _emitRelayStatus();
@@ -712,17 +714,45 @@ const LBW_Nostr = (() => {
         const isPrivateOnly = targetRelays.every(r => SYSTEM_PRIVATE_RELAYS.includes(r) || (_userWriteRelays.includes(r) && !SYSTEM_PUBLIC_RELAYS.includes(r)));
 
         const results = [];
+        let published = false;
         try {
-            await Promise.allSettled(pool.publish(targetRelays, signed));
-            targetRelays.forEach(url => results.push({ relay: url, success: true }));
+            const promises = pool.publish(targetRelays, signed);
+            const settled = await Promise.allSettled(promises);
+            settled.forEach((r, i) => {
+                const success = r.status === 'fulfilled';
+                results.push({ relay: targetRelays[i], success });
+                if (success) published = true;
+            });
         } catch (e) {
             console.warn('[Nostr] Error publicando:', e);
             targetRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
         }
 
+        // FALLBACK: if publish failed on all targets AND we haven't tried public relays yet
+        if (!published && !relayUrlsOverride && isPrivateOnly) {
+            const fallbackRelays = Object.keys(_relayStatusMap).filter(u =>
+                _relayStatusMap[u] === 'connected' && !targetRelays.includes(u)
+            );
+            if (fallbackRelays.length > 0) {
+                console.warn(`[Nostr] ⚠️ Publish failed on ${targetRelays.length} relays, retrying on ${fallbackRelays.length} fallback relays`);
+                try {
+                    const fbPromises = pool.publish(fallbackRelays, signed);
+                    const fbSettled = await Promise.allSettled(fbPromises);
+                    fbSettled.forEach((r, i) => {
+                        const success = r.status === 'fulfilled';
+                        results.push({ relay: fallbackRelays[i], success, fallback: true });
+                        if (success) published = true;
+                    });
+                } catch (e) {
+                    console.warn('[Nostr] Fallback also failed:', e);
+                }
+            }
+        }
+
         const routeLabel = relayUrlsOverride ? '🤝 SHARED' : (isPrivateOnly ? '🔒 PRIVADO' : '🌐 PÚBLICO+PRIVADO');
-        console.log(`[Nostr] 📤 kind=${event.kind} → ${targetRelays.length} relays [${routeLabel}]`);
-        return { event: signed, results };
+        const successCount = results.filter(r => r.success).length;
+        console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${results.length} relays OK [${routeLabel}]`);
+        return { event: signed, results, published };
     }
 
     async function _signEvent(eventTemplate) {
