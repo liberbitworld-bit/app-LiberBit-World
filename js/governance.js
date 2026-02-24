@@ -233,8 +233,14 @@ async function showProposalDetail(proposalId) {
     };
 
     let authorName = proposal.author_name;
+    // Fetch profile in background — don't block the modal
     if (nostrP && typeof LBW_Nostr.fetchUserProfile === 'function') {
-        try { const p = await LBW_Nostr.fetchUserProfile(nostrP.pubkey); if (p?.name) authorName = p.name; } catch(e){}
+        LBW_Nostr.fetchUserProfile(nostrP.pubkey).then(p => {
+            if (p?.name) {
+                const el = document.getElementById('proposal-author-name');
+                if (el) el.textContent = p.name;
+            }
+        }).catch(() => {});
     }
 
     const modal = document.createElement('div');
@@ -261,7 +267,7 @@ async function showProposalDetail(proposalId) {
 
                 <div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;margin-bottom:1.5rem;">
                     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;font-size:0.9rem;">
-                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Propuesta por</div><div style="font-weight:600;">${escapeHtml(authorName)}</div></div>
+                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Propuesta por</div><div id="proposal-author-name" style="font-weight:600;">${escapeHtml(authorName)}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Creación</div><div style="font-weight:600;">${new Date(proposal.created_at).toLocaleDateString('es-ES')}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Votos</div><div style="font-weight:600;color:var(--color-gold);">${proposalVotes.length}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">${proposal.status === 'active' ? 'Tiempo restante' : 'Estado'}</div><div style="font-weight:600;">${proposal.status === 'active' && proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : 'Cerrada'}</div></div>
