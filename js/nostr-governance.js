@@ -1,4 +1,4 @@
-// ============================================================
+    // ============================================================
 // LiberBit World — Governance Module v1.0 (nostr-governance.js)
 //
 // Decentralized governance over Nostr protocol.
@@ -179,9 +179,38 @@ const LBW_Governance = (() => {
             tags
         });
 
-        // Optimistic local update — don't depend on relay echoing back
+        // === VERIFICACIÓN DE PUBLICACIÓN EXITOSA ===
+        // Verificar que el evento se creó correctamente
+        if (!result.event?.id) {
+            console.error('[Governance] Error: No se generó ID de evento');
+            throw new Error('Error creando propuesta. No se generó ID de evento.');
+        }
+
+        // Verificar que al menos un relay aceptó el evento
+        const successfulRelays = (result.results || []).filter(r => r.success === true);
+        const failedRelays = (result.results || []).filter(r => r.success === false);
+        
+        if (successfulRelays.length === 0) {
+            console.error('[Governance] ❌ Ningún relay aceptó la propuesta:', {
+                event: result.event?.id,
+                failures: failedRelays.map(r => ({ relay: r.relay, error: r.error }))
+            });
+            throw new Error(
+                'No se pudo publicar la propuesta en ningún relay.\n\n' +
+                'Posibles causas:\n' +
+                '• Sin conexión a internet\n' +
+                '• Relays no disponibles\n' +
+                '• Error de autenticación\n\n' +
+                'Verifica tu conexión y vuelve a intentar.'
+            );
+        }
+
+        console.log(`[Governance] ✅ Propuesta publicada en ${successfulRelays.length}/${result.results?.length || 0} relay(s)`);
+        // === FIN VERIFICACIÓN ===
+
+        // Guardar localmente SOLO si se publicó exitosamente
         const localProposal = {
-            id: result.event?.id || `local-${dTag}`,
+            id: result.event.id,
             pubkey,
             npub: LBW_Nostr.getNpub(),
             dTag,
@@ -197,7 +226,8 @@ const LBW_Governance = (() => {
             createdAt: nowSecs,
             created_at: nowSecs,
             tags,
-            _rawContent: content
+            _rawContent: content,
+            _publishedTo: successfulRelays.map(r => r.relay) // Registro de dónde se publicó
         };
 
         _proposals.set(dTag, localProposal);
@@ -209,7 +239,7 @@ const LBW_Governance = (() => {
         });
 
         console.log(`[Governance] 📋 Propuesta publicada: "${data.title}" [${category}] d=${dTag}`);
-        return { ...result, dTag, category, expiresAt };
+        return { ...result, dTag, category, expiresAt, relaysUsed: successfulRelays.length };
     }
 
     // ── Close Proposal ───────────────────────────────────────
@@ -290,16 +320,40 @@ const LBW_Governance = (() => {
             tags
         });
 
-        // Track locally
+        // === VERIFICACIÓN DE PUBLICACIÓN EXITOSA ===
+        if (!result.event?.id) {
+            console.error('[Governance] Error: No se generó ID de evento para el voto');
+            throw new Error('Error registrando voto. No se generó ID de evento.');
+        }
+
+        const successfulRelays = (result.results || []).filter(r => r.success === true);
+        
+        if (successfulRelays.length === 0) {
+            console.error('[Governance] ❌ Ningún relay aceptó el voto:', {
+                event: result.event?.id,
+                proposal: proposalDTag
+            });
+            throw new Error(
+                'No se pudo registrar el voto en ningún relay.\n\n' +
+                'Tu voto NO ha sido contabilizado.\n' +
+                'Verifica tu conexión y vuelve a intentar.'
+            );
+        }
+
+        console.log(`[Governance] ✅ Voto publicado en ${successfulRelays.length} relay(s)`);
+        // === FIN VERIFICACIÓN ===
+
+        // Track locally SOLO si se publicó exitosamente
         _myVotes.set(proposalDTag, {
             option: option.trim(),
-            eventId: result.event?.id,
-            created_at: Math.floor(Date.now() / 1000)
+            eventId: result.event.id,
+            created_at: Math.floor(Date.now() / 1000),
+            _publishedTo: successfulRelays.map(r => r.relay)
         });
         _persistVotesToStorage();
 
         console.log(`[Governance] ✅ Voto registrado: "${option}" para d=${proposalDTag}`);
-        return result;
+        return { ...result, relaysUsed: successfulRelays.length };
     }
 
     // ── Anti-Double-Vote ─────────────────────────────────────
@@ -637,3 +691,5 @@ const LBW_Governance = (() => {
 })();
 
 window.LBW_Governance = LBW_Governance;
+
+    
