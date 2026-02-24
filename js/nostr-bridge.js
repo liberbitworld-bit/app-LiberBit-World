@@ -238,6 +238,8 @@ const LBW_NostrBridge = (() => {
         _seenChatIds.clear();
         _seenMarketIds.clear();
         _activeDMPubkey = null;
+        if (typeof LBW_Governance !== 'undefined') LBW_Governance.reset();
+        if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
         _updateLoginModeUI(null);
         localStorage.removeItem('lbw_nostr_session');
         try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
@@ -313,6 +315,12 @@ const LBW_NostrBridge = (() => {
         try {
             await startMarketplace();
         } catch (e) { console.error('[Bridge] ❌ Marketplace failed:', e); }
+        try {
+            await startGovernance();
+        } catch (e) { console.error('[Bridge] ❌ Governance failed:', e); }
+        try {
+            await startMerits();
+        } catch (e) { console.error('[Bridge] ❌ Merits failed:', e); }
         console.log('[Bridge] ✅ All feeds started');
     }
 
@@ -320,6 +328,46 @@ const LBW_NostrBridge = (() => {
         stopCommunityChat();
         stopDirectMessages();
         stopMarketplace();
+        stopGovernance();
+        stopMerits();
+    }
+
+    // ── Governance (Nostr) ───────────────────────────────────
+    async function startGovernance() {
+        if (typeof LBW_Governance === 'undefined') return;
+        LBW_Governance.subscribeProposals((proposal, action) => {
+            console.log(`[Bridge] 📋 Proposal ${action}: ${proposal.title}`);
+            // Auto-refresh UI if governance section is visible
+            if (typeof displayProposals === 'function') {
+                try { updateGovStats(); displayProposals(); } catch (e) {}
+            }
+        });
+        console.log('[Bridge] ✅ Governance feed started');
+    }
+
+    function stopGovernance() {
+        if (typeof LBW_Governance !== 'undefined') {
+            LBW_Governance.unsubscribeAll();
+        }
+    }
+
+    // ── Merits LBWM (Nostr) ─────────────────────────────────
+    async function startMerits() {
+        if (typeof LBW_Merits === 'undefined') return;
+        LBW_Merits.subscribeMerits((merit) => {
+            console.log(`[Bridge] 🏅 Merit: ${merit.amount} [${merit.category}]`);
+        });
+        LBW_Merits.subscribeContributions((contrib) => {
+            console.log(`[Bridge] 📝 Contribution: ${contrib.meritPoints} LBWM [${contrib.category}]`);
+        });
+        LBW_Merits.subscribeSnapshots();
+        console.log('[Bridge] ✅ Merits feed started');
+    }
+
+    function stopMerits() {
+        if (typeof LBW_Merits !== 'undefined') {
+            LBW_Merits.unsubscribeAll();
+        }
     }
 
     // ── Community Chat (Synced) ──────────────────────────────
@@ -812,6 +860,7 @@ const LBW_NostrBridge = (() => {
         publishCommunityPost, replyToMessage, cancelReply, startCommunityChat, stopCommunityChat,
         sendDM, startDMWith, openDMConversation, startDirectMessages, stopDirectMessages,
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace,
+        startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, getDebugStats
     };
