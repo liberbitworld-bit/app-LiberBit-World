@@ -1,4 +1,4 @@
-// ============================================================
+    // ============================================================
 // LiberBit World — Nostr Bridge v3.0 (nostr-bridge.js)
 //
 // CHANGES v3.0:
@@ -853,6 +853,42 @@ const LBW_NostrBridge = (() => {
         };
     }
 
+    // ── Conversations API (para integración con chat.js) ─────
+    function getConversations() {
+        // Retorna lista de conversaciones ordenadas por timestamp
+        return Object.entries(_dmConversations)
+            .map(([pubkey, messages]) => {
+                const lastMsg = messages[messages.length - 1];
+                return {
+                    pubkey,
+                    name: lastMsg?._resolvedName || null,
+                    lastMessage: lastMsg?.content || '',
+                    timestamp: lastMsg?.created_at || 0,
+                    messageCount: messages.length,
+                    encrypted: true // Todos los DMs Nostr están cifrados
+                };
+            })
+            .sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    function getUnreadDMCount() {
+        // Contar mensajes recibidos después del último visto
+        const lastSeen = parseInt(localStorage.getItem('lastSeen_private') || '0') / 1000;
+        let count = 0;
+        const myPubkey = LBW_Nostr.getPubkey();
+        
+        Object.values(_dmConversations).forEach(messages => {
+            messages.forEach(msg => {
+                // Solo contar mensajes entrantes (no enviados por mí) después de lastSeen
+                if (msg.from !== myPubkey && msg.created_at > lastSeen) {
+                    count++;
+                }
+            });
+        });
+        
+        return count;
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
@@ -862,7 +898,9 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, getDebugStats
+        _resolveName, getDebugStats,
+        // Nuevos métodos para integración con chat.js
+        getConversations, getUnreadDMCount
     };
 })();
 
@@ -872,3 +910,5 @@ document.addEventListener('DOMContentLoaded', () => {
     LBW_NostrBridge.init();
     LBW_NostrBridge.restoreSession();
 });
+
+    
