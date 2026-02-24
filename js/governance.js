@@ -1,4 +1,4 @@
-// ========== GOVERNANCE FUNCTIONS (Nostr-integrated) ==========
+    // ========== GOVERNANCE FUNCTIONS (Nostr-integrated) ==========
 // All data flows through LBW_Governance → Nostr relays
 // Zero Supabase dependencies
 
@@ -173,7 +173,7 @@ function displayProposals() {
         const timeLeft = proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : '';
 
         return `
-            <div class="proposal-card ${proposal.status}" onclick="showProposalDetail('${proposal.id}')">
+            <div class="proposal-card ${proposal.status}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
                 <div class="proposal-type-badge">${typeLabels[proposal.proposal_type] || proposal.proposal_type}</div>
                 <div class="proposal-status ${proposal.status}">
                     ${proposal.status === 'active' ? '✅ Activa' : proposal.status === 'expired' ? '⏰ Expirada' : '🔒 Cerrada'}
@@ -206,9 +206,13 @@ function filterProposals(filter) {
     displayProposals();
 }
 
-async function showProposalDetail(proposalId) {
-    const proposal = allProposals.find(p => p.id === proposalId);
-    if (!proposal) return;
+async function showProposalDetail(proposalIdentifier) {
+    // Buscar por dTag primero, luego por id
+    const proposal = allProposals.find(p => p.dTag === proposalIdentifier || p.id === proposalIdentifier);
+    if (!proposal) {
+        console.warn('[Governance] Propuesta no encontrada:', proposalIdentifier);
+        return;
+    }
 
     const nostrP = proposal._nostrOriginal;
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
@@ -278,7 +282,7 @@ async function showProposalDetail(proposalId) {
                     <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);">
                         <h3 style="color:var(--color-gold);margin-bottom:1rem;">Tu Voto</h3>
                         <div id="voteOptions">${getVoteOptions(proposal)}</div>
-                        <button class="btn btn-primary" onclick="submitVote('${proposal.id}')" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
+                        <button class="btn btn-primary" onclick="submitVote('${proposal.dTag}')" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
                     </div>
                 ` : hasVoted ? `
                     <div style="background:rgba(82,196,26,0.1);padding:1.25rem;border-radius:12px;border:1px solid #52c41a;text-align:center;">
@@ -321,12 +325,12 @@ function selectVoteOption(btn, option) {
     btn.setAttribute('data-selected', option);
 }
 
-async function submitVote(proposalEventId) {
+async function submitVote(proposalDTag) {
     const selectedBtn = document.querySelector('.vote-option-btn.selected');
     if (!selectedBtn) { showNotification('Selecciona una opción', 'error'); return; }
 
     const option = selectedBtn.getAttribute('data-selected');
-    const proposal = allProposals.find(p => p.id === proposalEventId);
+    const proposal = allProposals.find(p => p.dTag === proposalDTag);
     if (!proposal || !proposal._nostrOriginal) { showNotification('Propuesta no encontrada', 'error'); return; }
 
     const nostrP = proposal._nostrOriginal;
@@ -372,3 +376,5 @@ function getTimeLeft(endTime) {
     if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
     return 'Menos de 1 hora';
 }
+
+    
