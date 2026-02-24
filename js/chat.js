@@ -1,4 +1,4 @@
-// ========== DIRECT MESSAGES FUNCTIONS ==========
+    // ========== DIRECT MESSAGES FUNCTIONS ==========
 
 function startDirectMessage(recipientId, recipientName) {
     if (recipientId === currentUser.publicKey) {
@@ -90,7 +90,7 @@ async function updateChatBadges() {
     const pubKey = currentUser.pubkey || currentUser.publicKey;
     
     try {
-        // Community badge: new posts since last seen
+        // Community badge: new posts since last seen (sigue usando Supabase para posts públicos)
         if (currentChatTab !== 'community') {
             const { data: newPosts } = await supabaseClient
                 .from('posts')
@@ -101,15 +101,14 @@ async function updateChatBadges() {
             if (newPosts) updateChatTabBadge('community', newPosts.length);
         }
         
-        // Private badge: new DMs since last seen
+        // Private badge: usar conteo de Nostr (DMs cifrados)
         if (currentChatTab !== 'private') {
-            const { data: newDMs } = await supabaseClient
-                .from('direct_messages')
-                .select('id')
-                .eq('recipient_id', pubKey)
-                .gt('created_at', new Date(lastSeenPrivate).toISOString());
-            
-            if (newDMs) updateChatTabBadge('private', newDMs.length);
+            // El badge de privados lo maneja LBW_NostrBridge._updateDMBadge()
+            // Solo actualizar si tenemos acceso al conteo
+            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getUnreadDMCount) {
+                const unreadCount = LBW_NostrBridge.getUnreadDMCount();
+                updateChatTabBadge('private', unreadCount);
+            }
         }
     } catch (err) {
         console.error('Error updating chat badges:', err);
@@ -139,54 +138,44 @@ async function loadChatSidebar() {
 }
 
 async function appendPrivateConversationsToSidebar(container) {
-    const pubKey = currentUser.pubkey || currentUser.publicKey;
+    // === UNIFICADO: Usar conversaciones de Nostr (cifrado E2E) ===
+    
+    // Verificar si LBW_NostrBridge tiene conversaciones
+    if (typeof LBW_NostrBridge === 'undefined' || !LBW_NostrBridge.getConversations) {
+        // El bridge maneja su propio sidebar en _updateDMSidebar()
+        // Solo mostrar indicador de que se usa Nostr
+        console.log('[Chat] Sidebar manejado por LBW_NostrBridge');
+        return;
+    }
     
     try {
-        const { data, error } = await supabaseClient
-            .from('direct_messages')
-            .select('*')
-            .or(`sender_id.eq.${pubKey},recipient_id.eq.${pubKey}`)
-            .order('created_at', { ascending: false });
-
-        if (error || !data) return;
-
-        const conversations = new Map();
-        data.forEach(msg => {
-            const otherUserId = msg.sender_id === pubKey ? msg.recipient_id : msg.sender_id;
-            const otherUserName = msg.sender_id === pubKey ? msg.recipient_name : msg.sender_name;
-            const timestamp = new Date(msg.created_at).getTime();
-            
-            if (!conversations.has(otherUserId) || timestamp > conversations.get(otherUserId).timestamp) {
-                conversations.set(otherUserId, {
-                    userId: otherUserId,
-                    userName: otherUserName,
-                    lastMessage: msg.content,
-                    timestamp: timestamp
-                });
-            }
-        });
-
-        if (conversations.size > 0) {
-            container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">Conversaciones Privadas</div>`;
-            
-            const sorted = Array.from(conversations.values()).sort((a, b) => b.timestamp - a.timestamp);
-            sorted.forEach(conv => {
-                const initial = conv.userName.charAt(0).toUpperCase();
-                const isActive = currentChatWith && currentChatWith.id === conv.userId;
-                container.innerHTML += `
-                    <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.userId}', '${escapeHtml(conv.userName)}')">
-                        <div class="sidebar-conv-avatar">${initial}</div>
-                        <div class="sidebar-conv-info">
-                            <div class="sidebar-conv-name">${escapeHtml(conv.userName)}</div>
-                            <div class="sidebar-conv-preview">${escapeHtml(conv.lastMessage.substring(0, 30))}${conv.lastMessage.length > 30 ? '...' : ''}</div>
-                        </div>
-                        <div class="sidebar-conv-time">${timeAgo(conv.timestamp)}</div>
-                    </div>
-                `;
-            });
+        const conversations = LBW_NostrBridge.getConversations();
+        
+        if (!conversations || conversations.length === 0) {
+            return; // El sidebar vacío se maneja en loadPrivateConversationsSidebar
         }
+        
+        container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">🔐 Conversaciones Cifradas</div>`;
+        
+        conversations.forEach(conv => {
+            const initial = (conv.name || '?').charAt(0).toUpperCase();
+            const isActive = currentChatWith && currentChatWith.id === conv.pubkey;
+            const preview = conv.lastMessage ? conv.lastMessage.substring(0, 30) : 'Mensaje cifrado';
+            const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
+            
+            container.innerHTML += `
+                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.pubkey}', '${escapeHtml(conv.name || 'Usuario')}')">
+                    <div class="sidebar-conv-avatar">${initial}</div>
+                    <div class="sidebar-conv-info">
+                        <div class="sidebar-conv-name">${escapeHtml(conv.name || 'Usuario')}</div>
+                        <div class="sidebar-conv-preview">🔒 ${escapeHtml(preview)}${preview.length >= 30 ? '...' : ''}</div>
+                    </div>
+                    <div class="sidebar-conv-time">${timeStr}</div>
+                </div>
+            `;
+        });
     } catch (err) {
-        console.error('Error loading sidebar conversations:', err);
+        console.error('[Chat] Error loading Nostr conversations:', err);
     }
 }
 
@@ -199,76 +188,116 @@ async function loadPrivateConversationsSidebar() {
     if (container.innerHTML.trim() === '') {
         container.innerHTML = `
             <div style="padding: 2rem 1rem; text-align: center; color: var(--color-text-secondary);">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
-                <div style="font-size: 0.85rem;">Sin conversaciones</div>
-                <div style="font-size: 0.75rem; margin-top: 0.25rem;">Contacta desde Networking</div>
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔐</div>
+                <div style="font-size: 0.85rem;">Mensajes Cifrados E2E</div>
+                <div style="font-size: 0.75rem; margin-top: 0.5rem; line-height: 1.4;">
+                    Busca usuarios con 🔍 arriba<br>
+                    o contacta desde Networking
+                </div>
+                <div style="font-size: 0.65rem; margin-top: 0.75rem; padding: 0.4rem; background: rgba(76,175,80,0.1); border-radius: 6px; color: var(--color-teal-light);">
+                    ✓ NIP-44 cifrado extremo a extremo
+                </div>
             </div>
         `;
     }
 }
 
 function openPrivateChat(userId, userName) {
-    currentChatWith = { id: userId, name: userName };
+    // === UNIFICADO: Usar sistema Nostr cifrado (E2E) ===
     
-    // Switch to private tab if not already
+    // Normalizar: si es npub, convertir a hex para Nostr
+    let hexPubkey = userId;
+    if (userId.startsWith('npub1')) {
+        try {
+            if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.npubToHex) {
+                hexPubkey = LBW_Nostr.npubToHex(userId);
+            }
+        } catch (e) {
+            console.error('Error convirtiendo npub:', e);
+            showNotification('ID de usuario inválido', 'error');
+            return;
+        }
+    }
+    
+    // Guardar referencia para compatibilidad
+    currentChatWith = { id: hexPubkey, name: userName };
+    
+    // Switch to private tab
     if (currentChatTab !== 'private') {
         switchChatTab('private');
     }
     
-    // Show private chat view
-    document.getElementById('privatePlaceholder').style.display = 'none';
-    document.getElementById('privateActiveChat').style.display = 'flex';
-    document.getElementById('privateChatName').textContent = userName;
-    document.getElementById('privateChatId').textContent = userId.substring(0, 16) + '...';
-    
-    // Load messages
-    loadPrivateChatMessages(userId);
-    
-    // Refresh sidebar to show active state
-    loadPrivateConversationsSidebar();
+    // Usar sistema Nostr unificado (mensajes cifrados E2E)
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.openDMConversation) {
+        // Sistema Nostr disponible - usar cifrado E2E
+        LBW_NostrBridge.openDMConversation(hexPubkey);
+        
+        // Actualizar nombre en la UI si se proporcionó
+        if (userName) {
+            const nameEl = document.getElementById('privateChatName');
+            if (nameEl) {
+                nameEl.textContent = userName;
+                nameEl.dataset.pubkey = hexPubkey;
+            }
+        }
+        
+        console.log('[Chat] 🔐 Abriendo DM cifrado con:', hexPubkey.substring(0, 12) + '...');
+    } else {
+        // Fallback: mostrar mensaje de que Nostr no está disponible
+        console.warn('[Chat] LBW_NostrBridge no disponible, usando fallback');
+        
+        document.getElementById('privatePlaceholder').style.display = 'none';
+        document.getElementById('privateActiveChat').style.display = 'flex';
+        document.getElementById('privateChatName').textContent = userName;
+        document.getElementById('privateChatId').textContent = hexPubkey.substring(0, 16) + '...';
+        
+        const container = document.getElementById('privateChatMessages');
+        if (container) {
+            container.innerHTML = `
+                <div class="chat-empty-state">
+                    <div class="emoji">🔒</div>
+                    <p>Sistema de mensajes cifrados</p>
+                    <p style="font-size: 0.8rem; color: var(--color-text-secondary);">
+                        Conecta con Nostr para enviar mensajes cifrados E2E
+                    </p>
+                </div>
+            `;
+        }
+    }
 }
 
 async function loadPrivateChatMessages(userId) {
-    const pubKey = currentUser.pubkey || currentUser.publicKey;
-    const container = document.getElementById('privateChatMessages');
+    // === DEPRECADO: Los mensajes ahora se cargan via Nostr (cifrado E2E) ===
+    console.warn('[Chat] ⚠️ loadPrivateChatMessages está deprecado. Usando sistema Nostr cifrado.');
     
-    try {
-        const { data, error } = await supabaseClient
-            .from('direct_messages')
-            .select('*')
-            .or(`and(sender_id.eq.${pubKey},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${pubKey})`)
-            .order('created_at', { ascending: true });
-
-        if (error) {
-            console.error('Error loading private messages:', error);
-            return;
+    // Redirigir al sistema Nostr si está disponible
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.openDMConversation) {
+        // Normalizar userId a hex si es npub
+        let hexPubkey = userId;
+        if (userId.startsWith('npub1') && typeof LBW_Nostr !== 'undefined') {
+            try {
+                hexPubkey = LBW_Nostr.npubToHex(userId);
+            } catch (e) {
+                console.error('Error convirtiendo npub:', e);
+            }
         }
-
-        if (!data || data.length === 0) {
-            container.innerHTML = `<div class="chat-empty-state"><div class="emoji">👋</div><p>Envía el primer mensaje</p></div>`;
-            return;
-        }
-
-        container.innerHTML = data.map(msg => {
-            const isMine = msg.sender_id === pubKey;
-            const align = isMine ? 'flex-end' : 'flex-start';
-            const bg = isMine ? 'rgba(229, 185, 92, 0.15)' : 'var(--color-bg-card)';
-            const borderColor = isMine ? 'var(--color-gold)' : 'var(--color-border)';
-            const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            return `
-                <div style="display: flex; justify-content: ${align}; margin-bottom: 0.75rem;">
-                    <div style="max-width: 75%; padding: 0.75rem 1rem; border-radius: 16px; background: ${bg}; border: 1px solid ${borderColor};">
-                        <div style="font-size: 0.9rem; color: var(--color-text-primary); word-break: break-word;">${escapeHtml(msg.content)}</div>
-                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.3rem; text-align: right;">${time}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.scrollTop = container.scrollHeight;
-    } catch (err) {
-        console.error('Error:', err);
+        LBW_NostrBridge.openDMConversation(hexPubkey);
+        return;
+    }
+    
+    // Fallback: mostrar mensaje informativo
+    const container = document.getElementById('privateChatMessages');
+    if (container) {
+        container.innerHTML = `
+            <div class="chat-empty-state">
+                <div class="emoji">🔐</div>
+                <p>Mensajes Cifrados E2E</p>
+                <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
+                    Los mensajes privados ahora usan cifrado end-to-end via Nostr (NIP-44).<br>
+                    Asegúrate de estar conectado a los relays.
+                </p>
+            </div>
+        `;
     }
 }
 
@@ -474,3 +503,5 @@ function generateLnQR() {
 }
 
 // Generate QR when section is shown
+
+    
