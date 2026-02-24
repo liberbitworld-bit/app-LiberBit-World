@@ -500,6 +500,8 @@ const LBW_Nostr = (() => {
                             sub.close();
                         },
                         onclose: (reason) => {
+                            // Don't overwrite 'connected' — sub.close() after EOSE triggers this
+                            if (_relayStatusMap[url] === 'connected') return;
                             const isErr = typeof reason === 'string' && reason.includes('error');
                             _relayStatusMap[url] = isErr ? 'error' : 'disconnected';
                             _emitRelayStatus();
