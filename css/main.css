@@ -1838,10 +1838,11 @@
         }
 
         .modal.active {
-            display: flex;
-            opacity: 1;
-            pointer-events: auto;
-            z-index: 10001;
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            z-index: 10001 !important;
+            background: rgba(0, 0, 0, 0.85) !important;
         }
 
         .modal-content {
