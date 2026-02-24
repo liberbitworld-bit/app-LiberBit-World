@@ -1711,7 +1711,7 @@
 
         <!-- Contribution Form Modal (LBWM) -->
         <div class="modal" id="contributionFormModal">
-            <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; padding: 2rem;">
                 <button class="modal-close" onclick="closeContributionForm()">✕</button>
                 
                 <h2 style="color: var(--color-gold); margin-bottom: 1rem;">📝 Formulario de Aportación de Valor LBWM</h2>
@@ -1779,6 +1779,8 @@
                         </div>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="mobile-grid-1col">
+                            <div class="form-group">
+                                <label>Período *</label>
                                 <input type="text" id="contrib_period" required placeholder="Ej: Enero 2026, Q1 2026">
                             </div>
                             <div class="form-group">
