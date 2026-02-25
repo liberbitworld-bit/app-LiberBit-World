@@ -77,13 +77,12 @@ async function submitProposal() {
 async function loadProposals() {
     try {
         if (typeof LBW_Governance !== 'undefined') {
+            // Asegurar que los votos estén cargados
+            if (typeof LBW_Governance.reloadMyVotes === 'function') {
+                LBW_Governance.reloadMyVotes();
+            }
+            
             LBW_Governance.subscribeProposals((proposal, action) => {
-                // Suscribirse a votos de la nueva propuesta
-                if (proposal.id && proposal.dTag) {
-                    LBW_Governance.subscribeVotes(proposal.id, proposal.dTag, () => {
-                        displayProposals();
-                    });
-                }
                 updateGovStats();
                 displayProposals();
             });
@@ -93,19 +92,8 @@ async function loadProposals() {
             ? LBW_Governance.getAllProposals().map(_nostrProposalToLegacy)
             : [];
 
-        // Suscribirse a votos de todas las propuestas existentes
-        if (typeof LBW_Governance !== 'undefined') {
-            console.log('[Governance] Suscribiendo a votos de', allProposals.length, 'propuestas...');
-            allProposals.forEach(p => {
-                const nostrP = p._nostrOriginal;
-                if (nostrP && nostrP.id && nostrP.dTag) {
-                    LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, () => {
-                        updateGovStats();
-                        displayProposals();
-                    });
-                }
-            });
-        }
+        // NO suscribirse a votos aquí - solo cuando se abre una propuesta
+        // Esto evita rate limiting
 
         allVotes = [];
         updateGovStats();
@@ -237,24 +225,21 @@ async function showProposalDetail(proposalIdentifier) {
     const nostrP = proposal._nostrOriginal;
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
 
-    // Suscribirse a votos y esperar a que lleguen
+    // Suscribirse a votos (la actualización es asíncrona)
     if (nostrP) {
-        console.log('[Governance] Suscribiendo a votos para:', nostrP.dTag);
         LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, (vote) => {
-            console.log('[Governance] Voto recibido:', vote.option);
             // Actualizar UI cuando lleguen votos nuevos
             updateVoteResultsInModal(nostrP.dTag);
         });
     }
-    // Esperar más tiempo para que lleguen los votos de los relays
-    await new Promise(r => setTimeout(r, 1500));
+    
+    // Esperar solo un poco para dar tiempo a cargar desde caché
+    await new Promise(r => setTimeout(r, 300));
 
     const proposalVotes = nostrP ? LBW_Governance.getVotesForProposal(nostrP.dTag) : [];
     const myVote = nostrP ? LBW_Governance.getMyVote(nostrP.dTag) : null;
     const hasVoted = !!myVote;
     const canVote = proposal.status === 'active' && !hasVoted;
-    
-    console.log('[Governance] Votos cargados:', proposalVotes.length, 'Mi voto:', myVote?.option || 'ninguno');
 
     const voteResults = {};
     proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
