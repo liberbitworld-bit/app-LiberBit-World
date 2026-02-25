@@ -1,4 +1,4 @@
-    // ============================================================
+// ============================================================
 // LiberBit World — Governance Module v1.0 (nostr-governance.js)
 //
 // Decentralized governance over Nostr protocol.
@@ -122,37 +122,52 @@ const LBW_Governance = (() => {
             }
         } catch (e) { console.warn('[Governance] All votes load error:', e); }
 
-        // Cargar mis votos
+        // Cargar mis votos (sin depender de getPubkey aún)
+        _loadMyVotes();
+    }
+    
+    // Función separada para cargar mis votos - puede llamarse después del login
+    function _loadMyVotes() {
         try {
             const raw = localStorage.getItem(VOTES_STORAGE_KEY);
-            if (raw) {
-                const data = JSON.parse(raw);
-                const pubkey = LBW_Nostr.getPubkey();
-                Object.entries(data).forEach(([dTag, vote]) => {
-                    if (!_myVotes.has(dTag)) {
-                        _myVotes.set(dTag, vote);
-                        
-                        // Asegurar que mi voto esté en _votes
-                        if (pubkey) {
-                            if (!_votes.has(dTag)) _votes.set(dTag, []);
-                            const votesList = _votes.get(dTag);
-                            const existingIdx = votesList.findIndex(v => v.pubkey === pubkey);
-                            if (existingIdx < 0) {
-                                votesList.push({
-                                    id: vote.eventId,
-                                    pubkey: pubkey,
-                                    npub: LBW_Nostr.getNpub(),
-                                    option: vote.option,
-                                    proposalDTag: dTag,
-                                    created_at: vote.created_at
-                                });
-                            }
+            if (!raw) return;
+            
+            const data = JSON.parse(raw);
+            const currentPubkey = LBW_Nostr.getPubkey();
+            
+            Object.entries(data).forEach(([dTag, vote]) => {
+                // Usar el pubkey guardado en el voto, o el actual si está disponible
+                const votePubkey = vote.pubkey || currentPubkey;
+                
+                if (!_myVotes.has(dTag)) {
+                    _myVotes.set(dTag, vote);
+                    
+                    // Asegurar que mi voto esté en _votes si tenemos pubkey
+                    if (votePubkey) {
+                        if (!_votes.has(dTag)) _votes.set(dTag, []);
+                        const votesList = _votes.get(dTag);
+                        const existingIdx = votesList.findIndex(v => v.pubkey === votePubkey);
+                        if (existingIdx < 0) {
+                            votesList.push({
+                                id: vote.eventId,
+                                pubkey: votePubkey,
+                                npub: vote.npub || LBW_Nostr.pubkeyToNpub(votePubkey),
+                                option: vote.option,
+                                proposalDTag: dTag,
+                                created_at: vote.created_at
+                            });
                         }
                     }
-                });
-                console.log(`[Governance] 📂 ${_myVotes.size} votos propios cargados de caché`);
-            }
+                }
+            });
+            console.log(`[Governance] 📂 ${_myVotes.size} votos propios cargados de caché`);
         } catch (e) { console.warn('[Governance] Votes storage load error:', e); }
+    }
+    
+    // Función pública para recargar votos después del login
+    function reloadMyVotes() {
+        _loadMyVotes();
+        console.log('[Governance] 🔄 Votos recargados después del login');
     }
 
     // ── Publish Proposal ─────────────────────────────────────
@@ -389,11 +404,16 @@ const LBW_Governance = (() => {
         console.log(`[Governance] ✅ Voto publicado en ${successfulRelays.length} relay(s)`);
         // === FIN VERIFICACIÓN ===
 
+        const pubkey = LBW_Nostr.getPubkey();
+        const npub = LBW_Nostr.getNpub();
+        
         // Track locally SOLO si se publicó exitosamente
         const myVoteData = {
             option: option.trim(),
             eventId: result.event.id,
             created_at: Math.floor(Date.now() / 1000),
+            pubkey: pubkey, // Guardar pubkey para persistencia
+            npub: npub,     // Guardar npub también
             _publishedTo: successfulRelays.map(r => r.relay)
         };
         _myVotes.set(proposalDTag, myVoteData);
@@ -402,7 +422,6 @@ const LBW_Governance = (() => {
         // También agregar a _votes para que se muestre en resultados inmediatamente
         if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
         const votesList = _votes.get(proposalDTag);
-        const pubkey = LBW_Nostr.getPubkey();
         // Eliminar voto anterior si existe (no debería pero por seguridad)
         const existingIdx = votesList.findIndex(v => v.pubkey === pubkey);
         if (existingIdx >= 0) votesList.splice(existingIdx, 1);
@@ -410,7 +429,7 @@ const LBW_Governance = (() => {
         votesList.push({
             id: result.event.id,
             pubkey: pubkey,
-            npub: LBW_Nostr.getNpub(),
+            npub: npub,
             option: option.trim(),
             proposalDTag: proposalDTag,
             created_at: Math.floor(Date.now() / 1000)
@@ -754,10 +773,9 @@ const LBW_Governance = (() => {
         getTimeLeft,
 
         // Lifecycle
-        reset
+        reset,
+        reloadMyVotes
     };
 })();
 
 window.LBW_Governance = LBW_Governance;
-
-    
