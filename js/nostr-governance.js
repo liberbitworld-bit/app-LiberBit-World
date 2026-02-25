@@ -374,7 +374,7 @@ const LBW_Governance = (() => {
 
         const tags = [
             ['e', proposalEventId],                   // Reference to proposal event
-            ['d-tag', proposalDTag],                   // D-tag for easier filtering
+            ['d', proposalDTag],                       // D-tag for NIP-33 (must be 'd', not 'd-tag')
             ['t', 'lbw-governance'],
             ['t', 'lbw-vote'],
             ['client', 'LiberBit World']
@@ -484,6 +484,11 @@ const LBW_Governance = (() => {
         // Load cached proposals from localStorage on first call
         if (_proposals.size === 0) _loadFromStorage();
 
+        // Siempre buscar mis votos en Nostr (si no los tenemos)
+        if (_myVotes.size === 0) {
+            _fetchMyVotesFromNostr();
+        }
+
         if (_sub) return _sub; // Already subscribed
 
         _sub = LBW_Nostr.subscribe(
@@ -512,6 +517,93 @@ const LBW_Governance = (() => {
         );
 
         return _sub;
+    }
+    
+    // ── Fetch My Votes from Nostr ─────────────────────────────
+    // Busca todos mis votos en los relays para sincronizar estado
+    let _fetchingVotes = false;
+    
+    function _fetchMyVotesFromNostr() {
+        const pubkey = LBW_Nostr.getPubkey();
+        if (!pubkey) {
+            console.log('[Governance] No hay pubkey, no se pueden buscar votos');
+            return;
+        }
+        
+        if (_fetchingVotes) {
+            console.log('[Governance] Ya se están buscando votos...');
+            return;
+        }
+        
+        _fetchingVotes = true;
+        console.log('[Governance] 🔍 Buscando mis votos en Nostr...');
+        
+        LBW_Nostr.subscribe(
+            {
+                kinds: [KIND.VOTE],
+                authors: [pubkey],
+                '#t': ['lbw-vote'],
+                limit: 100
+            },
+            (event) => {
+                // Extraer el proposalDTag del evento (buscar tag 'd')
+                const dTagTag = event.tags.find(t => t[0] === 'd');
+                const proposalDTag = dTagTag ? dTagTag[1] : null;
+                
+                if (!proposalDTag) {
+                    console.warn('[Governance] Voto sin d tag:', event.id?.substring(0, 8));
+                    return;
+                }
+                
+                const vote = {
+                    id: event.id,
+                    pubkey: event.pubkey,
+                    npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
+                    option: event.content?.trim() || '',
+                    proposalDTag,
+                    created_at: event.created_at
+                };
+                
+                // Guardar en _myVotes
+                const existing = _myVotes.get(proposalDTag);
+                if (!existing || vote.created_at > existing.created_at) {
+                    _myVotes.set(proposalDTag, {
+                        option: vote.option,
+                        eventId: vote.id,
+                        created_at: vote.created_at,
+                        pubkey: vote.pubkey,
+                        npub: vote.npub
+                    });
+                    console.log('[Governance] ✅ Mi voto recuperado de Nostr:', proposalDTag, '-', vote.option);
+                }
+                
+                // También agregar a _votes
+                if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
+                const votesList = _votes.get(proposalDTag);
+                const idx = votesList.findIndex(v => v.pubkey === vote.pubkey);
+                if (idx >= 0) {
+                    if (vote.created_at > votesList[idx].created_at) {
+                        votesList[idx] = vote;
+                    }
+                } else {
+                    votesList.push(vote);
+                }
+                
+                // Persistir
+                _persistVotesToStorage();
+            },
+            () => {
+                _fetchingVotes = false;
+                console.log('[Governance] 🔍 Búsqueda de mis votos completada. Total:', _myVotes.size);
+            }
+        );
+    }
+    
+    // Función pública para forzar búsqueda de votos
+    function fetchMyVotes() {
+        _myVotes.clear(); // Limpiar para forzar búsqueda
+        _fetchingVotes = false;
+        _fetchMyVotesFromNostr();
     }
 
     // ── Subscribe Votes for a Proposal ───────────────────────
@@ -779,7 +871,8 @@ const LBW_Governance = (() => {
 
         // Lifecycle
         reset,
-        reloadMyVotes
+        reloadMyVotes,
+        fetchMyVotes
     };
 })();
 
