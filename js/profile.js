@@ -257,11 +257,6 @@ async function loadUserProfile() {
     
     updateProfileDisplay();
     
-    // Buscar mis votos en Nostr y actualizar después
-    if (typeof LBW_Governance !== 'undefined' && typeof LBW_Governance.fetchMyVotes === 'function') {
-        LBW_Governance.fetchMyVotes();
-    }
-    
     // Re-update after a delay to catch late-loaded posts/offers/votes data
     setTimeout(() => updateProfileDisplay(), 2000);
     setTimeout(() => updateProfileDisplay(), 5000);
