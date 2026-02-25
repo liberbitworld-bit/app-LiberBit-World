@@ -77,6 +77,11 @@ async function submitProposal() {
 async function loadProposals() {
     try {
         if (typeof LBW_Governance !== 'undefined') {
+            // Asegurar que los votos estén cargados
+            if (typeof LBW_Governance.reloadMyVotes === 'function') {
+                LBW_Governance.reloadMyVotes();
+            }
+            
             LBW_Governance.subscribeProposals((proposal, action) => {
                 updateGovStats();
                 displayProposals();
