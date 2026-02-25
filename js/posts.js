@@ -286,7 +286,25 @@ async function toggleLike(postId) {
 
 function logout() {
     if (confirm('¿Cerrar sesión? Asegúrate de tener tus claves guardadas.')) {
+        // Limpiar estado de Nostr
+        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.logout) {
+            try { LBW_Nostr.logout(); } catch(e) { console.warn('Error en Nostr logout:', e); }
+        }
+        
+        // Limpiar estado de Governance
+        if (typeof LBW_Governance !== 'undefined' && LBW_Governance.reset) {
+            try { LBW_Governance.reset(); } catch(e) { console.warn('Error en Governance reset:', e); }
+        }
+        
+        // Limpiar localStorage de sesión
         localStorage.removeItem('liberbit_keys');
+        
+        // Limpiar campos de input
+        const privKeyInput = document.getElementById('existingPrivKey');
+        if (privKeyInput) privKeyInput.value = '';
+        const userNameInput = document.getElementById('userNameInput');
+        if (userNameInput) userNameInput.value = '';
+        
         currentUser = null;
         document.getElementById('userBadge').classList.add('hidden');
         document.getElementById('activeNodesCounterHeader').classList.add('hidden');
@@ -369,4 +387,3 @@ function showNotification(message, type = 'success') {
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
 }
-
