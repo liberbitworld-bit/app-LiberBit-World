@@ -76,6 +76,21 @@ async function checkExistingSession() {
             }
         }
         
+        // Inicializar Nostr con las credenciales guardadas
+        if (currentUser.privateKey && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.loginWithPrivateKey) {
+            try {
+                const privKeyHex = isNsecFormat(currentUser.privateKey) 
+                    ? nsecToHex(currentUser.privateKey) 
+                    : currentUser.privateKey;
+                if (privKeyHex) {
+                    await LBW_Nostr.loginWithPrivateKey(privKeyHex);
+                    console.log('[Auth] Nostr inicializado desde sesión guardada');
+                }
+            } catch (nostrErr) {
+                console.warn('[Auth] Error inicializando Nostr:', nostrErr);
+            }
+        }
+        
         showMainMenu();
     }
 }
@@ -412,6 +427,17 @@ async function importExistingAccount() {
         };
         
         localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+        
+        // Inicializar Nostr con las credenciales
+        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.loginWithPrivateKey) {
+            try {
+                await LBW_Nostr.loginWithPrivateKey(privateKeyHex);
+                console.log('[Auth] Nostr inicializado correctamente');
+            } catch (nostrErr) {
+                console.warn('[Auth] Error inicializando Nostr:', nostrErr);
+            }
+        }
+        
         closeAuthModal();
         showMainMenu();
         showNotification(`¡Bienvenido de nuevo, ${userData.name}! ✅`);
