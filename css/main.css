@@ -2344,7 +2344,7 @@
             border-radius: 12px;
             border: 2px solid var(--color-gold);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 99999;
             animation: slideInRight 0.3s ease-out;
             max-width: 350px;
         }
