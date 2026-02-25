@@ -599,9 +599,9 @@ const LBW_Governance = (() => {
         );
     }
     
-    // Función pública para forzar búsqueda de votos
+    // Función pública para forzar búsqueda de votos (sin borrar existentes)
     function fetchMyVotes() {
-        _myVotes.clear(); // Limpiar para forzar búsqueda
+        // No limpiar _myVotes - mantener los existentes mientras buscamos
         _fetchingVotes = false;
         _fetchMyVotesFromNostr();
     }
