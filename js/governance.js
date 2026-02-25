@@ -237,15 +237,24 @@ async function showProposalDetail(proposalIdentifier) {
     const nostrP = proposal._nostrOriginal;
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
 
+    // Suscribirse a votos y esperar a que lleguen
     if (nostrP) {
-        LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, () => {});
+        console.log('[Governance] Suscribiendo a votos para:', nostrP.dTag);
+        LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, (vote) => {
+            console.log('[Governance] Voto recibido:', vote.option);
+            // Actualizar UI cuando lleguen votos nuevos
+            updateVoteResultsInModal(nostrP.dTag);
+        });
     }
-    await new Promise(r => setTimeout(r, 300));
+    // Esperar más tiempo para que lleguen los votos de los relays
+    await new Promise(r => setTimeout(r, 1500));
 
     const proposalVotes = nostrP ? LBW_Governance.getVotesForProposal(nostrP.dTag) : [];
     const myVote = nostrP ? LBW_Governance.getMyVote(nostrP.dTag) : null;
     const hasVoted = !!myVote;
     const canVote = proposal.status === 'active' && !hasVoted;
+    
+    console.log('[Governance] Votos cargados:', proposalVotes.length, 'Mi voto:', myVote?.option || 'ninguno');
 
     const voteResults = {};
     proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
@@ -298,11 +307,12 @@ async function showProposalDetail(proposalIdentifier) {
                     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;font-size:0.9rem;">
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Propuesta por</div><div id="proposal-author-name" style="font-weight:600;">${escapeHtml(authorName)}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Creación</div><div style="font-weight:600;">${new Date(proposal.created_at).toLocaleDateString('es-ES')}</div></div>
-                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Votos</div><div style="font-weight:600;color:var(--color-gold);">${proposalVotes.length}</div></div>
+                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Votos</div><div id="modalVoteCount" style="font-weight:600;color:var(--color-gold);">${proposalVotes.length}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">${proposal.status === 'active' ? 'Tiempo restante' : 'Estado'}</div><div style="font-weight:600;">${proposal.status === 'active' && proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : 'Cerrada'}</div></div>
                     </div>
                 </div>
 
+                <div id="voteSectionContainer">
                 ${canVote ? `
                     <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);">
                         <h3 style="color:var(--color-gold);margin-bottom:1rem;">Tu Voto</h3>
@@ -314,13 +324,14 @@ async function showProposalDetail(proposalIdentifier) {
                         <p style="color:#52c41a;font-weight:600;">✓ Ya has votado: "${myVote.option}"</p>
                     </div>
                 ` : ''}
+                </div>
 
+                <div id="voteResultsContainer" style="margin-top:1.5rem;">
                 ${proposalVotes.length > 0 ? `
-                    <div style="margin-top:1.5rem;">
-                        <h3 style="color:var(--color-gold);margin-bottom:1rem;">Resultados ${proposal.status === 'active' ? 'Parciales' : 'Finales'}</h3>
-                        ${displayVoteResults(proposalVotes, voteResults)}
-                    </div>
-                ` : '<p style="color:var(--color-text-secondary);text-align:center;margin-top:1rem;">Aún no hay votos</p>'}
+                    <h3 style="color:var(--color-gold);margin-bottom:1rem;">Resultados ${proposal.status === 'active' ? 'Parciales' : 'Finales'}</h3>
+                    ${displayVoteResults(proposalVotes, voteResults)}
+                ` : '<p style="color:var(--color-text-secondary);text-align:center;">Aún no hay votos</p>'}
+                </div>
             </div>
         </div>
     `;
@@ -424,4 +435,38 @@ function getTimeLeft(endTime) {
     if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
     if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
     return 'Menos de 1 hora';
+}
+
+// Actualiza los resultados de votación en el modal abierto
+function updateVoteResultsInModal(proposalDTag) {
+    const resultsContainer = document.getElementById('voteResultsContainer');
+    if (!resultsContainer) return;
+    
+    const proposalVotes = LBW_Governance.getVotesForProposal(proposalDTag);
+    const myVote = LBW_Governance.getMyVote(proposalDTag);
+    
+    const voteResults = {};
+    proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
+    
+    // Actualizar contador de votos
+    const voteCountEl = document.getElementById('modalVoteCount');
+    if (voteCountEl) voteCountEl.textContent = proposalVotes.length;
+    
+    // Actualizar resultados
+    if (proposalVotes.length > 0) {
+        resultsContainer.innerHTML = `
+            <h3 style="color:var(--color-gold);margin-bottom:1rem;">Resultados Parciales</h3>
+            ${displayVoteResults(proposalVotes, voteResults)}
+        `;
+    }
+    
+    // Actualizar estado de "ya has votado" si es necesario
+    const voteSection = document.getElementById('voteSectionContainer');
+    if (voteSection && myVote && voteSection.querySelector('.vote-option-btn')) {
+        voteSection.innerHTML = `
+            <div style="background:rgba(82,196,26,0.1);padding:1.25rem;border-radius:12px;border:1px solid #52c41a;text-align:center;">
+                <p style="color:#52c41a;font-weight:600;">✓ Ya has votado: "${myVote.option}"</p>
+            </div>
+        `;
+    }
 }
