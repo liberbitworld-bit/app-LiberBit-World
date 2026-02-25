@@ -257,6 +257,11 @@ async function loadUserProfile() {
     
     updateProfileDisplay();
     
+    // Buscar mis votos en Nostr y actualizar después
+    if (typeof LBW_Governance !== 'undefined' && typeof LBW_Governance.fetchMyVotes === 'function') {
+        LBW_Governance.fetchMyVotes();
+    }
+    
     // Re-update after a delay to catch late-loaded posts/offers/votes data
     setTimeout(() => updateProfileDisplay(), 2000);
     setTimeout(() => updateProfileDisplay(), 5000);
@@ -271,7 +276,8 @@ function updateProfileDisplay() {
     // Calculate merits for citizenship level
     const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts)) ? allPosts.filter(p => p.author === currentUser.name).length : 0;
     const userOffers = (typeof allOffers !== 'undefined' && Array.isArray(allOffers)) ? allOffers.filter(o => o.author === currentUser.name).length : 0;
-    const userVotes = (typeof allVotes !== 'undefined' && Array.isArray(allVotes)) ? allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length : 0;
+    // Obtener votos desde LBW_Governance (Nostr)
+    const userVotes = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats().myVotes : 0;
     const userProposals = (typeof allProposals !== 'undefined' && Array.isArray(allProposals)) ? allProposals.filter(p => p.author === currentUser.name).length : 0;
     
     const totalContributions = userPosts + userOffers + userVotes + userProposals;
@@ -529,7 +535,8 @@ async function saveCitizenship() {
     // Auto-calculate citizenship level
     const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
     const userOffers = allOffers.filter(o => o.author === currentUser.name).length;
-    const userVotes = allVotes.filter(v => v.voter === (currentUser.pubkey || currentUser.publicKey)).length;
+    // Obtener votos desde LBW_Governance (Nostr)
+    const userVotes = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats().myVotes : 0;
     const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
     const totalContributions = userPosts + userOffers + userVotes + userProposals;
     const merits = totalContributions * 10;
