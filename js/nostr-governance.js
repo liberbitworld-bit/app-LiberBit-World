@@ -130,33 +130,37 @@ const LBW_Governance = (() => {
     function _loadMyVotes() {
         try {
             const raw = localStorage.getItem(VOTES_STORAGE_KEY);
-            if (!raw) return;
+            if (!raw) {
+                console.log('[Governance] No hay votos guardados en localStorage');
+                return;
+            }
             
             const data = JSON.parse(raw);
             const currentPubkey = LBW_Nostr.getPubkey();
+            console.log('[Governance] Cargando votos, pubkey actual:', currentPubkey ? currentPubkey.substring(0,8) + '...' : 'null');
             
             Object.entries(data).forEach(([dTag, vote]) => {
                 // Usar el pubkey guardado en el voto, o el actual si está disponible
                 const votePubkey = vote.pubkey || currentPubkey;
                 
-                if (!_myVotes.has(dTag)) {
-                    _myVotes.set(dTag, vote);
-                    
-                    // Asegurar que mi voto esté en _votes si tenemos pubkey
-                    if (votePubkey) {
-                        if (!_votes.has(dTag)) _votes.set(dTag, []);
-                        const votesList = _votes.get(dTag);
-                        const existingIdx = votesList.findIndex(v => v.pubkey === votePubkey);
-                        if (existingIdx < 0) {
-                            votesList.push({
-                                id: vote.eventId,
-                                pubkey: votePubkey,
-                                npub: vote.npub || LBW_Nostr.pubkeyToNpub(votePubkey),
-                                option: vote.option,
-                                proposalDTag: dTag,
-                                created_at: vote.created_at
-                            });
-                        }
+                // Siempre actualizar el voto (no solo si no existe)
+                _myVotes.set(dTag, vote);
+                console.log('[Governance] Voto cargado para:', dTag, '- opción:', vote.option);
+                
+                // Asegurar que mi voto esté en _votes si tenemos pubkey
+                if (votePubkey) {
+                    if (!_votes.has(dTag)) _votes.set(dTag, []);
+                    const votesList = _votes.get(dTag);
+                    const existingIdx = votesList.findIndex(v => v.pubkey === votePubkey);
+                    if (existingIdx < 0) {
+                        votesList.push({
+                            id: vote.eventId,
+                            pubkey: votePubkey,
+                            npub: vote.npub || LBW_Nostr.pubkeyToNpub(votePubkey),
+                            option: vote.option,
+                            proposalDTag: dTag,
+                            created_at: vote.created_at
+                        });
                     }
                 }
             });
@@ -166,8 +170,9 @@ const LBW_Governance = (() => {
     
     // Función pública para recargar votos después del login
     function reloadMyVotes() {
+        console.log('[Governance] 🔄 Recargando votos...');
         _loadMyVotes();
-        console.log('[Governance] 🔄 Votos recargados después del login');
+        console.log('[Governance] 🔄 Votos recargados, total:', _myVotes.size);
     }
 
     // ── Publish Proposal ─────────────────────────────────────
