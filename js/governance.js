@@ -77,12 +77,13 @@ async function submitProposal() {
 async function loadProposals() {
     try {
         if (typeof LBW_Governance !== 'undefined') {
-            // Asegurar que los votos estén cargados
-            if (typeof LBW_Governance.reloadMyVotes === 'function') {
-                LBW_Governance.reloadMyVotes();
-            }
-            
             LBW_Governance.subscribeProposals((proposal, action) => {
+                // Suscribirse a votos de la nueva propuesta
+                if (proposal.id && proposal.dTag) {
+                    LBW_Governance.subscribeVotes(proposal.id, proposal.dTag, () => {
+                        displayProposals();
+                    });
+                }
                 updateGovStats();
                 displayProposals();
             });
@@ -91,6 +92,20 @@ async function loadProposals() {
         allProposals = (typeof LBW_Governance !== 'undefined')
             ? LBW_Governance.getAllProposals().map(_nostrProposalToLegacy)
             : [];
+
+        // Suscribirse a votos de todas las propuestas existentes
+        if (typeof LBW_Governance !== 'undefined') {
+            console.log('[Governance] Suscribiendo a votos de', allProposals.length, 'propuestas...');
+            allProposals.forEach(p => {
+                const nostrP = p._nostrOriginal;
+                if (nostrP && nostrP.id && nostrP.dTag) {
+                    LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, () => {
+                        updateGovStats();
+                        displayProposals();
+                    });
+                }
+            });
+        }
 
         allVotes = [];
         updateGovStats();
