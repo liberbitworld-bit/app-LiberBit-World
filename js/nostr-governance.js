@@ -63,6 +63,7 @@ const LBW_Governance = (() => {
     let _voteSubs = {};               // proposalDTag → subscription
     const STORAGE_KEY = 'lbw_governance_proposals';
     const VOTES_STORAGE_KEY = 'lbw_governance_myvotes';
+    const ALL_VOTES_STORAGE_KEY = 'lbw_governance_allvotes';
 
     // ── LocalStorage Persistence ─────────────────────────────
     function _persistToStorage() {
@@ -79,34 +80,79 @@ const LBW_Governance = (() => {
             _myVotes.forEach((v, k) => { data[k] = v; });
             localStorage.setItem(VOTES_STORAGE_KEY, JSON.stringify(data));
         } catch (e) {}
+        
+        // También persistir todos los votos
+        try {
+            const allData = {};
+            _votes.forEach((votes, dTag) => { allData[dTag] = votes; });
+            localStorage.setItem(ALL_VOTES_STORAGE_KEY, JSON.stringify(allData));
+        } catch (e) {}
     }
 
     function _loadFromStorage() {
+        // Cargar propuestas
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
-            const data = JSON.parse(raw);
-            Object.entries(data).forEach(([dTag, proposal]) => {
-                if (!_proposals.has(dTag)) {
-                    // Update status if expired
-                    const now = Math.floor(Date.now() / 1000);
-                    if (proposal.status === 'active' && proposal.expiresAt && now > proposal.expiresAt) {
-                        proposal.status = 'expired';
+            if (raw) {
+                const data = JSON.parse(raw);
+                Object.entries(data).forEach(([dTag, proposal]) => {
+                    if (!_proposals.has(dTag)) {
+                        const now = Math.floor(Date.now() / 1000);
+                        if (proposal.status === 'active' && proposal.expiresAt && now > proposal.expiresAt) {
+                            proposal.status = 'expired';
+                        }
+                        _proposals.set(dTag, proposal);
                     }
-                    _proposals.set(dTag, proposal);
-                }
-            });
-            console.log(`[Governance] 📂 ${_proposals.size} propuestas cargadas de caché`);
+                });
+                console.log(`[Governance] 📂 ${_proposals.size} propuestas cargadas de caché`);
+            }
         } catch (e) { console.warn('[Governance] Storage load error:', e); }
 
+        // Cargar TODOS los votos primero
+        try {
+            const raw = localStorage.getItem(ALL_VOTES_STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                Object.entries(data).forEach(([dTag, votes]) => {
+                    if (!_votes.has(dTag) && Array.isArray(votes)) {
+                        _votes.set(dTag, votes);
+                    }
+                });
+                console.log(`[Governance] 📂 Votos cargados para ${_votes.size} propuestas`);
+            }
+        } catch (e) { console.warn('[Governance] All votes load error:', e); }
+
+        // Cargar mis votos
         try {
             const raw = localStorage.getItem(VOTES_STORAGE_KEY);
-            if (!raw) return;
-            const data = JSON.parse(raw);
-            Object.entries(data).forEach(([dTag, vote]) => {
-                if (!_myVotes.has(dTag)) _myVotes.set(dTag, vote);
-            });
-        } catch (e) {}
+            if (raw) {
+                const data = JSON.parse(raw);
+                const pubkey = LBW_Nostr.getPubkey();
+                Object.entries(data).forEach(([dTag, vote]) => {
+                    if (!_myVotes.has(dTag)) {
+                        _myVotes.set(dTag, vote);
+                        
+                        // Asegurar que mi voto esté en _votes
+                        if (pubkey) {
+                            if (!_votes.has(dTag)) _votes.set(dTag, []);
+                            const votesList = _votes.get(dTag);
+                            const existingIdx = votesList.findIndex(v => v.pubkey === pubkey);
+                            if (existingIdx < 0) {
+                                votesList.push({
+                                    id: vote.eventId,
+                                    pubkey: pubkey,
+                                    npub: LBW_Nostr.getNpub(),
+                                    option: vote.option,
+                                    proposalDTag: dTag,
+                                    created_at: vote.created_at
+                                });
+                            }
+                        }
+                    }
+                });
+                console.log(`[Governance] 📂 ${_myVotes.size} votos propios cargados de caché`);
+            }
+        } catch (e) { console.warn('[Governance] Votes storage load error:', e); }
     }
 
     // ── Publish Proposal ─────────────────────────────────────
@@ -344,13 +390,31 @@ const LBW_Governance = (() => {
         // === FIN VERIFICACIÓN ===
 
         // Track locally SOLO si se publicó exitosamente
-        _myVotes.set(proposalDTag, {
+        const myVoteData = {
             option: option.trim(),
             eventId: result.event.id,
             created_at: Math.floor(Date.now() / 1000),
             _publishedTo: successfulRelays.map(r => r.relay)
-        });
+        };
+        _myVotes.set(proposalDTag, myVoteData);
         _persistVotesToStorage();
+        
+        // También agregar a _votes para que se muestre en resultados inmediatamente
+        if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
+        const votesList = _votes.get(proposalDTag);
+        const pubkey = LBW_Nostr.getPubkey();
+        // Eliminar voto anterior si existe (no debería pero por seguridad)
+        const existingIdx = votesList.findIndex(v => v.pubkey === pubkey);
+        if (existingIdx >= 0) votesList.splice(existingIdx, 1);
+        // Agregar nuevo voto
+        votesList.push({
+            id: result.event.id,
+            pubkey: pubkey,
+            npub: LBW_Nostr.getNpub(),
+            option: option.trim(),
+            proposalDTag: proposalDTag,
+            created_at: Math.floor(Date.now() / 1000)
+        });
 
         console.log(`[Governance] ✅ Voto registrado: "${option}" para d=${proposalDTag}`);
         return { ...result, relaysUsed: successfulRelays.length };
@@ -466,6 +530,9 @@ const LBW_Governance = (() => {
                         created_at: vote.created_at
                     });
                 }
+                
+                // Persistir votos recibidos
+                _persistVotesToStorage();
 
                 // Deliver to callbacks
                 _onVoteCallbacks.forEach(cb => {
@@ -653,6 +720,7 @@ const LBW_Governance = (() => {
         _myVotes.clear();
         try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
         try { localStorage.removeItem(VOTES_STORAGE_KEY); } catch (e) {}
+        try { localStorage.removeItem(ALL_VOTES_STORAGE_KEY); } catch (e) {}
     }
 
     // ── Public API ───────────────────────────────────────────
