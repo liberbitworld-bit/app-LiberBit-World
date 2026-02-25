@@ -339,16 +339,40 @@ async function submitVote(proposalDTag) {
     if (!proposal || !proposal._nostrOriginal) { showNotification('Propuesta no encontrada', 'error'); return; }
 
     const nostrP = proposal._nostrOriginal;
+    
+    // Deshabilitar botón mientras se procesa
+    const voteBtn = document.querySelector('.modal .btn-primary');
+    if (voteBtn) {
+        voteBtn.disabled = true;
+        voteBtn.innerHTML = '⏳ Enviando voto...';
+    }
 
     try {
-        await LBW_Governance.publishVote(nostrP.id, nostrP.dTag, option);
-        showNotification('¡Voto emitido correctamente! 🗳️', 'success');
-        const modal = document.querySelector('.modal');
+        console.log('[Vote] Enviando voto:', { proposalId: nostrP.id, dTag: nostrP.dTag, option });
+        const result = await LBW_Governance.publishVote(nostrP.id, nostrP.dTag, option);
+        console.log('[Vote] Resultado:', result);
+        
+        // Mostrar notificación de éxito
+        showNotification(`¡Voto "${option}" emitido correctamente! 🗳️`, 'success');
+        
+        // Cerrar modal
+        const modal = document.querySelector('.modal.active');
         if (modal) modal.remove();
-        setTimeout(() => { updateGovStats(); displayProposals(); }, 500);
+        
+        // Actualizar UI después de un breve delay
+        setTimeout(() => { 
+            updateGovStats(); 
+            displayProposals(); 
+        }, 500);
     } catch (err) {
-        console.error('Error submitting vote:', err);
+        console.error('[Vote] Error submitting vote:', err);
         showNotification('Error: ' + err.message, 'error');
+        
+        // Rehabilitar botón en caso de error
+        if (voteBtn) {
+            voteBtn.disabled = false;
+            voteBtn.innerHTML = '🗳️ Emitir Voto';
+        }
     }
 }
 
