@@ -172,7 +172,17 @@ const LBW_Governance = (() => {
     function reloadMyVotes() {
         console.log('[Governance] 🔄 Recargando votos...');
         _loadMyVotes();
-        console.log('[Governance] 🔄 Votos recargados, total:', _myVotes.size);
+        console.log('[Governance] 🔄 Votos recargados desde caché, total:', _myVotes.size);
+        
+        // Solo buscar en Nostr si no hay votos en caché y no estamos ya buscando
+        if (_myVotes.size === 0 && !_fetchingVotes) {
+            // Esperar un poco para evitar rate limiting en la carga inicial
+            setTimeout(() => {
+                if (_myVotes.size === 0) {
+                    _fetchMyVotesFromNostr();
+                }
+            }, 2000);
+        }
     }
 
     // ── Publish Proposal ─────────────────────────────────────
