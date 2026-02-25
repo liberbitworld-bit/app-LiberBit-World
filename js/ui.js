@@ -3,11 +3,6 @@ function showMainMenu() {
     document.getElementById('userBadge').classList.remove('hidden');
     document.getElementById('userName').textContent = currentUser.name;
     
-    // Recargar votos de gobernanza ahora que el usuario está logueado
-    if (typeof LBW_Governance !== 'undefined' && typeof LBW_Governance.reloadMyVotes === 'function') {
-        LBW_Governance.reloadMyVotes();
-    }
-    
     // Update home welcome card
     document.getElementById('homeUserName').textContent = currentUser.name;
     const pubKey = currentUser.pubkey || currentUser.publicKey;
