@@ -1,17 +1,19 @@
 // ============================================================
-// LiberBit World — LBWM Merit System v1.0 (nostr-merits.js)
+// LiberBit World — LBWM Merit System v2.0 (nostr-merits.js)
 //
 // Decentralized merit tracking over Nostr protocol.
 // Contributions (kind 31003) → Merits (kind 31002)
 // Snapshots (kind 31005) for leaderboard consensus.
 //
-// Design Principles:
-//   - LINEAR calculation (not logarithmic) — fair value recognition
-//   - Anti-plutocracy via structural protections, not penalizing contributors
+// Design Principles (v2.0):
+//   - LINEAR calculation: Merit_total = Σ (wᵢ × Cᵢ)
+//   - 4 categories: Económica(1.0), Productiva(1.0), Responsabilidad(1.2), Financiada(0.6)
+//   - 6 citizenship levels: Amigo → E-Residency → Colaborador → Ciudadano Senior → Embajador → Gobernador
+//   - Anti-plutocracy via 3 voting blocks with 51% governor floor
+//   - Governor merit cap: merit_voto = min(total, 3000)
+//   - Responsabilidad requires Ciudadano Senior+ (1000+ merits)
 //   - Parameterized replaceable events (NIP-33)
 //   - PRIVATE relays only (merit data is internal)
-//   - Governor-signed snapshots for consensus
-//   - Citizenship levels derived from cumulative merits
 //
 // Dependencies: nostr.js (LBW_Nostr), nostr-store.js (LBW_Store)
 // ============================================================
@@ -25,69 +27,65 @@ const LBW_Merits = (() => {
         SNAPSHOT: 31005    // Periodic leaderboard snapshot
     };
 
-    // ── Merit Categories ─────────────────────────────────────
+    // ── Merit Categories (LBWM v2.0) ────────────────────────
+    // 4 categorías con peso (wᵢ) fijo.
+    // Merit_total = Σ (wᵢ × Cᵢ) — relación lineal directa.
     const CATEGORIES = {
-        participation: {
-            label: 'Participación',
-            emoji: '💬',
-            description: 'Actividad en la comunidad (posts, chat, reacciones)',
-            maxPerPeriod: 100,  // Max merits per 30-day period
-            autoCalculated: true
+        economica: {
+            label: 'Económica',
+            emoji: '💰',
+            description: 'Aportaciones monetarias directas al ecosistema',
+            weight: 1.0
         },
-        professional: {
-            label: 'Profesional',
-            emoji: '💼',
-            description: 'Servicios profesionales aportados al ecosistema',
-            maxPerPeriod: 500,
-            autoCalculated: false
+        productiva: {
+            label: 'Productiva',
+            emoji: '🛠️',
+            description: 'Trabajo, desarrollo y contribución activa',
+            weight: 1.0
         },
-        governance: {
-            label: 'Gobernanza',
-            emoji: '🏛️',
-            description: 'Participación en propuestas y votaciones',
-            maxPerPeriod: 200,
-            autoCalculated: true
+        responsabilidad: {
+            label: 'Responsabilidad',
+            emoji: '🛡️',
+            description: 'Roles de gestión, liderazgo y servicio comunitario. Requiere mínimo Ciudadano Senior (1.000+ merits)',
+            weight: 1.2,
+            requiresMinMerits: 1000  // Solo Ciudadano Senior+
         },
-        infrastructure: {
-            label: 'Infraestructura',
-            emoji: '🔧',
-            description: 'Mantenimiento de nodos, relays, desarrollo técnico',
-            maxPerPeriod: 500,
-            autoCalculated: false
-        },
-        community: {
-            label: 'Comunidad',
-            emoji: '🤝',
-            description: 'Onboarding, mentoring, organización de eventos',
-            maxPerPeriod: 300,
-            autoCalculated: false
-        },
-        financial: {
-            label: 'Financiera',
-            emoji: '⚡',
-            description: 'Contribuciones económicas al ecosistema',
-            maxPerPeriod: null,  // No cap (but linear, not weighted)
-            autoCalculated: false
+        financiada: {
+            label: 'Financiada',
+            emoji: '📋',
+            description: 'Contribuciones subsidiadas o patrocinadas',
+            weight: 0.6
         }
     };
 
-    // ── Citizenship Levels ───────────────────────────────────
-    // Derived from cumulative merits. Linear progression.
+    // ── Citizenship Levels (LBWM v2.0) ──────────────────────
+    // 6 niveles progresivos con bloque de voto asociado.
+    // Gobernador cap: merit_voto = min(merit_total, 3000)
     const CITIZENSHIP_LEVELS = [
-        { name: 'E-Residency',       minMerits: 0,     emoji: '🌐', color: '#666666' },
-        { name: 'Ciudadano',         minMerits: 100,   emoji: '🏛️', color: '#2C5F6F' },
-        { name: 'Ciudadano Activo',  minMerits: 500,   emoji: '⭐', color: '#4CAF50' },
-        { name: 'Ciudadano Senior',  minMerits: 1000,  emoji: '🏅', color: '#E5B95C' },
-        { name: 'Governor',          minMerits: 5000,  emoji: '👑', color: '#FFD700' }
+        { name: 'Amigo',             minMerits: 0,     emoji: '🌐', color: '#666666', block: 'comunidad' },
+        { name: 'E-Residency',       minMerits: 100,   emoji: '🪪', color: '#2C5F6F', block: 'comunidad' },
+        { name: 'Colaborador',       minMerits: 500,   emoji: '⭐', color: '#4CAF50', block: 'comunidad' },
+        { name: 'Ciudadano Senior',  minMerits: 1000,  emoji: '🏅', color: '#E5B95C', block: 'ciudadania' },
+        { name: 'Embajador',         minMerits: 2000,  emoji: '🎖️', color: '#9C27B0', block: 'ciudadania' },
+        { name: 'Gobernador',        minMerits: 3000,  emoji: '👑', color: '#FFD700', block: 'gobernanza' }
     ];
 
-    // ── Contribution Factors ─────────────────────────────────
-    // Factor applied to contribution value for merit calculation.
-    // Factor range: 1.0 - 2.0
-    //   1.0 = standard contribution
-    //   1.5 = high-impact / funded contribution
-    //   2.0 = critical infrastructure / emergency response
-    const FACTOR_RANGE = { min: 1.0, max: 2.0 };
+    // ── Voting Blocks (LBWM v2.0) ────────────────────────────
+    // Gobernanza: mínimo 51%, equitativo entre gobernadores
+    // Ciudadanía: máximo 29%, proporcional a merits
+    // Comunidad: máximo 20%, proporcional a merits
+    const VOTING_BLOCKS = {
+        gobernanza:  { label: 'Gobernanza',  minWeight: 0.51, levels: ['Gobernador'] },
+        ciudadania:  { label: 'Ciudadanía',  maxWeight: 0.29, levels: ['Ciudadano Senior', 'Embajador'] },
+        comunidad:   { label: 'Comunidad',   maxWeight: 0.20, levels: ['Amigo', 'E-Residency', 'Colaborador'] }
+    };
+
+    // Governor merit cap for voting power
+    const GOVERNOR_MERIT_CAP = 3000;
+
+    // ── Category Weights ──────────────────────────────────────
+    // v2.0: factor is the category weight (wᵢ), not a user-defined range.
+    // economica=1.0, productiva=1.0, responsabilidad=1.2, financiada=0.6
 
     // ── Internal State ───────────────────────────────────────
     let _merits = new Map();          // pubkey → {total, byCategory, records}
@@ -101,18 +99,16 @@ const LBW_Merits = (() => {
     let _subContribs = null;
     let _subSnapshots = null;
 
-    // ── Submit Contribution ──────────────────────────────────
+    // ── Submit Contribution (LBWM v2.0) ────────────────────
     // A user submits a contribution record. Merits are awarded
-    // based on contribution value × factor.
+    // based on contribution value × category weight (wᵢ).
     //
     // data: {
     //   description  — What was contributed
-    //   category     — One of CATEGORIES keys
-    //   type         — 'financial' | 'professional' | 'infrastructure'
-    //   amount       — Numeric value (sats, hours, or custom unit)
-    //   currency     — 'sats' | 'hours' | 'units'
-    //   funded       — Boolean: was this a funded (paid) contribution?
-    //   factor       — Override factor (1.0-2.0), default calculated
+    //   category     — 'economica' | 'productiva' | 'responsabilidad' | 'financiada'
+    //   type         — Same as category
+    //   amount       — Numeric value (contribution bruta Cᵢ)
+    //   currency     — 'EUR' | 'USD' | 'BTC' | 'units'
     //   evidence     — Optional: URLs to evidence/proof
     // }
 
@@ -126,28 +122,22 @@ const LBW_Merits = (() => {
         const nowSecs = Math.floor(Date.now() / 1000);
         const dTag = `contrib-${pubkey.substring(0, 8)}-${nowSecs}`;
 
-        // Calculate factor
-        let factor = data.factor || 1.0;
-        factor = Math.max(FACTOR_RANGE.min, Math.min(FACTOR_RANGE.max, factor));
-        if (data.funded) factor = Math.max(factor, 1.5);
-
-        // Calculate merit points from contribution
-        const amount = parseFloat(data.amount) || 0;
-        const meritPoints = _calculateMeritPoints(amount, data.category, factor);
-
-        // Check period cap
-        const periodCap = CATEGORIES[data.category].maxPerPeriod;
-        if (periodCap !== null) {
-            const periodMerits = _getMeritsInPeriod(pubkey, data.category, 30);
-            if (periodMerits + meritPoints > periodCap) {
-                const remaining = periodCap - periodMerits;
-                if (remaining <= 0) {
-                    throw new Error(`Has alcanzado el límite de ${periodCap} méritos en "${CATEGORIES[data.category].label}" para este periodo.`);
-                }
-                // Warn but allow (capped)
-                console.warn(`[Merits] ⚠️ Contribución reducida: ${meritPoints} → ${remaining} (cap ${periodCap}/periodo)`);
+        // v2.0: Responsabilidad requires Ciudadano Senior+ (1000+ merits in other categories)
+        const catDef = CATEGORIES[data.category];
+        if (catDef.requiresMinMerits) {
+            const userData = _merits.get(pubkey);
+            const otherMerits = userData ? (userData.total - (userData.byCategory['responsabilidad'] || 0)) : 0;
+            if (otherMerits < catDef.requiresMinMerits) {
+                throw new Error(`La categoría "${catDef.label}" requiere al menos ${catDef.requiresMinMerits} merits en otras categorías. Actualmente tienes ${otherMerits}.`);
             }
         }
+
+        // v2.0: Factor = category weight (wᵢ), not user-defined
+        const weight = catDef.weight;
+
+        // Calculate merit points: Merit = Cᵢ × wᵢ
+        const amount = parseFloat(data.amount) || 0;
+        const meritPoints = _calculateMeritPoints(amount, data.category, weight);
 
         // Content: detailed JSON
         const content = JSON.stringify({
@@ -155,7 +145,7 @@ const LBW_Merits = (() => {
             amount,
             currency: data.currency || 'units',
             meritPoints,
-            factor,
+            weight,
             evidence: data.evidence || [],
             timestamp: nowSecs
         });
@@ -168,8 +158,7 @@ const LBW_Merits = (() => {
             ['merit-points', String(meritPoints)],
             ['category', data.category],
             ['type', data.type || data.category],
-            ['funded', data.funded ? 'true' : 'false'],
-            ['factor', String(factor)],
+            ['weight', String(weight)],
             ['t', 'lbw-merits'],
             ['t', 'lbw-contrib'],
             ['client', 'LiberBit World']
@@ -181,8 +170,8 @@ const LBW_Merits = (() => {
             tags
         });
 
-        console.log(`[Merits] 📝 Contribución: ${meritPoints} méritos [${data.category}] factor=${factor}`);
-        return { ...result, dTag, meritPoints, factor };
+        console.log(`[Merits] 📝 Contribución: ${meritPoints} méritos [${data.category}] peso=${weight}`);
+        return { ...result, dTag, meritPoints, weight };
     }
 
     // ── Award Merit (Governor-only) ──────────────────────────
@@ -383,7 +372,7 @@ const LBW_Merits = (() => {
                 id: event.id,
                 pubkey: g('p') || event.pubkey,
                 amount: parseFloat(g('amount')) || parsed.amount || 0,
-                category: g('category') || 'participation',
+                category: g('category') || 'economica',
                 reason: g('reason') || parsed.reason || '',
                 awardedBy: g('awarded-by') || parsed.awardedBy || event.pubkey,
                 created_at: event.created_at,
@@ -408,10 +397,9 @@ const LBW_Merits = (() => {
                 description: parsed.description || event.content,
                 amount: parseFloat(g('amount')) || parsed.amount || 0,
                 meritPoints: parseFloat(g('merit-points')) || parsed.meritPoints || 0,
-                category: g('category') || 'participation',
+                category: g('category') || 'economica',
                 type: g('type') || g('category'),
-                funded: g('funded') === 'true',
-                factor: parseFloat(g('factor')) || 1.0,
+                weight: parseFloat(g('weight')) || parseFloat(g('factor')) || parsed.weight || parsed.factor || 1.0,
                 currency: parsed.currency || 'units',
                 evidence: parsed.evidence || [],
                 created_at: event.created_at
@@ -421,15 +409,15 @@ const LBW_Merits = (() => {
         }
     }
 
-    // ── Merit Calculation ────────────────────────────────────
-    // LINEAR: merit_points = amount × factor
+    // ── Merit Calculation (LBWM v2.0) ─────────────────────
+    // LINEAR: Merit = Cᵢ × wᵢ (contribution × category weight)
     // No logarithmic scaling — fair value recognition.
+    // 1 unit of value = 1 merit (before weight applied)
 
-    function _calculateMeritPoints(amount, category, factor) {
-        // Base: 1 unit of contribution = 1 merit point
-        // Factor applies multiplier (1.0 - 2.0)
+    function _calculateMeritPoints(amount, category, weight) {
         const base = Math.max(0, amount);
-        const points = Math.round(base * factor);
+        const catWeight = weight || (CATEGORIES[category] ? CATEGORIES[category].weight : 1.0);
+        const points = Math.round(base * catWeight);
         return points;
     }
 
@@ -552,9 +540,108 @@ const LBW_Merits = (() => {
         return null; // Already at max level
     }
 
+    // ── Voting Power (LBWM v2.0) ───────────────────────────
+    // 3 bloques: Gobernanza (min 51%), Ciudadanía (max 29%), Comunidad (max 20%)
+    // Gobernador cap: merit_voto = min(merit_total, 3000)
+    // Dentro de Gobernanza: voto equitativo entre gobernadores
+    // Dentro de Ciudadanía/Comunidad: proporcional a merits
+
+    function calculateVotingPower() {
+        const lb = getLeaderboard(999);
+        if (lb.length === 0) return { blocks: {}, totalMerits: 0 };
+
+        // Classify members by block
+        const blocks = { gobernanza: [], ciudadania: [], comunidad: [] };
+        let totalMeritsAll = 0;
+
+        lb.forEach(entry => {
+            const level = getCitizenshipLevel(entry.total);
+            const block = level.block || 'comunidad';
+            // Gobernador: merit_voto capped at 3000
+            const meritVoto = block === 'gobernanza' ? Math.min(entry.total, GOVERNOR_MERIT_CAP) : entry.total;
+            blocks[block].push({ ...entry, meritVoto, level });
+            totalMeritsAll += meritVoto;
+        });
+
+        if (totalMeritsAll === 0) return { blocks, totalMerits: 0 };
+
+        // Calculate natural weight of each block
+        const blockMerits = {};
+        Object.keys(blocks).forEach(key => {
+            blockMerits[key] = blocks[key].reduce((sum, e) => sum + e.meritVoto, 0);
+        });
+
+        let weights = {};
+        const gobNatural = blockMerits.gobernanza / totalMeritsAll;
+
+        if (gobNatural >= 0.51) {
+            // Natural weight respected
+            Object.keys(blockMerits).forEach(key => {
+                weights[key] = blockMerits[key] / totalMeritsAll;
+            });
+        } else {
+            // Floor rule: Gobernanza gets 51%, rest distributed proportionally
+            weights.gobernanza = 0.51;
+            const remaining = 0.49;
+            const otherTotal = blockMerits.ciudadania + blockMerits.comunidad;
+            if (otherTotal > 0) {
+                weights.ciudadania = remaining * (blockMerits.ciudadania / otherTotal);
+                weights.comunidad = remaining * (blockMerits.comunidad / otherTotal);
+            } else {
+                weights.ciudadania = 0;
+                weights.comunidad = remaining;
+            }
+        }
+
+        return {
+            blocks,
+            weights,
+            blockMerits,
+            totalMerits: totalMeritsAll,
+            floorActive: gobNatural < 0.51,
+            gobNaturalWeight: gobNatural
+        };
+    }
+
+    function getUserVotingPower(pubkey) {
+        pubkey = pubkey || LBW_Nostr.getPubkey();
+        if (!pubkey) return null;
+
+        const vp = calculateVotingPower();
+        if (vp.totalMerits === 0) return { power: 0, block: 'comunidad', blockWeight: 0 };
+
+        const userData = _merits.get(pubkey);
+        const total = userData ? userData.total : 0;
+        const level = getCitizenshipLevel(total);
+        const block = level.block || 'comunidad';
+
+        let individualPower = 0;
+        if (block === 'gobernanza') {
+            // Equitativo: cada gobernador tiene el mismo poder dentro del bloque
+            const numGov = vp.blocks.gobernanza.length;
+            individualPower = numGov > 0 ? (vp.weights.gobernanza / numGov) : 0;
+        } else {
+            // Proporcional a merits dentro del bloque
+            const blockTotal = vp.blockMerits[block] || 1;
+            individualPower = (total / blockTotal) * (vp.weights[block] || 0);
+        }
+
+        return {
+            power: individualPower,
+            powerPct: (individualPower * 100).toFixed(2),
+            block,
+            blockLabel: VOTING_BLOCKS[block]?.label || block,
+            blockWeight: vp.weights[block] || 0,
+            meritVoto: block === 'gobernanza' ? Math.min(total, GOVERNOR_MERIT_CAP) : total,
+            level,
+            floorActive: vp.floorActive
+        };
+    }
+
     // ── Stats ────────────────────────────────────────────────
     function getStats() {
         const lb = getLeaderboard(999);
+        const vp = calculateVotingPower();
         return {
             totalParticipants: lb.length,
             totalMerits: lb.reduce((sum, e) => sum + e.total, 0),
@@ -571,7 +658,8 @@ const LBW_Merits = (() => {
                     k,
                     lb.reduce((sum, e) => sum + (e.byCategory[k] || 0), 0)
                 ])
-            )
+            ),
+            votingPower: vp
         };
     }
 
@@ -591,7 +679,8 @@ const LBW_Merits = (() => {
         KIND,
         CATEGORIES,
         CITIZENSHIP_LEVELS,
-        FACTOR_RANGE,
+        VOTING_BLOCKS,
+        GOVERNOR_MERIT_CAP,
 
         // Publish
         submitContribution,
@@ -612,6 +701,10 @@ const LBW_Merits = (() => {
         getCitizenshipLevel,
         getNextLevel,
         getStats,
+
+        // Voting (v2.0)
+        calculateVotingPower,
+        getUserVotingPower,
 
         // Lifecycle
         reset
