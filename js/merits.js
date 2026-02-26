@@ -17,9 +17,29 @@ async function loadMeritsData() {
         // Wait briefly for initial data
         await new Promise(r => setTimeout(r, 500));
 
+        // Nostr-based merits (from kind 31002 events)
         const myData = LBW_Merits.getMyMerits();
-        const totalMerits = myData ? myData.total : 0;
+        var nostrMerits = myData ? myData.total : 0;
         const breakdown = myData ? myData.byCategory : {};
+
+        // Activity-based merits (posts, offers, votes, proposals)
+        var activityContribs = 0;
+        if (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser) {
+            activityContribs += allPosts.filter(function(p) { return p.author === currentUser.name; }).length;
+        }
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) {
+            activityContribs += LBW_NostrBridge.getMyOffersCount();
+        }
+        if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getStats) {
+            activityContribs += LBW_Governance.getStats().myVotes || 0;
+        }
+        if (typeof allProposals !== 'undefined' && Array.isArray(allProposals) && currentUser) {
+            activityContribs += allProposals.filter(function(p) { return p.author === currentUser.name; }).length;
+        }
+        var activityMerits = activityContribs * 10;
+
+        // Use whichever is higher
+        var totalMerits = Math.max(nostrMerits, activityMerits);
 
         // Update user merits display
         const el = id => document.getElementById(id);
@@ -28,7 +48,8 @@ async function loadMeritsData() {
 
         // Count contributions
         const myContribs = LBW_Merits.getMyContributions();
-        if (el('user_lbwm_aportaciones')) el('user_lbwm_aportaciones').textContent = myContribs.length;
+        var totalContribs = myContribs.length + activityContribs;
+        if (el('user_lbwm_aportaciones')) el('user_lbwm_aportaciones').textContent = totalContribs;
 
         // Stats panel
         if (el('stat_mi_balance')) el('stat_mi_balance').textContent = totalMerits;
