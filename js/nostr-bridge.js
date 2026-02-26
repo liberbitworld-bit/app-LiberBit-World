@@ -654,6 +654,7 @@ const LBW_NostrBridge = (() => {
 
     function startDMWith(npubOrHex) {
         const pk = npubOrHex.startsWith('npub1') ? LBW_Nostr.npubToHex(npubOrHex) : npubOrHex;
+        if (typeof showSection === 'function') showSection('chatSection');
         if (typeof switchChatTab === 'function') switchChatTab('private');
         openDMConversation(pk);
     }
