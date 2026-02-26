@@ -270,7 +270,7 @@ function updateProfileDisplay() {
     
     // Calculate merits for citizenship level
     const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts)) ? allPosts.filter(p => p.author === currentUser.name).length : 0;
-    const userOffers = (typeof allOffers !== 'undefined' && Array.isArray(allOffers)) ? allOffers.filter(o => o.author === currentUser.name).length : 0;
+    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) ? LBW_NostrBridge.getMyOffersCount() : 0;
     // Obtener votos desde LBW_Governance (Nostr)
     const userVotes = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats().myVotes : 0;
     const userProposals = (typeof allProposals !== 'undefined' && Array.isArray(allProposals)) ? allProposals.filter(p => p.author === currentUser.name).length : 0;
@@ -529,7 +529,7 @@ async function saveCitizenship() {
     
     // Auto-calculate citizenship level
     const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
-    const userOffers = 0; // Marketplace now on Nostr, count not needed here
+    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) ? LBW_NostrBridge.getMyOffersCount() : 0;
     // Obtener votos desde LBW_Governance (Nostr)
     const userVotes = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats().myVotes : 0;
     const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
