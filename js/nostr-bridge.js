@@ -822,7 +822,6 @@ const LBW_NostrBridge = (() => {
                 dTag: (ev.tags.find(t => t[0] === 'd') || [])[1] || '',
                 _source: 'local'
             };
-            // Dedup by d-tag or id
             const idx = _marketplaceListings.findIndex(l =>
                 (l.dTag && l.dTag === listing.dTag) || l.id === listing.id
             );
@@ -923,16 +922,9 @@ const LBW_NostrBridge = (() => {
         return count;
     }
 
-    // Re-render marketplace grid (called when user navigates to Networking)
+    // Re-render marketplace grid on navigation
     function refreshMarketplace() {
-        if (_marketplaceListings.length > 0) {
-            _renderMarketplaceGrid();
-        } else {
-            // No Nostr listings yet — fallback to Supabase
-            if (typeof loadOffersFromSupabase === 'function') {
-                loadOffersFromSupabase();
-            }
-        }
+        _renderMarketplaceGrid();
     }
 
     // ── Public API ───────────────────────────────────────────
@@ -945,7 +937,6 @@ const LBW_NostrBridge = (() => {
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, getDebugStats,
-        // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
 })();
