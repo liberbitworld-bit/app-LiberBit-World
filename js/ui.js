@@ -184,7 +184,6 @@ async function openApp(appName) {
         window.chatBadgeInterval = setInterval(updateChatBadges, 15000);
     } else if (appName === 'networking') {
         showSection('networkingSection');
-        // Use Nostr marketplace (not legacy Supabase loadOffers)
         if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.refreshMarketplace) {
             LBW_NostrBridge.refreshMarketplace();
         }
@@ -198,7 +197,6 @@ async function openApp(appName) {
         markAsRead('gobernanza');
     } else if (appName === 'perfil') {
         showSection('profileSection');
-        // Load fresh data first, then update profile with accurate stats
         await loadPosts();
         loadProposals();
         await loadUserProfile();
