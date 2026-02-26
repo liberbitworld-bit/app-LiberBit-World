@@ -98,6 +98,12 @@ async function loadProposals() {
         allVotes = [];
         updateGovStats();
         displayProposals();
+
+        // Re-render diferido para captar datos tardíos de relays
+        setTimeout(() => {
+            updateGovStats();
+            displayProposals();
+        }, 3000);
     } catch (err) {
         console.error('Error loading proposals:', err);
         allProposals = [];
