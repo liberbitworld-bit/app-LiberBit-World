@@ -1901,19 +1901,19 @@
 
                 <!-- Filters -->
                 <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                    <button class="filter-btn active" onclick="filterOffers('todos')" data-filter="todos">
+                    <button class="filter-btn active" onclick="handleMarketFilter('todos', this)" data-filter="todos">
                         🌐 Todos
                     </button>
-                    <button class="filter-btn" onclick="filterOffers('servicios')" data-filter="servicios">
+                    <button class="filter-btn" onclick="handleMarketFilter('servicios', this)" data-filter="servicios">
                         💼 Servicios
                     </button>
-                    <button class="filter-btn" onclick="filterOffers('productos')" data-filter="productos">
+                    <button class="filter-btn" onclick="handleMarketFilter('productos', this)" data-filter="productos">
                         🛍️ Productos
                     </button>
-                    <button class="filter-btn" onclick="filterOffers('trabajos')" data-filter="trabajos">
+                    <button class="filter-btn" onclick="handleMarketFilter('trabajos', this)" data-filter="trabajos">
                         💻 Trabajos
                     </button>
-                    <button class="filter-btn" onclick="filterOffers('alquileres')" data-filter="alquileres">
+                    <button class="filter-btn" onclick="handleMarketFilter('alquileres', this)" data-filter="alquileres">
                         🏠 Alquileres
                     </button>
                 </div>
@@ -1969,23 +1969,6 @@
                             <button type="button" onclick="removeOfferImage()" style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--color-error); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-weight: bold;">×</button>
                         </div>
                         <small style="color: var(--color-text-secondary); font-size: 0.8rem;">Imagen del producto/servicio (máx 5MB)</small>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">📷 Imagen (opcional)</label>
-                        <input type="file" id="offerImage" accept="image/*" style="display: none;" onchange="previewOfferImage(event)">
-                        <div style="display: flex; gap: 1rem; align-items: start;">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('offerImage').click()" style="padding: 0.75rem 1.5rem;">
-                                Seleccionar Imagen
-                            </button>
-                            <div id="imagePreview" style="display: none;">
-                                <img id="previewImg" style="max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid var(--color-border);">
-                                <button type="button" onclick="removeOfferImage()" style="display: block; margin-top: 0.5rem; padding: 0.3rem 0.8rem; background: var(--color-error); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">
-                                    Eliminar imagen
-                                </button>
-                            </div>
-                        </div>
-                        <small style="color: var(--color-text-secondary); font-size: 0.8rem; display: block; margin-top: 0.5rem;">JPG, PNG, GIF - Máx. 2MB</small>
                     </div>
 
                     <div class="compose-actions">
@@ -2227,6 +2210,15 @@
 
     <!-- Nostr Marketplace Helper -->
     <script>
+        // Filter handler that updates active button + calls Nostr bridge filter
+        function handleMarketFilter(category, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.filterMarketplace) {
+                LBW_NostrBridge.filterMarketplace(category);
+            }
+        }
+
         async function handleNostrPublishOffer() {
             const title = document.getElementById('offerTitle')?.value?.trim();
             const desc = document.getElementById('offerDescription')?.value?.trim();
@@ -2252,9 +2244,25 @@
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
+                // Reset image preview
+                const imgPreview = document.getElementById('imagePreview');
+                if (imgPreview) imgPreview.style.display = 'none';
+                const previewImg = document.getElementById('previewImg');
+                if (previewImg) previewImg.src = '';
+                const imgInput = document.getElementById('offerImage');
+                if (imgInput) imgInput.value = '';
+                // Reset category
+                const catSelect = document.getElementById('offerCategory');
+                if (catSelect) catSelect.value = 'servicios';
+                
                 const form = document.getElementById('newOfferForm');
                 if (form) form.style.display = 'none';
-                alert('✅ Oferta publicada en la red Nostr');
+                
+                if (typeof showNotification === 'function') {
+                    showNotification('¡Oferta publicada en Nostr! 🎉');
+                } else {
+                    alert('✅ Oferta publicada en la red Nostr');
+                }
             } catch (e) {
                 alert('❌ Error: ' + e.message);
             } finally {
