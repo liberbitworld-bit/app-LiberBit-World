@@ -767,11 +767,18 @@ const LBW_NostrBridge = (() => {
                             <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(listing.price)} ${listing.currency !== 'sats' ? listing.currency : '⚡'}</span>
                             <span style="font-size:0.7rem;color:var(--color-text-secondary);">${_esc(name)}</span>
                         </div>
-                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;">
+                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;" class="card-actions">
                             <button onclick="LBW_NostrBridge.startDMWith('${listing.pubkey}')" style="flex:1;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">💬 Contactar</button>
                             ${isMine ? `<button onclick="LBW_NostrBridge.deleteListing('${listing.id}')" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>` : ''}
                         </div>
                     </div>`;
+
+                // Open detail on card click (but not on button clicks)
+                card.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'BUTTON' || e.target.closest('.card-actions')) return;
+                    _showListingDetail(listing, name);
+                });
+
                 grid.appendChild(card);
             });
         });
@@ -845,6 +852,55 @@ const LBW_NostrBridge = (() => {
     function filterMarketplace(cat) {
         document.querySelectorAll('.offer-card').forEach(c => {
             c.style.display = (cat === 'todos' || c.dataset.category === cat) ? '' : 'none';
+        });
+    }
+
+    function _showListingDetail(listing, authorName) {
+        // Build image HTML from media tags
+        var media = LBW_Media.extractMediaFromTags(listing.tags);
+        var imageHtml = '';
+        if (media.urls.length > 0) {
+            imageHtml = '<img src="' + _esc(media.urls[0]) + '" alt="' + _esc(listing.title) + '" style="width:100%;height:250px;object-fit:cover;margin-bottom:1rem;border-radius:12px;" onerror="this.style.display=\'none\'">';
+        }
+
+        var isMine = listing.pubkey === LBW_Nostr.getPubkey();
+        var priceText = (!listing.price || listing.price === '0' || listing.price === 0) ? 'A negociar' : _esc(listing.price) + ' ' + (listing.currency !== 'sats' ? listing.currency : '⚡');
+
+        var modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML =
+            '<div class="modal-content" style="position:relative;">' +
+                '<button class="modal-close" onclick="this.closest(\'.modal\').remove()">×</button>' +
+                '<div class="modal-header">' +
+                    imageHtml +
+                    '<div style="display:inline-block;font-size:0.7rem;background:rgba(229,185,92,0.15);color:var(--color-gold);padding:0.2rem 0.6rem;border-radius:20px;border:1px solid rgba(229,185,92,0.3);">' + _esc(listing.category) + '</div>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                    '<h2 style="color:var(--color-gold);margin-bottom:1rem;">' + _esc(listing.title) + '</h2>' +
+                    '<p style="color:var(--color-text-secondary);margin-bottom:1.5rem;line-height:1.6;">' + _esc(listing.description) + '</p>' +
+                    '<div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;margin-bottom:1.5rem;">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                            '<div>' +
+                                '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.25rem;">Precio</div>' +
+                                '<div style="font-size:1.5rem;font-weight:700;color:var(--color-gold);">' + priceText + '</div>' +
+                            '</div>' +
+                            '<div style="text-align:right;">' +
+                                '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.25rem;">Publicado por</div>' +
+                                '<div style="font-size:1rem;font-weight:600;color:var(--color-text-primary);">' + _esc(authorName) + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    (!isMine ?
+                        '<div style="margin-top:1.5rem;text-align:center;">' +
+                            '<button class="btn btn-primary" onclick="this.closest(\'.modal\').remove(); LBW_NostrBridge.startDMWith(\'' + listing.pubkey + '\')">💬 Enviar Mensaje Privado</button>' +
+                        '</div>'
+                    : '') +
+                '</div>' +
+            '</div>';
+
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
         });
     }
 
