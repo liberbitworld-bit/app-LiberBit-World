@@ -891,7 +891,14 @@ const LBW_NostrBridge = (() => {
 
     // Re-render marketplace grid (called when user navigates to Networking)
     function refreshMarketplace() {
-        _renderMarketplaceGrid();
+        if (_marketplaceListings.length > 0) {
+            _renderMarketplaceGrid();
+        } else {
+            // No Nostr listings yet — fallback to Supabase
+            if (typeof loadOffersFromSupabase === 'function') {
+                loadOffersFromSupabase();
+            }
+        }
     }
 
     // ── Public API ───────────────────────────────────────────
