@@ -184,7 +184,10 @@ async function openApp(appName) {
         window.chatBadgeInterval = setInterval(updateChatBadges, 15000);
     } else if (appName === 'networking') {
         showSection('networkingSection');
-        loadOffers();
+        // Use Nostr marketplace (not legacy Supabase loadOffers)
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.refreshMarketplace) {
+            LBW_NostrBridge.refreshMarketplace();
+        }
         markAsRead('networking');
     } else if (appName === 'directMessages') {
         showSection('chatSection');
@@ -196,10 +199,7 @@ async function openApp(appName) {
     } else if (appName === 'perfil') {
         showSection('profileSection');
         // Load fresh data first, then update profile with accurate stats
-        await Promise.all([
-            loadPosts(),
-            loadOffers()
-        ]);
+        await loadPosts();
         loadProposals();
         await loadUserProfile();
     } else if (appName === 'citiesInDev') {
