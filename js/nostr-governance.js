@@ -65,6 +65,15 @@ const LBW_Governance = (() => {
     const VOTES_STORAGE_KEY = 'lbw_governance_myvotes';
     const ALL_VOTES_STORAGE_KEY = 'lbw_governance_allvotes';
 
+    // Per-user vote storage keys
+    function _votesKey() {
+        const pk = LBW_Nostr.getPubkey();
+        return pk ? VOTES_STORAGE_KEY + '_' + pk.substring(0, 12) : VOTES_STORAGE_KEY;
+    }
+    function _allVotesKey() {
+        return ALL_VOTES_STORAGE_KEY;
+    }
+
     // ── LocalStorage Persistence ─────────────────────────────
     function _persistToStorage() {
         try {
@@ -78,14 +87,14 @@ const LBW_Governance = (() => {
         try {
             const data = {};
             _myVotes.forEach((v, k) => { data[k] = v; });
-            localStorage.setItem(VOTES_STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(_votesKey(), JSON.stringify(data));
         } catch (e) {}
         
         // También persistir todos los votos
         try {
             const allData = {};
             _votes.forEach((votes, dTag) => { allData[dTag] = votes; });
-            localStorage.setItem(ALL_VOTES_STORAGE_KEY, JSON.stringify(allData));
+            localStorage.setItem(_allVotesKey(), JSON.stringify(allData));
         } catch (e) {}
     }
 
@@ -110,7 +119,7 @@ const LBW_Governance = (() => {
 
         // Cargar TODOS los votos primero
         try {
-            const raw = localStorage.getItem(ALL_VOTES_STORAGE_KEY);
+            const raw = localStorage.getItem(_allVotesKey());
             if (raw) {
                 const data = JSON.parse(raw);
                 Object.entries(data).forEach(([dTag, votes]) => {
@@ -129,9 +138,9 @@ const LBW_Governance = (() => {
     // Función separada para cargar mis votos - puede llamarse después del login
     function _loadMyVotes() {
         try {
-            const raw = localStorage.getItem(VOTES_STORAGE_KEY);
+            const raw = localStorage.getItem(_votesKey());
             if (!raw) {
-                console.log('[Governance] No hay votos guardados en localStorage');
+                console.log('[Governance] No hay votos guardados para este usuario');
                 return;
             }
             
@@ -174,14 +183,11 @@ const LBW_Governance = (() => {
         _loadMyVotes();
         console.log('[Governance] 🔄 Votos recargados desde caché, total:', _myVotes.size);
         
-        // Solo buscar en Nostr si no hay votos en caché y no estamos ya buscando
-        if (_myVotes.size === 0 && !_fetchingVotes) {
-            // Esperar un poco para evitar rate limiting en la carga inicial
+        // Siempre buscar en Nostr para sincronizar (votos pueden haber cambiado)
+        if (!_fetchingVotes) {
             setTimeout(() => {
-                if (_myVotes.size === 0) {
-                    _fetchMyVotesFromNostr();
-                }
-            }, 2000);
+                _fetchMyVotesFromNostr();
+            }, 500);
         }
     }
 
@@ -526,6 +532,13 @@ const LBW_Governance = (() => {
             }
         );
 
+        // Re-render diferido para captar respuestas tardías de relays
+        setTimeout(() => {
+            _onProposalCallbacks.forEach(cb => {
+                try { cb(null, 'relay-sync'); } catch (e) {}
+            });
+        }, 2000);
+
         return _sub;
     }
     
@@ -605,6 +618,13 @@ const LBW_Governance = (() => {
             () => {
                 _fetchingVotes = false;
                 console.log('[Governance] 🔍 Búsqueda de mis votos completada. Total:', _myVotes.size);
+                // Forzar re-render para mostrar votos encontrados
+                if (_myVotes.size > 0) {
+                    _persistVotesToStorage();
+                    _onProposalCallbacks.forEach(cb => {
+                        try { cb(null, 'votes-synced'); } catch (e) {}
+                    });
+                }
             }
         );
     }
@@ -841,12 +861,15 @@ const LBW_Governance = (() => {
     // ── Reset (logout) ───────────────────────────────────────
     function reset() {
         unsubscribeAll();
+        // NO borrar propuestas de localStorage — son datos públicos compartidos
+        // Solo limpiar el Map interno (se recargará del caché al próximo login)
         _proposals.clear();
         _votes.clear();
         _myVotes.clear();
-        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-        try { localStorage.removeItem(VOTES_STORAGE_KEY); } catch (e) {}
-        try { localStorage.removeItem(ALL_VOTES_STORAGE_KEY); } catch (e) {}
+        _fetchingVotes = false;
+        // Solo borrar votos del usuario actual, no de todos
+        try { localStorage.removeItem(_votesKey()); } catch (e) {}
+        // NO borrar STORAGE_KEY (propuestas) ni ALL_VOTES_STORAGE_KEY (votos públicos)
     }
 
     // ── Public API ───────────────────────────────────────────
