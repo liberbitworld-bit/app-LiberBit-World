@@ -31,10 +31,9 @@ async function loadMeritsData() {
             activityContribs += LBW_NostrBridge.getMyOffersCount();
         }
         if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getStats) {
-            activityContribs += LBW_Governance.getStats().myVotes || 0;
-        }
-        if (typeof allProposals !== 'undefined' && Array.isArray(allProposals) && currentUser) {
-            activityContribs += allProposals.filter(function(p) { return p.author === currentUser.name; }).length;
+            const govStats = LBW_Governance.getStats();
+            activityContribs += govStats.myVotes || 0;
+            activityContribs += govStats.myProposals || 0;
         }
         var activityMerits = activityContribs * 10;
 
@@ -150,7 +149,7 @@ function loadLedgerData() {
         description: c.description,
         reference_value: c.amount,
         currency: c.currency || 'units',
-        factor_proposed: c.factor,
+        factor_proposed: c.weight,
         lbwm_estimated: c.meritPoints,
         submitted_at: new Date(c.created_at * 1000).toISOString(),
         status: 'approved',
@@ -242,9 +241,8 @@ function switchLbwmTab(tabName) {
 }
 
 function toggleFinanciada() {
-    const isChecked = document.getElementById('aport_financiada')?.checked;
-    const section = document.getElementById('financiada_section');
-    if (section) section.style.display = isChecked ? 'block' : 'none';
+    // v2.0: Financiada is a category option, not a checkbox.
+    // This function kept for backward compatibility with any HTML onclick references.
     updatePreviewCalculation();
 }
 
@@ -272,19 +270,20 @@ function closeContributionForm() {
 function updateContributionFactor() {
     const typeSelect = document.getElementById('contrib_type');
     if (!typeSelect) return;
-    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
-    const factor = selectedOption.dataset.factor;
+    const category = typeSelect.value;
 
-    const financiadaDiv = document.getElementById('financiada_factor');
-    if (typeSelect.value === 'financiada') {
-        if (financiadaDiv) financiadaDiv.style.display = 'block';
-        const pfEl = document.getElementById('preview_factor');
-        if (pfEl) pfEl.textContent = document.getElementById('contrib_factor_financiada')?.value || '0.4';
-    } else {
-        if (financiadaDiv) financiadaDiv.style.display = 'none';
-        const pfEl = document.getElementById('preview_factor');
-        if (pfEl) pfEl.textContent = factor;
+    // Show/hide Responsabilidad warning
+    const respWarning = document.getElementById('responsabilidad_warning');
+    if (respWarning) {
+        respWarning.style.display = category === 'responsabilidad' ? 'block' : 'none';
     }
+
+    // Get weight from v2.0 CATEGORIES
+    const catDef = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.CATEGORIES[category] : null;
+    const weight = catDef ? catDef.weight : 1.0;
+
+    const pfEl = document.getElementById('preview_factor');
+    if (pfEl) pfEl.textContent = weight.toFixed(1);
 
     updatePreviewCalculation();
 }
@@ -292,41 +291,26 @@ function updateContributionFactor() {
 function updatePreviewCalculation() {
     const value = parseFloat(document.getElementById('contrib_value')?.value) || 0;
     const currency = document.getElementById('contrib_currency')?.value || 'EUR';
-    const esFinanciada = document.getElementById('aport_financiada')?.checked;
     const tipo = document.getElementById('contrib_type')?.value;
 
-    let factor = 1.0;
+    // v2.0: Get weight directly from CATEGORIES
+    const catDef = (typeof LBW_Merits !== 'undefined' && tipo) ? LBW_Merits.CATEGORIES[tipo] : null;
+    const weight = catDef ? catDef.weight : 1.0;
 
-    if (esFinanciada) {
-        factor = parseFloat(document.getElementById('aport_factor')?.value || document.getElementById('contrib_factor_financiada')?.value || 0.4);
-    } else if (tipo === 'financiada') {
-        factor = parseFloat(document.getElementById('contrib_factor_financiada')?.value || 0.4);
-    } else {
-        const typeSelect = document.getElementById('contrib_type');
-        if (typeSelect && typeSelect.selectedIndex > 0) {
-            const selectedOption = typeSelect.options[typeSelect.selectedIndex];
-            if (selectedOption.dataset.factor && selectedOption.dataset.factor !== '0.0') {
-                factor = parseFloat(selectedOption.dataset.factor);
-            }
-        }
-    }
-
-    const lbwm = (value * factor).toFixed(2);
+    const lbwm = (value * weight).toFixed(2);
     const el = id => document.getElementById(id);
     if (el('preview_value')) el('preview_value').textContent = value.toFixed(2);
     if (el('preview_currency')) el('preview_currency').textContent = currency;
-    if (el('preview_factor')) el('preview_factor').textContent = factor.toFixed(1);
+    if (el('preview_factor')) el('preview_factor').textContent = weight.toFixed(1);
     if (el('preview_lbwm')) el('preview_lbwm').textContent = lbwm;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const valueInput = document.getElementById('contrib_value');
     const currencySelect = document.getElementById('contrib_currency');
-    const factorFinanciada = document.getElementById('contrib_factor_financiada');
 
     if (valueInput) valueInput.addEventListener('input', updatePreviewCalculation);
     if (currencySelect) currencySelect.addEventListener('change', updatePreviewCalculation);
-    if (factorFinanciada) factorFinanciada.addEventListener('change', updatePreviewCalculation);
 });
 
 async function submitContribution(event) {
@@ -339,35 +323,18 @@ async function submitContribution(event) {
 
     try {
         const typeSelect = document.getElementById('contrib_type');
-        const selectedOption = typeSelect.options[typeSelect.selectedIndex];
-
-        let factor = parseFloat(selectedOption.dataset.factor) || 1.0;
-        if (typeSelect.value === 'financiada') {
-            factor = parseFloat(document.getElementById('contrib_factor_financiada')?.value || 0.4);
-        }
-
         const value = parseFloat(document.getElementById('contrib_value')?.value) || 0;
         const description = document.getElementById('contrib_description')?.value || '';
         const evidence = document.getElementById('contrib_evidence')?.value || '';
 
-        // Map legacy type to Nostr category
-        const categoryMap = {
-            'profesional': 'professional',
-            'infraestructura': 'infrastructure',
-            'comunidad': 'community',
-            'financiada': 'financial',
-            'voluntariado': 'community',
-            'desarrollo': 'infrastructure'
-        };
+        // v2.0: category goes directly (economica, productiva, responsabilidad, financiada)
+        const category = typeSelect.value;
 
         await LBW_Merits.submitContribution({
             description,
-            category: categoryMap[typeSelect.value] || 'professional',
-            type: typeSelect.value,
+            category,
             amount: value,
             currency: document.getElementById('contrib_currency')?.value || 'EUR',
-            funded: typeSelect.value === 'financiada' || document.getElementById('aport_financiada')?.checked,
-            factor,
             evidence: evidence ? [evidence] : []
         });
 
@@ -401,7 +368,7 @@ function loadMyContributions() {
             period: new Date(c.created_at * 1000).toLocaleDateString('es-ES'),
             reference_value: c.amount,
             currency: c.currency || 'units',
-            factor_proposed: c.factor,
+            factor_proposed: c.weight,
             lbwm_estimated: c.meritPoints,
             status: 'approved',
             source: 'nostr'
@@ -437,7 +404,7 @@ function loadMyContributions() {
                     <div style="font-weight: 600; color: var(--color-text-primary);">${c.reference_value || 0} ${c.currency || 'EUR'}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Factor</div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Peso</div>
                     <div style="font-weight: 600; color: var(--color-text-primary);">${c.factor_proposed || '-'}</div>
                 </div>
                 <div>
