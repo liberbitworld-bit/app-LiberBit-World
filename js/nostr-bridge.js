@@ -983,6 +983,15 @@ const LBW_NostrBridge = (() => {
         _renderMarketplaceGrid();
     }
 
+    // Count current user's marketplace listings
+    function getMyOffersCount() {
+        var myPubkey = LBW_Nostr.getPubkey();
+        if (!myPubkey) return 0;
+        return _marketplaceListings.filter(function(l) {
+            return l.pubkey === myPubkey && l.status !== 'deleted';
+        }).length;
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
@@ -992,7 +1001,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, getDebugStats,
+        _resolveName, getDebugStats, getMyOffersCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
