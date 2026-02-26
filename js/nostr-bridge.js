@@ -800,7 +800,7 @@ const LBW_NostrBridge = (() => {
             mediaTags
         });
 
-        // Inject locally so it appears immediately (relays may not echo back)
+        // Inject locally so it appears immediately
         if (result && result.event) {
             const ev = result.event;
             const listing = {
@@ -819,16 +819,15 @@ const LBW_NostrBridge = (() => {
                 status: 'active',
                 created_at: ev.created_at,
                 tags: ev.tags || [],
-                dTag: (ev.tags.find(t => t[0] === 'd') || [])[1] || '',
+                dTag: (ev.tags.find(function(t) { return t[0] === 'd'; }) || [])[1] || '',
                 _source: 'local'
             };
-            const idx = _marketplaceListings.findIndex(l =>
-                (l.dTag && l.dTag === listing.dTag) || l.id === listing.id
-            );
+            var idx = _marketplaceListings.findIndex(function(l) {
+                return (l.dTag && l.dTag === listing.dTag) || l.id === listing.id;
+            });
             if (idx >= 0) _marketplaceListings[idx] = listing;
             else _marketplaceListings.push(listing);
             _renderMarketplaceGrid();
-            console.log('[Bridge] 🏪 Oferta inyectada localmente:', listing.title);
         }
 
         return result;
@@ -937,6 +936,7 @@ const LBW_NostrBridge = (() => {
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, getDebugStats,
+        // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
 })();
