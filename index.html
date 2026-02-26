@@ -22,7 +22,7 @@
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
-    <link rel="stylesheet" href="css/main.css?v=2">
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
     <div class="bg-animated">
@@ -2173,9 +2173,9 @@
 
 
     <!-- JavaScript Modules -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=2"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/ui.js?v=2"></script>
+    <script src="js/ui.js"></script>
     <!-- SOS Functions -->
     <script>
         function selectSOSType(type) {
@@ -2188,13 +2188,13 @@
     </script>
 
     <script src="js/posts.js"></script>
-    <script src="js/marketplace.js?v=2"></script>
+    <script src="js/marketplace.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/lightning.js"></script>
     <script src="js/governance.js"></script>
     <script src="js/merits.js"></script>
-    <script src="js/profile.js?v=2"></script>
+    <script src="js/profile.js"></script>
     <script src="js/wallet.js"></script>
     <script src="js/verification.js"></script>
 
@@ -2206,7 +2206,7 @@
     <script src="js/nostr-sync.js"></script>
     <script src="js/nostr-governance.js"></script>
     <script src="js/nostr-merits.js"></script>
-    <script src="js/nostr-bridge.js?v=2"></script>
+    <script src="js/nostr-bridge.js"></script>
 
     <!-- Nostr Marketplace Helper -->
     <script>
@@ -2235,16 +2235,9 @@
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
-                if (typeof removeOfferImage === 'function') removeOfferImage();
-                const catSel = document.getElementById('offerCategory');
-                if (catSel) catSel.value = 'servicios';
                 const form = document.getElementById('newOfferForm');
                 if (form) form.style.display = 'none';
-                if (typeof showNotification === 'function') {
-                    showNotification('¡Oferta publicada en Nostr! 🎉');
-                } else {
-                    alert('✅ Oferta publicada en la red Nostr');
-                }
+                alert('✅ Oferta publicada en la red Nostr');
             } catch (e) {
                 alert('❌ Error: ' + e.message);
             } finally {
