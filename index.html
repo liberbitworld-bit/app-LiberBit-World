@@ -706,7 +706,7 @@
                         </div>
                         <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
                             <span style="background: rgba(255, 152, 0, 0.2); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #FFB74D; flex-shrink: 0;">3</span>
-                            <p style="color: var(--color-text-primary); font-size: 0.85rem; line-height: 1.5;">Tu aportación se registra como contribución económica y genera Méritos LBWM con multiplicador 0.3-0.6x</p>
+                            <p style="color: var(--color-text-primary); font-size: 0.85rem; line-height: 1.5;">Tu aportación se registra como contribución económica y genera Méritos LBWM con peso 1.0x</p>
                         </div>
                     </div>
                     <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(229, 185, 92, 0.08); border-radius: 10px; border-left: 3px solid var(--color-gold);">
@@ -1260,40 +1260,40 @@
                                 <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span style="color: var(--color-text-primary);">💰 Económica</span>
-                                        <span style="color: var(--color-gold); font-weight: 700;">Factor 1.0</span>
+                                        <span style="color: var(--color-gold); font-weight: 700;">Peso 1.0</span>
                                     </div>
                                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        BTC donado, liquidez
+                                        BTC donado, liquidez, aportaciones definitivas
                                     </div>
                                 </div>
                                 
                                 <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">⚡ Productiva</span>
-                                        <span style="color: var(--color-gold); font-weight: 700;">Factor 1.0</span>
+                                        <span style="color: var(--color-text-primary);">🛠️ Productiva</span>
+                                        <span style="color: var(--color-gold); font-weight: 700;">Peso 1.0</span>
                                     </div>
                                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Desarrollo, diseño, operación
+                                        Desarrollo, diseño, operación, servicios profesionales
                                     </div>
                                 </div>
                                 
                                 <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">🛡️ Responsabilidad</span>
-                                        <span style="color: var(--color-success); font-weight: 700;">Factor 1.2</span>
+                                        <span style="color: var(--color-text-primary);">🔐 Responsabilidad</span>
+                                        <span style="color: var(--color-success); font-weight: 700;">Peso 1.2</span>
                                     </div>
                                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Custodia, arbitraje
+                                        Gobernanza, custodia, arbitraje (requiere 1.000+ méritos)
                                     </div>
                                 </div>
                                 
                                 <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">📋 Financiada</span>
-                                        <span style="color: var(--color-teal-light); font-weight: 700;">Factor 0.3-0.6</span>
+                                        <span style="color: var(--color-text-primary);">⏳ Financiada</span>
+                                        <span style="color: var(--color-teal-light); font-weight: 700;">Peso 0.6</span>
                                     </div>
                                     <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Trabajo adelantado
+                                        Trabajo adelantado, aportaciones con financiación aplazada
                                     </div>
                                 </div>
                             </div>
@@ -1488,7 +1488,7 @@
                                     La emisión es siempre <em>ex-post</em>, tras verificación del Comité de Emisión.
                                 </p>
                                 <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem; color: var(--color-gold);">
-                                    LBWM = Valor Referencia × Factor
+                                    LBWM = Valor Referencia × Peso (wᵢ)
                                 </div>
                             </div>
 
@@ -1671,7 +1671,7 @@
                                         <th>Tipo</th>
                                         <th>Descripción</th>
                                         <th style="text-align: right;">Valor</th>
-                                        <th style="text-align: center;">Factor</th>
+                                        <th style="text-align: center;">Peso</th>
                                         <th style="text-align: right;">LBWM</th>
                                         <th style="text-align: center;">Estado</th>
                                     </tr>
@@ -1744,28 +1744,15 @@
                             <label>Tipo *</label>
                             <select id="contrib_type" required onchange="updateContributionFactor()">
                                 <option value="">-- Seleccionar --</option>
-                                <option value="economica" data-factor="1.0">💰 Económica Definitiva (Factor: 1.0)</option>
-                                <option value="productiva" data-factor="1.0">🛠️ Productiva - Trabajo (Factor: 1.0)</option>
-                                <option value="responsabilidad" data-factor="1.2">🔐 Responsabilidad (Factor: 1.2)</option>
-                                <option value="financiada" data-factor="0.0">⏳ Aportación Financiada (Factor: 0.3-0.6)</option>
+                                <option value="economica">💰 Económica Definitiva (Peso: 1.0)</option>
+                                <option value="productiva">🛠️ Productiva - Trabajo (Peso: 1.0)</option>
+                                <option value="responsabilidad">🔐 Responsabilidad (Peso: 1.2)</option>
+                                <option value="financiada">⏳ Aportación Financiada (Peso: 0.6)</option>
                             </select>
                         </div>
                         
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; background: rgba(198, 89, 17, 0.1); border-radius: 8px; border: 1px solid #C65911;">
-                                <input type="checkbox" id="aport_financiada" onchange="toggleFinanciada()">
-                                <span>📋 Es una aportación financiada (trabajo adelantado sin garantía de pago)</span>
-                            </label>
-                        </div>
-
-                        <div id="financiada_factor" style="display: none;" class="form-group">
-                            <label>Factor para Aportación Financiada</label>
-                            <select id="contrib_factor_financiada">
-                                <option value="0.3">0.3 - Fase muy temprana, alto riesgo</option>
-                                <option value="0.4">0.4 - Proyecto con tracción inicial</option>
-                                <option value="0.5">0.5 - Proyecto viable con uso real</option>
-                                <option value="0.6">0.6 - Proyecto maduro, bajo riesgo</option>
-                            </select>
+                        <div id="responsabilidad_warning" style="display: none; padding: 0.75rem; background: rgba(255, 152, 0, 0.15); border-radius: 8px; border: 1px solid #FF9800; margin-bottom: 1rem;">
+                            <span style="color: #FFB74D; font-size: 0.85rem;">⚠️ La categoría Responsabilidad requiere al menos 1.000 méritos acumulados en otras categorías.</span>
                         </div>
                     </div>
 
@@ -1825,32 +1812,12 @@
                         </div>
                     </div>
 
-                    <!-- Sección 6: Solo Aportación Financiada -->
-                    <div id="financiada_section" style="display: none; margin-bottom: 2rem;">
-                        <h3 style="color: #C65911; font-size: 1.1rem; margin-bottom: 1rem;">6️⃣ Aportación Financiada</h3>
-                        
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" id="aport_espera_devol">
-                                <span>Espero devolución futura (sujeto a viabilidad y aprobación de la red)</span>
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Factor Propuesto (0.3 - 0.6)</label>
-                            <input type="number" id="aport_factor" min="0.3" max="0.6" step="0.1" value="0.4" onchange="updatePreviewCalculation()">
-                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
-                                0.3 = Fase muy temprana | 0.4 = Con tracción | 0.5 = Proyecto viable | 0.6 = Proyecto maduro
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Preview de LBWM Estimados -->
                     <div class="lbwm-highlight-box" style="margin-bottom: 2rem;">
                         <h3 style="color: var(--color-gold); font-size: 1.1rem;">📊 Estimación de LBWM</h3>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                             <div>
-                                <div style="font-size: 0.9rem; color: var(--color-text-secondary);">Factor aplicable:</div>
+                                <div style="font-size: 0.9rem; color: var(--color-text-secondary);">Peso categoría (wᵢ):</div>
                                 <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="preview_factor">
                                     1.0
                                 </div>
@@ -2129,18 +2096,24 @@
                 <h2 class="modal-title">🏛️ Configurar Ciudadanía</h2>
                 
                 <div class="citizenship-info">
-                    💡 <strong>Tipos de Ciudadanía:</strong><br>
-                    • E-Residency: Ciudadano digital básico<br>
-                    • Pasaporte LBW: Ciudadano verificado<br>
-                    • Ciudadanía Dual: Doble nacionalidad digital
+                    💡 <strong>Escala de Ciudadanía LBWM v2.0</strong> (se calcula automáticamente según tus méritos):<br>
+                    • 👋 Amigo (0+ méritos) — Bloque Comunidad<br>
+                    • 🪪 E-Residency (100+) — Bloque Comunidad<br>
+                    • 🤝 Colaborador (500+) — Bloque Comunidad<br>
+                    • 🛂 Ciudadano Senior (1.000+) — Bloque Ciudadanía<br>
+                    • 🌍 Embajador (2.000+) — Bloque Ciudadanía<br>
+                    • 👑 Gobernador (3.000+) — Bloque Gobernanza
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="display:none;">
                     <label class="form-label">Tipo de Ciudadanía</label>
                     <select class="form-select" id="citizenshipTypeSelect">
-                        <option value="E-Residency">🌐 E-Residency</option>
-                        <option value="Pasaporte LBW">🛂 Pasaporte LBW</option>
-                        <option value="Ciudadanía Dual">🌍 Ciudadanía Dual</option>
+                        <option value="Amigo">👋 Amigo</option>
+                        <option value="E-Residency">🪪 E-Residency</option>
+                        <option value="Colaborador">🤝 Colaborador</option>
+                        <option value="Ciudadano Senior">🛂 Ciudadano Senior</option>
+                        <option value="Embajador">🌍 Embajador</option>
+                        <option value="Gobernador">👑 Gobernador</option>
                     </select>
                 </div>
 
