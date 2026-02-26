@@ -62,6 +62,7 @@ async function loadMeritsData() {
         // Load sub-views
         await loadLeaderboard();
         loadLedgerData();
+        loadMyContributions();
         await updateLbwmStats(totalMerits);
 
     } catch (err) {
@@ -239,6 +240,10 @@ function switchLbwmTab(tabName) {
     if (tab) tab.classList.add('active');
     const content = document.getElementById(`lbwm-tab-${tabName}`);
     if (content) content.classList.add('active');
+
+    // Refresh data when switching to data-dependent tabs
+    if (tabName === 'mis-aportaciones') loadMyContributions();
+    if (tabName === 'ledger') loadLedgerData();
 }
 
 function toggleFinanciada() {
