@@ -1901,19 +1901,19 @@
 
                 <!-- Filters -->
                 <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;">
-                    <button class="filter-btn active" onclick="handleMarketFilter('todos', this)" data-filter="todos">
+                    <button class="filter-btn active" onclick="filterOffers('todos')" data-filter="todos">
                         🌐 Todos
                     </button>
-                    <button class="filter-btn" onclick="handleMarketFilter('servicios', this)" data-filter="servicios">
+                    <button class="filter-btn" onclick="filterOffers('servicios')" data-filter="servicios">
                         💼 Servicios
                     </button>
-                    <button class="filter-btn" onclick="handleMarketFilter('productos', this)" data-filter="productos">
+                    <button class="filter-btn" onclick="filterOffers('productos')" data-filter="productos">
                         🛍️ Productos
                     </button>
-                    <button class="filter-btn" onclick="handleMarketFilter('trabajos', this)" data-filter="trabajos">
+                    <button class="filter-btn" onclick="filterOffers('trabajos')" data-filter="trabajos">
                         💻 Trabajos
                     </button>
-                    <button class="filter-btn" onclick="handleMarketFilter('alquileres', this)" data-filter="alquileres">
+                    <button class="filter-btn" onclick="filterOffers('alquileres')" data-filter="alquileres">
                         🏠 Alquileres
                     </button>
                 </div>
@@ -2206,17 +2206,10 @@
     <script src="js/nostr-sync.js"></script>
     <script src="js/nostr-governance.js"></script>
     <script src="js/nostr-merits.js"></script>
-    <script src="js/nostr-bridge.js?v=3"></script>
+    <script src="js/nostr-bridge.js?v=2"></script>
 
     <!-- Nostr Marketplace Helper -->
     <script>
-        // Filter handler — delegates to unified filterOffers in marketplace.js
-        function handleMarketFilter(category, btn) {
-            if (typeof filterOffers === 'function') {
-                filterOffers(category);
-            }
-        }
-
         async function handleNostrPublishOffer() {
             const title = document.getElementById('offerTitle')?.value?.trim();
             const desc = document.getElementById('offerDescription')?.value?.trim();
@@ -2242,20 +2235,11 @@
                     const el = document.getElementById(id);
                     if (el) el.value = '';
                 });
-                // Reset image preview
-                const imgPreview = document.getElementById('imagePreview');
-                if (imgPreview) imgPreview.style.display = 'none';
-                const previewImg = document.getElementById('previewImg');
-                if (previewImg) previewImg.src = '';
-                const imgInput = document.getElementById('offerImage');
-                if (imgInput) imgInput.value = '';
-                // Reset category
-                const catSelect = document.getElementById('offerCategory');
-                if (catSelect) catSelect.value = 'servicios';
-                
+                if (typeof removeOfferImage === 'function') removeOfferImage();
+                const catSel = document.getElementById('offerCategory');
+                if (catSel) catSel.value = 'servicios';
                 const form = document.getElementById('newOfferForm');
                 if (form) form.style.display = 'none';
-                
                 if (typeof showNotification === 'function') {
                     showNotification('¡Oferta publicada en Nostr! 🎉');
                 } else {
