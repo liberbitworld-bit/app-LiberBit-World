@@ -529,7 +529,9 @@ async function saveCitizenship() {
     
     // Auto-calculate citizenship level
     const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
-    const userOffers = allOffers.filter(o => o.author === currentUser.name).length;
+    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getDebugStats) 
+        ? (await LBW_NostrBridge.getDebugStats()).marketListings || 0 
+        : 0;
     // Obtener votos desde LBW_Governance (Nostr)
     const userVotes = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats().myVotes : 0;
     const userProposals = allProposals.filter(p => p.author === currentUser.name).length;
