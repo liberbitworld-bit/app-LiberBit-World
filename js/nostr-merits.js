@@ -170,6 +170,44 @@ const LBW_Merits = (() => {
             tags
         });
 
+        // ── Optimistic local update ──────────────────────────
+        // Add contribution immediately to local state so UI
+        // can display it without waiting for relay echo.
+        const eventId = result?.event?.id || dTag;
+        const localContrib = {
+            id: eventId,
+            pubkey,
+            npub: LBW_Nostr.pubkeyToNpub(pubkey),
+            dTag,
+            description: data.description.trim(),
+            amount,
+            meritPoints,
+            category: data.category,
+            type: data.type || data.category,
+            weight,
+            currency: data.currency || 'units',
+            evidence: data.evidence || [],
+            created_at: nowSecs
+        };
+
+        // Add to contributions if not already there (dedup by id)
+        if (!_contributions.some(c => c.id === eventId)) {
+            _contributions.push(localContrib);
+        }
+        if (!_myContributions.some(c => c.id === eventId)) {
+            _myContributions.push(localContrib);
+        }
+
+        // Also process as merit points immediately
+        _processMerit({
+            pubkey,
+            amount: meritPoints,
+            category: data.category,
+            created_at: nowSecs,
+            source: 'contribution',
+            id: eventId
+        });
+
         console.log(`[Merits] 📝 Contribución: ${meritPoints} méritos [${data.category}] peso=${weight}`);
         return { ...result, dTag, meritPoints, weight };
     }
