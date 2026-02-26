@@ -788,7 +788,7 @@ const LBW_NostrBridge = (() => {
             mediaTags = LBW_Media.buildImageTags(media);
         }
 
-        return await LBW_Nostr.publishMarketplaceListing({
+        const result = await LBW_Nostr.publishMarketplaceListing({
             title: offerData.title,
             description: offerData.description,
             category: offerData.category,
@@ -797,8 +797,42 @@ const LBW_NostrBridge = (() => {
             emoji: offerData.emoji,
             location: offerData.location || '',
             status: 'active',
-            mediaTags  // ← Multi-URL + SHA-256
+            mediaTags
         });
+
+        // Inject locally so it appears immediately (relays may not echo back)
+        if (result && result.event) {
+            const ev = result.event;
+            const listing = {
+                id: ev.id,
+                pubkey: ev.pubkey,
+                npub: LBW_Nostr.pubkeyToNpub(ev.pubkey),
+                title: offerData.title || 'Sin título',
+                description: offerData.description || '',
+                category: offerData.category || 'servicios',
+                price: offerData.price || 'A negociar',
+                currency: offerData.currency || 'sats',
+                emoji: offerData.emoji || '🏪',
+                image: '',
+                images: [],
+                location: offerData.location || '',
+                status: 'active',
+                created_at: ev.created_at,
+                tags: ev.tags || [],
+                dTag: (ev.tags.find(t => t[0] === 'd') || [])[1] || '',
+                _source: 'local'
+            };
+            // Dedup by d-tag or id
+            const idx = _marketplaceListings.findIndex(l =>
+                (l.dTag && l.dTag === listing.dTag) || l.id === listing.id
+            );
+            if (idx >= 0) _marketplaceListings[idx] = listing;
+            else _marketplaceListings.push(listing);
+            _renderMarketplaceGrid();
+            console.log('[Bridge] 🏪 Oferta inyectada localmente:', listing.title);
+        }
+
+        return result;
     }
 
     async function deleteListing(eventId) {
