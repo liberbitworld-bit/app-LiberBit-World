@@ -149,8 +149,15 @@ function getCategoryLabel(category) {
 }
 
 async function loadOffers() {
+    // Legacy function: delegate to Nostr marketplace
+    // The Nostr bridge handles all marketplace data now
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.refreshMarketplace) {
+        LBW_NostrBridge.refreshMarketplace();
+        return;
+    }
+    
+    // Fallback: only if Nostr bridge is not available
     try {
-        // Load offers from Supabase
         const { data, error } = await supabaseClient
             .from('offers')
             .select('*')
@@ -162,16 +169,12 @@ async function loadOffers() {
             }
             allOffers = [];
         } else {
-            // Get unique author public keys
             const authorKeys = [...new Set(data.map(o => o.author_public_key))];
-            
-            // Fetch avatars for all authors
             const { data: usersData } = await supabaseClient
                 .from('users')
                 .select('public_key, avatar_url')
                 .in('public_key', authorKeys);
             
-            // Create avatar map
             const avatarMap = {};
             if (usersData) {
                 usersData.forEach(user => {
@@ -262,15 +265,18 @@ function displayOffers() {
 }
 
 function filterOffers(category) {
+    // Delegate to Nostr bridge filter
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.filterMarketplace) {
+        LBW_NostrBridge.filterMarketplace(category);
+    }
     currentFilter = category;
     
     // Update active button
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-filter="${category}"]`).classList.add('active');
-    
-    displayOffers();
+    const activeBtn = document.querySelector(`[data-filter="${category}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
 }
 
 function editOffer(offerId) {
@@ -395,4 +401,3 @@ function showOfferDetail(offerId) {
 }
 
 console.log('✅ LiberBit World Listo');
-
