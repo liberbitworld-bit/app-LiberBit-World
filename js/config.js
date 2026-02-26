@@ -236,10 +236,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 let currentUser = null;
 let allPosts = [];
-let allOffers = [];
 let currentFilter = 'todos';
-let currentOfferImage = null;
-let editingOfferId = null;
 let allDirectMessages = [];
 let currentChatWith = null;
 let allProposals = [];
