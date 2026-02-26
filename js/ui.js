@@ -197,7 +197,11 @@ async function openApp(appName) {
         markAsRead('gobernanza');
     } else if (appName === 'perfil') {
         showSection('profileSection');
-        await loadPosts();
+        // Load fresh data first, then update profile with accurate stats
+        await Promise.all([
+            loadPosts(),
+            loadOffers()
+        ]);
         loadProposals();
         await loadUserProfile();
     } else if (appName === 'citiesInDev') {
