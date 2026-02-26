@@ -2210,12 +2210,10 @@
 
     <!-- Nostr Marketplace Helper -->
     <script>
-        // Filter handler that updates active button + calls Nostr bridge filter
+        // Filter handler — delegates to unified filterOffers in marketplace.js
         function handleMarketFilter(category, btn) {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.filterMarketplace) {
-                LBW_NostrBridge.filterMarketplace(category);
+            if (typeof filterOffers === 'function') {
+                filterOffers(category);
             }
         }
 
