@@ -1,4 +1,4 @@
-    // ============================================================
+// ============================================================
 // LiberBit World — Nostr Bridge v3.0 (nostr-bridge.js)
 //
 // CHANGES v3.0:
@@ -889,13 +889,18 @@ const LBW_NostrBridge = (() => {
         return count;
     }
 
+    // Re-render marketplace grid (called when user navigates to Networking)
+    function refreshMarketplace() {
+        _renderMarketplaceGrid();
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
         handleNIP07Login, handlePrivateKeyLogin, handleCreateIdentity, handleLogout, restoreSession,
         publishCommunityPost, replyToMessage, cancelReply, startCommunityChat, stopCommunityChat,
         sendDM, startDMWith, openDMConversation, startDirectMessages, stopDirectMessages,
-        publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace,
+        publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, getDebugStats,
@@ -910,5 +915,3 @@ document.addEventListener('DOMContentLoaded', () => {
     LBW_NostrBridge.init();
     LBW_NostrBridge.restoreSession();
 });
-
-    
