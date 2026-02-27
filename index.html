@@ -1234,6 +1234,9 @@
                     <div class="lbwm-tab" onclick="switchLbwmTab('ledger')" data-lbwm-tab="ledger">
                         📖 Ledger
                     </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('bloques-voto')" data-lbwm-tab="bloques-voto">
+                        🗳️ Bloques de Voto
+                    </div>
                 </div>
 
                 <!-- Tab: Resumen -->
@@ -1710,6 +1713,36 @@
         </section>
 
         <!-- Contribution Form Modal (LBWM) -->
+                <!-- [v2.0] Tab: Bloques de Voto -->
+                <div class="lbwm-tab-content" id="lbwm-tab-bloques-voto">
+                    <div class="lbwm-card">
+                        <h3 style="color:var(--color-gold);font-size:1.2rem;">🗳️ Distribución del Poder de Voto</h3>
+                        <p style="color:var(--color-text-secondary);margin-bottom:1.5rem;line-height:1.6;">
+                            El poder de voto se organiza en 3 bloques. Gobernanza mantiene mín 51%.
+                        </p>
+                        <div id="votingBlocksDisplay" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">
+                            Cargando distribución...
+                        </div>
+                    </div>
+                    <div class="lbwm-card" style="margin-top:1rem;">
+                        <h3 style="color:var(--color-gold);font-size:1.2rem;">📊 Desglose por Categoría</h3>
+                        <div id="meritsCategoryBreakdown" style="text-align:center;padding:1rem;color:var(--color-text-secondary);font-size:0.85rem;">
+                            Sin datos de categorías.
+                        </div>
+                    </div>
+                    <div class="lbwm-card" style="margin-top:1rem;background:rgba(229,185,92,0.05);">
+                        <h3 style="color:var(--color-gold);font-size:1rem;">🔑 Reglas v2.0</h3>
+                        <div style="display:grid;gap:0.5rem;font-size:0.85rem;color:var(--color-text-secondary);line-height:1.6;">
+                            <div>💰 <strong>Económica:</strong> ⚡ auto (Lightning/BTC) o 👑 Gobernador (banco/otro)</div>
+                            <div>🗳️ <strong>Valor:</strong> Propuesta → votación (3d, quorum 30%, mayoría simple)</div>
+                            <div>👑 <strong>Governor Cap:</strong> Poder de voto igualado a 3.000</div>
+                            <div>🛡️ <strong>Suelo 51%:</strong> Bloque Gobernanza siempre ≥51%</div>
+                            <div>🔐 <strong>Responsabilidad:</strong> Requiere 1.000+ méritos base (×1.2)</div>
+                            <div>📐 <strong>Fórmula:</strong> Nostr + min(actividad×10, 300). Lineal</div>
+                        </div>
+                    </div>
+                </div>
+
         <div class="modal" id="contributionFormModal">
             <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; padding: 2rem;">
                 <button class="modal-close" onclick="closeContributionForm()">✕</button>
@@ -1754,6 +1787,23 @@
                         <div id="responsabilidad_warning" style="display: none; padding: 0.75rem; background: rgba(255, 152, 0, 0.15); border-radius: 8px; border: 1px solid #FF9800; margin-bottom: 1rem;">
                             <span style="color: #FFB74D; font-size: 0.85rem;">⚠️ La categoría Responsabilidad requiere al menos 1.000 méritos acumulados en otras categorías.</span>
                         </div>
+
+                        <!-- [v2.0] Método de pago (solo económica) -->
+                        <div id="payMethodSection" style="display:none;margin-bottom:2rem;">
+                            <h3 style="color:var(--color-gold);font-size:1.1rem;margin-bottom:1rem;">💳 Método de Pago</h3>
+                            <div class="form-group">
+                                <label>Método *</label>
+                                <select id="contrib_payMethod" onchange="updateFlowIndicator()">
+                                    <option value="lightning">⚡ Lightning Network</option>
+                                    <option value="btc_onchain">⛓️ Bitcoin on-chain</option>
+                                    <option value="bank">🏦 Transferencia bancaria</option>
+                                    <option value="other">📄 Otro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- [v2.0] Flow indicator -->
+                        <div id="flowIndicator" style="display:none;padding:0.75rem;border-radius:8px;margin-bottom:1.5rem;font-size:0.85rem;line-height:1.5;"></div>
                     </div>
 
                     <!-- Sección 3: Descripción -->
@@ -1831,7 +1881,7 @@
                             </div>
                         </div>
                         <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--color-text-secondary); font-style: italic;">
-                            * Estimación sujeta a aprobación del Comité de Emisión
+                            * <span id="preview_approval_note">Estimación sujeta a verificación</span>
                         </div>
                     </div>
 
@@ -1849,7 +1899,7 @@
                         <button type="button" class="btn btn-secondary" onclick="closeContributionForm()">
                             Cancelar
                         </button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="submitContribBtn">
                             📝 Enviar Formulario
                         </button>
                     </div>
@@ -1981,6 +2031,8 @@
                                 <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-family: var(--font-mono); opacity: 0.8;" id="profileNpub">npub1...</div>
                                 <button onclick="copyNpubKey()" style="background: var(--color-gold); color: var(--color-teal-dark); border: none; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; white-space: nowrap;" id="copyNpubBtn">📋 Copiar</button>
                             </div>
+                            <!-- [v2.0] Governor badge -->
+                            <div id="profileGovernorBadge" style="display:none;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;background:rgba(156,39,176,0.15);color:#CE93D8;border:1px solid rgba(156,39,176,0.3);margin-top:0.4rem;"></div>
                             <button class="profile-edit-btn" onclick="showCitizenshipModal()">
                                 ✏️ Editar Ciudadanía
                             </button>
@@ -2004,6 +2056,9 @@
                     </div>
                 </div>
 
+                <!-- [v2.0] Merit Source Breakdown -->
+                <div style="padding:0.6rem 1rem;background:rgba(229,185,92,0.08);border-radius:10px;border:1px solid rgba(229,185,92,0.2);margin-bottom:1rem;text-align:center;font-size:0.85rem;" id="profileMeritSource"></div>
+
                 <!-- Citizenship Details -->
                 <div class="profile-section">
                     <h3 class="profile-section-title">🏛️ Detalles de Ciudadanía</h3>
@@ -2017,6 +2072,37 @@
                             <span class="citizenship-value" id="citizenshipCity">-</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- [v2.0] Citizenship Gauge -->
+                <div class="profile-section">
+                    <h3 class="profile-section-title">🎯 Gauge de Ciudadanía</h3>
+                    <div style="display:flex;flex-direction:column;align-items:center;padding:1rem 0;">
+                        <canvas id="gaugeCanvas" width="520" height="290" style="max-width:100%;height:auto;"></canvas>
+                        <div id="gaugeGlow" style="width:60px;height:4px;border-radius:2px;margin-top:0.5rem;opacity:0.5;"></div>
+                        <div id="gaugeMeritCount" style="font-family:var(--font-mono);font-size:2rem;font-weight:800;color:var(--color-gold);margin-top:0.5rem;">0</div>
+                        <div id="gaugeLevelBadge" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.4rem 1rem;border-radius:20px;font-size:0.85rem;font-weight:700;border:2px solid var(--color-gold);color:var(--color-gold);background:rgba(229,185,92,0.1);margin-top:0.5rem;">
+                            <span id="gaugeLevelIcon">👋</span>
+                            <span id="gaugeLevelTitle">AMIGO</span>
+                        </div>
+                        <div id="gaugeLevelBloc" style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.3rem;">Bloque: Comunidad</div>
+                    </div>
+                </div>
+
+                <!-- [v2.0] Desglose LBWM -->
+                <div class="profile-section">
+                    <h3 class="profile-section-title">📊 Desglose LBWM v2.0</h3>
+                    <div class="citizenship-details">
+                        <div class="citizenship-row">
+                            <span class="citizenship-label">Bloque de Voto:</span>
+                            <span class="citizenship-value" id="citizenshipBloc">Comunidad</span>
+                        </div>
+                        <div class="citizenship-row">
+                            <span class="citizenship-label">Fuente de Méritos:</span>
+                            <span class="citizenship-value" id="meritSource">📊 Actividad</span>
+                        </div>
+                    </div>
+                    <div id="categoryBreakdown" style="margin-top:0.75rem;"></div>
                 </div>
 
                 <!-- Activity Summary -->
@@ -2039,7 +2125,16 @@
                             <span class="activity-name">🏛️ Propuestas Creadas</span>
                             <span class="activity-count" id="activityProposals">0</span>
                         </div>
+                        <div class="activity-item">
+                            <span class="activity-name">⚡ Aportaciones Nostr</span>
+                            <span class="activity-count" id="activityNostrContribs">0</span>
+                        </div>
                     </div>
+                </div>
+
+                <!-- [v2.0] Governor Quick Access -->
+                <div id="profileGovQuickAccess" class="profile-section" style="display:none;">
+                    <h3 class="profile-section-title">👑 Acciones de Gobernador</h3>
                 </div>
 
                 <!-- NIP-65: Relay Management -->
