@@ -33,6 +33,9 @@ async function loadMeritsData() {
             breakdown = myData ? myData.byCategory : {};
 
             var activityContribs = 0;
+            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount) {
+                activityContribs += LBW_NostrBridge.getMyChatCount();
+            }
             if (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser) {
                 activityContribs += allPosts.filter(function(p) { return p.author === currentUser.name; }).length;
             }
