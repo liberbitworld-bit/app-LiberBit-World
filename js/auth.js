@@ -15,7 +15,10 @@ function setupEventListeners() {
     // NOTE: createAccountBtn and importAccountBtn are now handled by the inline script
     // in index.html using LBW_NostrBridge (correct secp256k1 crypto).
     // publishPostBtn is handled via onclick="LBW_NostrBridge.publishCommunityPost()" in HTML.
-    document.getElementById('continueBtn').addEventListener('click', showMainMenu);
+    document.getElementById('continueBtn').addEventListener('click', () => {
+        if (typeof continueAfterLogin === 'function') continueAfterLogin();
+        else if (typeof showMainMenu === 'function' && currentUser) showMainMenu();
+    });
 }
 
 async function checkExistingSession() {
