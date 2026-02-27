@@ -521,6 +521,9 @@ async function handleAvatarUpload(event) {
 
         // Save to Supabase
         const pubKey = currentUser.pubkey || currentUser.publicKey;
+        const userName = currentUser.name && !currentUser.name.startsWith('npub1') && !currentUser.name.endsWith('...') 
+            ? currentUser.name 
+            : 'Usuario';
         
         // First check if user exists
         const { data: existingUser } = await supabaseClient
@@ -536,7 +539,7 @@ async function handleAvatarUpload(event) {
                 .insert([{
                     id: generateUUID(),
                     public_key: pubKey,
-                    name: currentUser.name,
+                    name: userName,
                     avatar_url: base64Image,
                     citizenship_type: 'Amigo'
                 }])
@@ -549,13 +552,20 @@ async function handleAvatarUpload(event) {
                 return;
             }
 
-            currentUser.id = newUser.id;
-            localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+            if (newUser) {
+                currentUser.id = newUser.id;
+                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+            }
         } else {
-            // Update existing user
+            // Update existing user avatar (and name if we have a good one)
+            const updateData = { avatar_url: base64Image };
+            if (userName !== 'Usuario') {
+                updateData.name = userName;
+            }
+            
             const { error } = await supabaseClient
                 .from('users')
-                .update({ avatar_url: base64Image })
+                .update(updateData)
                 .eq('public_key', pubKey);
 
             if (error) {
@@ -580,7 +590,7 @@ async function handleAvatarUpload(event) {
 
     } catch (err) {
         console.error('Error:', err);
-        showNotification('Error al procesar la imagen', 'error');
+        showNotification('Error al procesar la imagen: ' + (err.message || err), 'error');
     }
 
     // Clear input
