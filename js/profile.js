@@ -13,6 +13,52 @@ function getCitizenshipLevel(merits) {
 }
 
 // ============================================
+// [v2.0] Unified merit calculation
+// Nostr formal contributions + capped activity
+// ============================================
+function getUnifiedMerits() {
+    // Source 1: Nostr kind 31002/31003 events
+    let nostrMerits = 0;
+    let nostrBreakdown = {};
+    if (typeof LBW_Merits !== 'undefined' && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
+        const myData = LBW_Merits.getMyMerits();
+        if (myData) {
+            nostrMerits = myData.total || 0;
+            nostrBreakdown = myData.byCategory || {};
+        }
+    }
+
+    // Source 2: Activity (legacy)
+    const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser)
+        ? allPosts.filter(p => p.author === currentUser.name).length : 0;
+    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount)
+        ? LBW_NostrBridge.getMyOffersCount() : 0;
+    const govStats = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats() : { myVotes: 0, myProposals: 0 };
+    const userVotes = govStats.myVotes || 0;
+    const userProposals = govStats.myProposals || 0;
+    const activityCount = userPosts + userOffers + userVotes + userProposals;
+
+    // [v2.0] Sum + cap (NOT max)
+    const ACTIVITY_MERIT_CAP = 300;
+    const activityMeritsRaw = activityCount * 10;
+    const activityMerits = Math.min(activityMeritsRaw, ACTIVITY_MERIT_CAP);
+    const totalMerits = nostrMerits + activityMerits;
+
+    return {
+        total: totalMerits,
+        nostrMerits,
+        activityMerits,
+        activityMeritsRaw,
+        activityCap: ACTIVITY_MERIT_CAP,
+        byCategory: nostrBreakdown,
+        activity: { posts: userPosts, offers: userOffers, votes: userVotes, proposals: userProposals },
+        activityCount,
+        source: nostrMerits > 0 ? 'nostr+activity' : 'activity',
+        isGovernor: totalMerits >= 3000
+    };
+}
+
+// ============================================
 // Citizenship Gauge Visualization (Canvas)
 // ============================================
 const GAUGE_SEGS = [
@@ -269,21 +315,16 @@ function updateProfileDisplay() {
     document.getElementById('profileName').textContent = currentUser.name;
     
     // Calculate merits for citizenship level
-    const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts)) ? allPosts.filter(p => p.author === currentUser.name).length : 0;
-    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) ? LBW_NostrBridge.getMyOffersCount() : 0;
-    // Obtener votos desde LBW_Governance (Nostr)
-    const govStats = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats() : { myVotes: 0, myProposals: 0 };
-    const userVotes = govStats.myVotes;
-    const userProposals = govStats.myProposals;
-    
-    const totalContributions = userPosts + userOffers + userVotes + userProposals;
-    const merits = totalContributions * 10; // 10 LBWM por contribución
+    // [v2.0] Unified merits: Nostr + min(activity, 300)
+    const meritData = getUnifiedMerits();
+    const merits = meritData.total;
+    const totalContributions = meritData.activityCount;
     
     // Auto-calculate citizenship level based on merits (LBWM v2.0)
     const citizenship = getCitizenshipLevel(merits);
     
     console.log(`🏛️ Profile: ${totalContributions} contributions, ${merits} merits → ${citizenship.title}`);
-    console.log(`🏛️ Posts: ${userPosts}, Offers: ${userOffers}, Votes: ${userVotes}, Proposals: ${userProposals}`);
+    console.log(`🏛️ Source: ${meritData.source} | Nostr: ${meritData.nostrMerits} | Activity: ${meritData.activityMerits}/${meritData.activityCap}`);
     
     // Update citizenship gauge visualization
     updateCitizenshipGauge(merits);
@@ -292,7 +333,53 @@ function updateProfileDisplay() {
     const citizenshipBadge = document.getElementById('profileCitizenship');
     if (citizenshipBadge) {
         citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
-        console.log(`🏛️ Badge updated to: ${citizenship.icon} ${citizenship.title}`);
+    }
+
+    // [v2.0] Governor badge + Founder indicator
+    const govBadge = document.getElementById('profileGovernorBadge');
+    if (govBadge) {
+        if (meritData.isGovernor) {
+            const isFounder = (typeof LBW_Merits !== 'undefined' && LBW_Merits.hasFoundationalMerits)
+                ? LBW_Merits.hasFoundationalMerits() : false;
+            govBadge.style.display = 'inline-flex';
+            govBadge.innerHTML = isFounder
+                ? '🏗️ Fundador · 👑 Gobernador · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>'
+                : '👑 Gobernador · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>';
+        } else {
+            govBadge.style.display = 'none';
+        }
+    }
+
+    // [v2.0] Merit source breakdown
+    const meritSourceEl = document.getElementById('profileMeritSource');
+    if (meritSourceEl) {
+        meritSourceEl.innerHTML = `
+            <span style="color:var(--color-gold);">⚡ Nostr: ${meritData.nostrMerits}</span>
+            <span style="opacity:0.5;"> + </span>
+            <span style="color:var(--color-teal);">📊 Actividad: ${meritData.activityMerits}${meritData.activityMeritsRaw > meritData.activityCap ? ' (cap ' + meritData.activityCap + ')' : ''}</span>
+            <span style="opacity:0.5;"> = </span>
+            <span style="color:var(--color-gold);font-weight:700;">${merits} LBWM</span>
+        `;
+    }
+
+    // [v2.0] Quick access: Governor → verifications
+    const govQuickAccess = document.getElementById('profileGovQuickAccess');
+    if (govQuickAccess) {
+        if (meritData.isGovernor) {
+            govQuickAccess.style.display = 'block';
+            govQuickAccess.innerHTML = `
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="showSection('meritsSection');switchLbwmTab('bloques-voto');" style="font-size:0.8rem;">
+                        🗳️ Bloques de Voto
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="showSection('meritsSection');switchLbwmTab('mis-aportaciones');" style="font-size:0.8rem;">
+                        💰 Verificar Aportaciones
+                    </button>
+                </div>
+            `;
+        } else {
+            govQuickAccess.style.display = 'none';
+        }
     }
     
     // Update citizenship type in profile (auto-calculated, not editable)
@@ -326,11 +413,19 @@ function updateProfileDisplay() {
     document.getElementById('citizenshipType').textContent = `${citizenship.icon} Nv.${citizenship.level} — ${citizenship.title}`;
     document.getElementById('citizenshipCity').textContent = userProfile.city || 'No registrada';
     
-    // Update activity counts
-    document.getElementById('activityPosts').textContent = userPosts;
-    document.getElementById('activityOffers').textContent = userOffers;
-    document.getElementById('activityVotes').textContent = userVotes;
-    document.getElementById('activityProposals').textContent = userProposals;
+    // Update activity counts (from meritData.activity)
+    const act = meritData.activity;
+    document.getElementById('activityPosts').textContent = act.posts;
+    document.getElementById('activityOffers').textContent = act.offers;
+    document.getElementById('activityVotes').textContent = act.votes;
+    document.getElementById('activityProposals').textContent = act.proposals;
+
+    // [v2.0] Nostr contributions count
+    const nostrContribsEl = document.getElementById('activityNostrContribs');
+    if (nostrContribsEl) {
+        const nostrContribs = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyContributions().length : 0;
+        nostrContribsEl.textContent = nostrContribs;
+    }
 }
 
 // Citizenship modal now only edits City (level is auto-calculated)
@@ -528,15 +623,9 @@ async function saveCitizenship() {
         }
     }
     
-    // Auto-calculate citizenship level
-    const userPosts = allPosts.filter(p => p.author === currentUser.name).length;
-    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) ? LBW_NostrBridge.getMyOffersCount() : 0;
-    // Obtener votos y propuestas desde LBW_Governance (Nostr)
-    const govStatsCitiz = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats() : { myVotes: 0, myProposals: 0 };
-    const userVotes = govStatsCitiz.myVotes;
-    const userProposals = govStatsCitiz.myProposals;
-    const totalContributions = userPosts + userOffers + userVotes + userProposals;
-    const merits = totalContributions * 10;
+    // [v2.0] Use unified merit calculation
+    const meritData = getUnifiedMerits();
+    const merits = meritData.total;
     const citizenship = getCitizenshipLevel(merits);
     
     try {
