@@ -1,6 +1,6 @@
 // ============================================================
 // LiberBit World — Nostr Bridge v3.1 (nostr-bridge.js)
-// FIX 2026-02-27b: Sequential profile resolution, cache-bust
+// FIX 2026-02-27c: Supabase-first name resolution (not relay-only)
 //
 // CHANGES v3.0:
 //   ✅ Hydrate-from-cache: instant UI from IndexedDB on load
@@ -204,53 +204,44 @@ const LBW_NostrBridge = (() => {
         // Store nsec in sessionStorage (cleared on tab close, secure enough)
         try { sessionStorage.setItem('lbw_nsec_session', input); } catch (e) {}
 
-        // ── AWAIT profile resolution BEFORE completing login ──
-        // This ensures session.name is set when continueAfterLogin runs
+        // ── Resolve name: Supabase first, then relays ──
         try {
-            // Give relays a moment to connect, then resolve profile with timeout
-            await new Promise(r => setTimeout(r, 1500));
-            const p = await Promise.race([
-                LBW_Sync.resolveProfile(result.pubkeyHex),
-                new Promise(r => setTimeout(() => r(null), 4000)) // 4s max wait
-            ]);
-            if (p) {
-                const resolvedName = p.name || p.display_name || '';
-                if (resolvedName) {
-                    session.name = resolvedName;
-                    console.log('[Bridge] ✅ Perfil resuelto:', resolvedName);
+            // 1. Try Supabase (where createIdentity stores names)
+            if (typeof supabaseClient !== 'undefined') {
+                const { data } = await supabaseClient
+                    .from('users')
+                    .select('name, id')
+                    .eq('public_key', result.npub)
+                    .single();
+                if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
+                    session.name = data.name;
+                    console.log('[Bridge] ✅ Nombre desde Supabase:', data.name);
+                }
+            }
+            
+            // 2. If Supabase had no name, try relays
+            if (!session.name) {
+                await new Promise(r => setTimeout(r, 1500));
+                const p = await Promise.race([
+                    LBW_Sync.resolveProfile(result.pubkeyHex),
+                    new Promise(r => setTimeout(() => r(null), 4000))
+                ]);
+                if (p) {
+                    const resolvedName = p.name || p.display_name || '';
+                    if (resolvedName) {
+                        session.name = resolvedName;
+                        console.log('[Bridge] ✅ Nombre desde relays:', resolvedName);
+                    }
                 }
             }
         } catch(e) {
-            console.warn('[Bridge] Profile resolution failed:', e.message);
+            console.warn('[Bridge] Name resolution failed:', e.message);
         }
 
-        // Now save session WITH the resolved name (or empty if resolution failed)
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _applyLoginToUI(session);
         _updateLoginModeUI('nsec');
         await _startAllFeeds();
-
-        // Background retry: if name still empty, keep trying
-        if (!session.name) {
-            setTimeout(async () => {
-                try {
-                    const p = await LBW_Sync.resolveProfile(result.pubkeyHex);
-                    if (p) {
-                        const resolvedName = p.name || p.display_name || '';
-                        if (resolvedName) {
-                            session.name = resolvedName;
-                            localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
-                            _updateDisplayName(resolvedName);
-                            if (typeof currentUser !== 'undefined' && currentUser) {
-                                currentUser.name = resolvedName;
-                                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-                            }
-                            console.log('[Bridge] ✅ Nombre resuelto (retry):', resolvedName);
-                        }
-                    }
-                } catch(e) {}
-            }, 5000);
-        }
 
         return result;
     }
@@ -314,55 +305,52 @@ const LBW_NostrBridge = (() => {
                 }
             }
             
-            // ── SEQUENTIAL profile resolution for bad names ──
-            // Runs AFTER _startAllFeeds() so relays are connected
+            // ── Fix bad names: check Supabase first, then relays ──
             if (sessionRestored && s.pubkey) {
                 const nameIsBad = !s.name || s.name.startsWith('npub1') || s.name.endsWith('...');
                 if (nameIsBad) {
-                    console.log('[Bridge] Nombre malo detectado, resolviendo perfil...');
+                    console.log('[Bridge] Nombre malo detectado, buscando en Supabase...');
+                    let resolvedName = '';
+                    
+                    // 1. Try Supabase (primary source of truth)
                     try {
-                        // Wait a bit for relays to fully connect after _startAllFeeds
-                        await new Promise(r => setTimeout(r, 2000));
-                        
-                        // Try up to 3 times with increasing delays
-                        let resolvedName = '';
-                        for (let attempt = 1; attempt <= 3 && !resolvedName; attempt++) {
-                            try {
-                                const p = await Promise.race([
-                                    LBW_Sync.resolveProfile(s.pubkey),
-                                    new Promise(r => setTimeout(() => r(null), 5000))
-                                ]);
-                                if (p) {
-                                    resolvedName = p.name || p.display_name || '';
+                        if (typeof supabaseClient !== 'undefined') {
+                            const npub = s.npub || (typeof hexToNpub === 'function' ? hexToNpub(s.pubkey) : '');
+                            if (npub) {
+                                const { data } = await supabaseClient
+                                    .from('users')
+                                    .select('name')
+                                    .eq('public_key', npub)
+                                    .single();
+                                if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
+                                    resolvedName = data.name;
+                                    console.log('[Bridge] ✅ Nombre desde Supabase:', resolvedName);
                                 }
-                            } catch(e) {}
-                            if (!resolvedName && attempt < 3) {
-                                console.log('[Bridge] Intento', attempt, 'fallido, reintentando...');
-                                await new Promise(r => setTimeout(r, 2000));
                             }
                         }
-                        
-                        if (resolvedName && !resolvedName.startsWith('npub1')) {
-                            s.name = resolvedName;
-                            localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
-                            _updateDisplayName(resolvedName);
-                            // Also update currentUser (set by checkExistingSession)
-                            if (typeof currentUser !== 'undefined' && currentUser) {
-                                currentUser.name = resolvedName;
-                                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-                            }
-                            // Update Supabase user name too
-                            try {
-                                if (typeof supabaseClient !== 'undefined' && currentUser && currentUser.id) {
-                                    await supabaseClient.from('users').update({ name: resolvedName }).eq('id', currentUser.id);
-                                }
-                            } catch(e) {}
-                            console.log('[Bridge] ✅ Nombre resuelto en restore:', resolvedName);
-                        } else {
-                            console.warn('[Bridge] No se pudo resolver el nombre del perfil');
+                    } catch(e) {}
+                    
+                    // 2. Fallback: try relays
+                    if (!resolvedName) {
+                        try {
+                            const p = await Promise.race([
+                                LBW_Sync.resolveProfile(s.pubkey),
+                                new Promise(r => setTimeout(() => r(null), 4000))
+                            ]);
+                            if (p) resolvedName = p.name || p.display_name || '';
+                        } catch(e) {}
+                    }
+                    
+                    // 3. Apply resolved name
+                    if (resolvedName && !resolvedName.startsWith('npub1')) {
+                        s.name = resolvedName;
+                        localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
+                        _updateDisplayName(resolvedName);
+                        if (typeof currentUser !== 'undefined' && currentUser) {
+                            currentUser.name = resolvedName;
+                            localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
                         }
-                    } catch(e) {
-                        console.warn('[Bridge] Error resolviendo perfil:', e.message);
+                        console.log('[Bridge] ✅ Nombre restaurado:', resolvedName);
                     }
                 }
             }
