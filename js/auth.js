@@ -12,10 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    document.getElementById('createAccountBtn').addEventListener('click', createNewAccount);
-    document.getElementById('importAccountBtn').addEventListener('click', importExistingAccount);
+    // NOTE: createAccountBtn and importAccountBtn are now handled by the inline script
+    // in index.html using LBW_NostrBridge (correct secp256k1 crypto).
+    // publishPostBtn is handled via onclick="LBW_NostrBridge.publishCommunityPost()" in HTML.
     document.getElementById('continueBtn').addEventListener('click', showMainMenu);
-    document.getElementById('publishPostBtn').addEventListener('click', publishPost);
 }
 
 async function checkExistingSession() {
@@ -95,71 +95,9 @@ async function checkExistingSession() {
     }
 }
 
-async function createNewAccount() {
-    const btn = document.getElementById('createAccountBtn');
-    btn.innerHTML = '<span class="spinner"></span> Generando...';
-    btn.disabled = true;
-
-    try {
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        const privateKeyHex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        const publicKeyHex = await hashSimple(privateKeyHex);
-        
-        // Convert to npub1/nsec1 format
-        const publicKey = hexToNpub(publicKeyHex);
-        const privateKey = hexToNsec(privateKeyHex);
-        
-        const userName = document.getElementById('userNameInput').value.trim() || 'Anónimo';
-        
-        // Save user to Supabase
-        const { data, error } = await supabaseClient
-            .from('users')
-            .insert([
-                {
-                    id: generateUUID(),
-                    public_key: publicKey,
-                    name: userName,
-                    citizenship_type: 'E-Residency'
-                }
-            ])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error creating user in Supabase:', error);
-            showNotification('Error al crear usuario: ' + error.message, 'error');
-            btn.innerHTML = '🚀 Crear Identidad';
-            btn.disabled = false;
-            return;
-        }
-
-        currentUser = {
-            id: data.id,
-            privateKey: privateKey,
-            pubkey: publicKey,
-            publicKey: publicKey,
-            name: userName,
-            created_at: Date.now()
-        };
-
-        // Clear any cached profile/avatar from previous identity
-        localStorage.removeItem('userProfile_' + publicKey);
-        
-        displayKeys();
-        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-        showNotification('¡Identidad creada y guardada en Supabase! 🎉');
-        
-        btn.innerHTML = '🚀 Crear Identidad';
-        btn.disabled = false;
-    } catch (err) {
-        console.error('Error:', err);
-        showNotification('Error al crear cuenta: ' + err.message, 'error');
-        btn.innerHTML = '🚀 Crear Identidad';
-        btn.disabled = false;
-    }
-}
+// REMOVED: createNewAccount() - used broken SHA-256 for pubkey derivation.
+// Account creation is now handled by LBW_NostrBridge.handleCreateIdentity()
+// which uses correct secp256k1 elliptic curve via nostr-tools.
 
 // Generate UUID v4
 function generateUUID() {
@@ -174,13 +112,9 @@ function generateUUID() {
     });
 }
 
-async function hashSimple(text) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+// REMOVED: hashSimple() - used SHA-256 to derive pubkeys (WRONG for Nostr).
+// Nostr requires secp256k1 elliptic curve: pubkey = getPublicKey(privkey)
+// Correct implementation is in nostr.js via nostr-tools library.
 
 // ===== Bech32 Encoding for npub1 / nsec1 format =====
 const BECH32_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
@@ -336,118 +270,6 @@ function displayKeys() {
     document.getElementById('keysDisplay').classList.remove('hidden');
 }
 
-async function importExistingAccount() {
-    let privKeyInput = document.getElementById('existingPrivKey').value.trim();
-    
-    // Clean input: remove any whitespace, newlines, invisible chars
-    privKeyInput = privKeyInput.replace(/[\s\u200B\u200C\u200D\uFEFF]/g, '');
-    
-    // Support both nsec1 and hex formats
-    let privateKeyHex;
-    let privateKeyNsec;
-    
-    if (isNsecFormat(privKeyInput)) {
-        // nsec1 format - decode to hex
-        privateKeyHex = nsecToHex(privKeyInput);
-        privateKeyNsec = privKeyInput;
-        if (!privateKeyHex) {
-            showNotification('Clave nsec1 inválida. Verifica el formato.', 'error');
-            return;
-        }
-    } else if (/^[0-9a-fA-F]{64}$/.test(privKeyInput)) {
-        // Legacy hex format
-        privateKeyHex = privKeyInput;
-        privateKeyNsec = hexToNsec(privKeyInput);
-    } else if (isNpubFormat(privKeyInput)) {
-        // User pasted npub instead of nsec
-        showNotification('Has pegado tu clave pública (npub). Necesitas tu clave privada (nsec).', 'error');
-        return;
-    } else if (/^[0-9a-fA-F]+$/.test(privKeyInput) && privKeyInput.length !== 64) {
-        // Hex but wrong length
-        showNotification(`Clave hex tiene ${privKeyInput.length} caracteres, debe tener exactamente 64. Revisa que no haya caracteres extra.`, 'error');
-        return;
-    } else {
-        console.log('Invalid key input, length:', privKeyInput.length, 'starts:', privKeyInput.substring(0, 10));
-        showNotification('Clave privada inválida. Usa formato nsec1... o hex (64 caracteres)', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('importAccountBtn');
-    btn.innerHTML = '<span class="spinner"></span> Importando...';
-    btn.disabled = true;
-
-    try {
-        // Calculate public key from private key hex
-        const publicKeyHex = await hashSimple(privateKeyHex);
-        const publicKeyNpub = hexToNpub(publicKeyHex);
-        
-        // Try to find user with npub1 format first, then hex fallback
-        let userData = null;
-        
-        const { data: npubData, error: npubError } = await supabaseClient
-            .from('users')
-            .select('*')
-            .eq('public_key', publicKeyNpub)
-            .maybeSingle();
-        
-        if (npubData) {
-            userData = npubData;
-        } else {
-            // Try legacy hex format
-            const { data: hexData, error: hexError } = await supabaseClient
-                .from('users')
-                .select('*')
-                .eq('public_key', publicKeyHex)
-                .maybeSingle();
-            
-            if (hexData) {
-                userData = hexData;
-                // Migrate to npub1 format
-                await supabaseClient
-                    .from('users')
-                    .update({ public_key: publicKeyNpub })
-                    .eq('public_key', publicKeyHex);
-            }
-        }
-
-        if (!userData) {
-            showNotification('Usuario no encontrado en la base de datos. ¿Creaste tu cuenta con esta clave?', 'error');
-            btn.innerHTML = 'Importar →';
-            btn.disabled = false;
-            return;
-        }
-
-        currentUser = {
-            id: userData.id,
-            privateKey: privateKeyNsec,
-            pubkey: publicKeyNpub,
-            publicKey: publicKeyNpub,
-            name: userData.name,
-            created_at: Date.now()
-        };
-        
-        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-        
-        // Inicializar Nostr con las credenciales
-        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.loginWithPrivateKey) {
-            try {
-                await LBW_Nostr.loginWithPrivateKey(privateKeyHex);
-                console.log('[Auth] Nostr inicializado correctamente');
-            } catch (nostrErr) {
-                console.warn('[Auth] Error inicializando Nostr:', nostrErr);
-            }
-        }
-        
-        closeAuthModal();
-        showMainMenu();
-        showNotification(`¡Bienvenido de nuevo, ${userData.name}! ✅`);
-        
-        btn.innerHTML = 'Importar →';
-        btn.disabled = false;
-    } catch (err) {
-        console.error('Error importing account:', err);
-        showNotification('Error al importar cuenta: ' + err.message, 'error');
-        btn.innerHTML = 'Importar →';
-        btn.disabled = false;
-    }
-}
+// REMOVED: importExistingAccount() - used broken hashSimple (SHA-256) for pubkey derivation.
+// Account import is now handled by inline script in index.html using
+// LBW_NostrBridge.handlePrivateKeyLogin() which uses correct secp256k1.
