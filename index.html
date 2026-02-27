@@ -2213,7 +2213,9 @@
         const importBtn = document.getElementById('importAccountBtn');
         if (importBtn) {
             importBtn.addEventListener('click', async () => {
-                const input = document.getElementById('existingPrivKey')?.value?.trim();
+                let input = document.getElementById('existingPrivKey')?.value?.trim() || '';
+                // Clean invisible chars (zero-width spaces, BOM, etc.) from copy-paste
+                input = input.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g, '');
                 if (!input) { alert('Introduce tu clave privada (nsec1... o hex)'); return; }
                 try {
                     importBtn.disabled = true;
