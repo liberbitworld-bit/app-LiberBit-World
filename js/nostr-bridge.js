@@ -201,28 +201,56 @@ const LBW_NostrBridge = (() => {
             name: '', method: 'nsec', loginTime: Date.now()
         };
         // Store nsec in sessionStorage (cleared on tab close, secure enough)
-        // This enables session restore on page reload within same tab
         try { sessionStorage.setItem('lbw_nsec_session', input); } catch (e) {}
-        setTimeout(async () => {
-            const p = await LBW_Sync.resolveProfile(result.pubkeyHex);
+
+        // ── AWAIT profile resolution BEFORE completing login ──
+        // This ensures session.name is set when continueAfterLogin runs
+        try {
+            // Give relays a moment to connect, then resolve profile with timeout
+            await new Promise(r => setTimeout(r, 1500));
+            const p = await Promise.race([
+                LBW_Sync.resolveProfile(result.pubkeyHex),
+                new Promise(r => setTimeout(() => r(null), 4000)) // 4s max wait
+            ]);
             if (p) {
                 const resolvedName = p.name || p.display_name || '';
                 if (resolvedName) {
                     session.name = resolvedName;
-                    localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
-                    _updateDisplayName(resolvedName);
-                    // Also persist in currentUser and liberbit_keys
-                    if (typeof currentUser !== 'undefined' && currentUser) {
-                        currentUser.name = resolvedName;
-                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
-                    }
+                    console.log('[Bridge] ✅ Perfil resuelto:', resolvedName);
                 }
             }
-        }, 2500);
+        } catch(e) {
+            console.warn('[Bridge] Profile resolution failed:', e.message);
+        }
+
+        // Now save session WITH the resolved name (or empty if resolution failed)
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _applyLoginToUI(session);
         _updateLoginModeUI('nsec');
         await _startAllFeeds();
+
+        // Background retry: if name still empty, keep trying
+        if (!session.name) {
+            setTimeout(async () => {
+                try {
+                    const p = await LBW_Sync.resolveProfile(result.pubkeyHex);
+                    if (p) {
+                        const resolvedName = p.name || p.display_name || '';
+                        if (resolvedName) {
+                            session.name = resolvedName;
+                            localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
+                            _updateDisplayName(resolvedName);
+                            if (typeof currentUser !== 'undefined' && currentUser) {
+                                currentUser.name = resolvedName;
+                                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                            }
+                            console.log('[Bridge] ✅ Nombre resuelto (retry):', resolvedName);
+                        }
+                    }
+                } catch(e) {}
+            }, 5000);
+        }
+
         return result;
     }
 
@@ -260,13 +288,15 @@ const LBW_NostrBridge = (() => {
         if (!saved) return false;
         try {
             const s = JSON.parse(saved);
+            let sessionRestored = false;
+            
             if (s.method === 'extension' || s.method === 'nip07') {
                 if (await LBW_Nostr.waitForExtension(3000)) {
                     await LBW_Nostr.loginWithExtension();
                     _applyLoginToUI(s);
                     _updateLoginModeUI('extension');
                     await _startAllFeeds();
-                    return true;
+                    sessionRestored = true;
                 }
             } else if (s.method === 'nsec' || s.method === 'created') {
                 // Restore nsec from sessionStorage (survives reload, not tab close)
@@ -277,13 +307,36 @@ const LBW_NostrBridge = (() => {
                     _updateLoginModeUI('nsec');
                     await _startAllFeeds();
                     console.log('[Bridge] ✅ Sesión nsec restaurada');
-                    return true;
+                    sessionRestored = true;
                 } else {
                     console.warn('[Bridge] Sesión nsec guardada pero clave no disponible (tab nuevo). Re-login necesario.');
                     localStorage.removeItem('lbw_nostr_session');
                 }
             }
-            return false;
+            
+            // If session restored but name is missing/truncated, resolve it in background
+            if (sessionRestored && s.pubkey && (!s.name || s.name.startsWith('npub1') || s.name.endsWith('...'))) {
+                setTimeout(async () => {
+                    try {
+                        const p = await LBW_Sync.resolveProfile(s.pubkey);
+                        if (p) {
+                            const resolvedName = p.name || p.display_name || '';
+                            if (resolvedName && !resolvedName.startsWith('npub1')) {
+                                s.name = resolvedName;
+                                localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
+                                _updateDisplayName(resolvedName);
+                                if (typeof currentUser !== 'undefined' && currentUser) {
+                                    currentUser.name = resolvedName;
+                                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                                }
+                                console.log('[Bridge] ✅ Nombre resuelto en restore:', resolvedName);
+                            }
+                        }
+                    } catch(e) {}
+                }, 3000);
+            }
+            
+            return sessionRestored;
         } catch (e) { console.error('[Bridge] ❌ restoreSession error:', e); return false; }
     }
 
