@@ -1,5 +1,6 @@
 // ============================================================
-// LiberBit World — Nostr Bridge v3.0 (nostr-bridge.js)
+// LiberBit World — Nostr Bridge v3.1 (nostr-bridge.js)
+// FIX 2026-02-27b: Sequential profile resolution, cache-bust
 //
 // CHANGES v3.0:
 //   ✅ Hydrate-from-cache: instant UI from IndexedDB on load
@@ -299,7 +300,6 @@ const LBW_NostrBridge = (() => {
                     sessionRestored = true;
                 }
             } else if (s.method === 'nsec' || s.method === 'created') {
-                // Restore nsec from sessionStorage (survives reload, not tab close)
                 const nsec = sessionStorage.getItem('lbw_nsec_session');
                 if (nsec) {
                     LBW_Nostr.loginWithPrivateKey(nsec);
@@ -314,26 +314,57 @@ const LBW_NostrBridge = (() => {
                 }
             }
             
-            // If session restored but name is missing/truncated, resolve it in background
-            if (sessionRestored && s.pubkey && (!s.name || s.name.startsWith('npub1') || s.name.endsWith('...'))) {
-                setTimeout(async () => {
+            // ── SEQUENTIAL profile resolution for bad names ──
+            // Runs AFTER _startAllFeeds() so relays are connected
+            if (sessionRestored && s.pubkey) {
+                const nameIsBad = !s.name || s.name.startsWith('npub1') || s.name.endsWith('...');
+                if (nameIsBad) {
+                    console.log('[Bridge] Nombre malo detectado, resolviendo perfil...');
                     try {
-                        const p = await LBW_Sync.resolveProfile(s.pubkey);
-                        if (p) {
-                            const resolvedName = p.name || p.display_name || '';
-                            if (resolvedName && !resolvedName.startsWith('npub1')) {
-                                s.name = resolvedName;
-                                localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
-                                _updateDisplayName(resolvedName);
-                                if (typeof currentUser !== 'undefined' && currentUser) {
-                                    currentUser.name = resolvedName;
-                                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                        // Wait a bit for relays to fully connect after _startAllFeeds
+                        await new Promise(r => setTimeout(r, 2000));
+                        
+                        // Try up to 3 times with increasing delays
+                        let resolvedName = '';
+                        for (let attempt = 1; attempt <= 3 && !resolvedName; attempt++) {
+                            try {
+                                const p = await Promise.race([
+                                    LBW_Sync.resolveProfile(s.pubkey),
+                                    new Promise(r => setTimeout(() => r(null), 5000))
+                                ]);
+                                if (p) {
+                                    resolvedName = p.name || p.display_name || '';
                                 }
-                                console.log('[Bridge] ✅ Nombre resuelto en restore:', resolvedName);
+                            } catch(e) {}
+                            if (!resolvedName && attempt < 3) {
+                                console.log('[Bridge] Intento', attempt, 'fallido, reintentando...');
+                                await new Promise(r => setTimeout(r, 2000));
                             }
                         }
-                    } catch(e) {}
-                }, 3000);
+                        
+                        if (resolvedName && !resolvedName.startsWith('npub1')) {
+                            s.name = resolvedName;
+                            localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
+                            _updateDisplayName(resolvedName);
+                            // Also update currentUser (set by checkExistingSession)
+                            if (typeof currentUser !== 'undefined' && currentUser) {
+                                currentUser.name = resolvedName;
+                                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                            }
+                            // Update Supabase user name too
+                            try {
+                                if (typeof supabaseClient !== 'undefined' && currentUser && currentUser.id) {
+                                    await supabaseClient.from('users').update({ name: resolvedName }).eq('id', currentUser.id);
+                                }
+                            } catch(e) {}
+                            console.log('[Bridge] ✅ Nombre resuelto en restore:', resolvedName);
+                        } else {
+                            console.warn('[Bridge] No se pudo resolver el nombre del perfil');
+                        }
+                    } catch(e) {
+                        console.warn('[Bridge] Error resolviendo perfil:', e.message);
+                    }
+                }
             }
             
             return sessionRestored;
