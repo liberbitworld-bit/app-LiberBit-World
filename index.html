@@ -2206,14 +2206,23 @@
                         const npubKey = nostrSession.npub;
                         const hexKey  = nostrSession.pubkey; // pubkeyHex
                         
+                        // Helper: check if a name is a real name (not truncated npub)
+                        const nameIsGood = (n) => n && !n.startsWith('npub1') && !n.endsWith('...');
+                        
+                        // Use session name (may already be resolved by handlePrivateKeyLogin await)
+                        
+                        // Use session name (may already be resolved by handlePrivateKeyLogin await)
+                        const sessionName = nostrSession.name || '';
+                        const displayName = sessionName || npubKey.substring(0, 16) + '...';
+                        
                         currentUser = {
                             pubkey: npubKey,
                             publicKey: npubKey,
-                            name: nostrSession.name || npubKey.substring(0, 16) + '...',
+                            name: displayName,
                             created_at: nostrSession.loginTime || Date.now()
                         };
                         
-                        // Resolve Supabase user: try npub first, then hex (avatar may be stored under either)
+                        // Resolve Supabase user: try npub first, then hex
                         try {
                             let sbUser = null;
                             const { data: d1 } = await supabaseClient.from('users').select('*').eq('public_key', npubKey).maybeSingle();
@@ -2228,10 +2237,16 @@
                                     console.log('[Auth] Migrated Supabase user key hex → npub');
                                 }
                             }
+                            
                             if (sbUser) {
                                 currentUser.id = sbUser.id;
-                                if (sbUser.name && sbUser.name !== npubKey.substring(0, 16) + '...') {
+                                // Take the best name from either source
+                                if (nameIsGood(sbUser.name)) {
                                     currentUser.name = sbUser.name;
+                                } else if (nameIsGood(sessionName)) {
+                                    currentUser.name = sessionName;
+                                    // Push good name to Supabase
+                                    await supabaseClient.from('users').update({ name: sessionName }).eq('id', sbUser.id);
                                 }
                                 // Pre-cache profile with avatar for immediate display
                                 const profile = {
@@ -2241,13 +2256,9 @@
                                     avatarUrl: sbUser.avatar_url || null
                                 };
                                 localStorage.setItem('userProfile_' + npubKey, JSON.stringify(profile));
-                                
-                                // Update Supabase name if we have a better one
-                                if (currentUser.name && currentUser.name !== npubKey.substring(0, 16) + '...' && sbUser.name !== currentUser.name) {
-                                    await supabaseClient.from('users').update({ name: currentUser.name }).eq('id', sbUser.id);
-                                }
-                            } else if (currentUser.name && currentUser.name !== npubKey.substring(0, 16) + '...') {
-                                // Create Supabase user with the name we have
+                            } else {
+                                // ALWAYS create Supabase user (even with truncated name)
+                                // This ensures avatar uploads and other features work
                                 try {
                                     const newId = generateUUID();
                                     const { data: newUser } = await supabaseClient.from('users')
@@ -2261,13 +2272,45 @@
                                         .single();
                                     if (newUser) {
                                         currentUser.id = newUser.id;
-                                        console.log('[Auth] Created Supabase user:', currentUser.name);
+                                        console.log('[Auth] ✅ Created Supabase user:', currentUser.name);
                                     }
                                 } catch(createErr) { console.warn('[Auth] User creation:', createErr.message); }
                             }
                         } catch(sbErr) { console.warn('[Auth] Supabase lookup:', sbErr.message); }
                         
                         localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                        
+                        // Update UI with the best name we have
+                        if (typeof LBW_NostrBridge !== 'undefined') {
+                            ['homeUserName', 'userName', 'profileName'].forEach(id => {
+                                const el = document.getElementById(id);
+                                if (el) el.textContent = currentUser.name;
+                            });
+                        }
+                        
+                        // Background retry: if name is still truncated npub, check again after profile resolves
+                        if (!nameIsGood(currentUser.name)) {
+                            setTimeout(async () => {
+                                try {
+                                    // Re-read session in case nostr-bridge updated it
+                                    const freshSession = JSON.parse(localStorage.getItem('lbw_nostr_session') || 'null');
+                                    const freshName = freshSession?.name || '';
+                                    if (nameIsGood(freshName)) {
+                                        currentUser.name = freshName;
+                                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                                        ['homeUserName', 'userName', 'profileName'].forEach(id => {
+                                            const el = document.getElementById(id);
+                                            if (el) el.textContent = freshName;
+                                        });
+                                        // Update Supabase too
+                                        if (currentUser.id) {
+                                            await supabaseClient.from('users').update({ name: freshName }).eq('id', currentUser.id);
+                                        }
+                                        console.log('[Auth] ✅ Nombre actualizado (retry):', freshName);
+                                    }
+                                } catch(e) {}
+                            }, 6000);
+                        }
                     }
                 } catch(e) { console.warn('[Auth] Bridge error:', e); }
             }
@@ -2294,7 +2337,7 @@
                 if (!input) { alert('Introduce tu clave privada (nsec1... o hex)'); return; }
                 try {
                     importBtn.disabled = true;
-                    importBtn.textContent = '⏳ Conectando...';
+                    importBtn.textContent = '⏳ Conectando y resolviendo perfil...';
                     const result = await LBW_NostrBridge.handlePrivateKeyLogin(input);
                     console.log('[Auth] ✅ Login Nostr con nsec:', result.npub);
                     // Close auth modal and show main menu
