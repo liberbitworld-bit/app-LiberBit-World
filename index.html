@@ -1182,486 +1182,289 @@
             </div>
         </section>
 
+
         <!-- Merits LBWM Section -->
         <section class="section" id="meritsSection">
             <div class="chat-section">
                 <button class="back-btn" onclick="backToGobernanzaMenu()">← Volver a Gobernanza</button>
                 
                 <h2 style="color: var(--color-gold); margin-bottom: 0.5rem; text-align: center;">🏅 LiberBit World Méritos (LBWM)</h2>
-                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">
-                    Sistema de Meritocracia basado en Valor Aportado. El poder emerge de quien demuestra capacidad de crear valor y asumir riesgos.
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; text-align: center; font-size: 0.9rem;">
+                    Sistema de Meritocracia basado en Valor Aportado · v2.0
                 </p>
 
                 <!-- User Balance Card -->
                 <div class="lbwm-card" style="background: linear-gradient(135deg, var(--color-teal-dark) 0%, var(--color-bg-card) 100%); border: 2px solid var(--color-gold);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
                         <div>
-                            <div style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 0.5rem;">
-                                Tu Balance LBWM
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 0.3rem;">
+                                Tu Balance LBWM v2.0
                             </div>
                             <div style="font-size: 3rem; font-weight: 800; color: var(--color-gold);" id="userTotalMerits">0</div>
-                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
-                                <span id="user_lbwm_activos">0</span> Activos • 
+                            <div style="font-size: 0.85rem; color: var(--color-text-secondary); margin-top: 0.3rem;">
+                                <span id="user_lbwm_activos">0</span> Activos · 
                                 <span id="user_lbwm_aportaciones">0</span> Aportaciones
                             </div>
                         </div>
-                        
-                        <div style="text-align: right;">
-                            <button class="btn btn-primary" onclick="showContributionForm()" style="margin-bottom: 0.5rem;">
+                        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                            <button class="btn btn-primary" onclick="showContributionForm()" style="margin-bottom: 0.3rem;">
                                 📝 Nueva Aportación
                             </button>
-                            <div style="font-size: 0.8rem; color: var(--color-text-secondary);">
-                                Presenta valor para ganar mérito
+                            <div id="dashboardLevelBadge" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.7rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid var(--color-gold);color:var(--color-gold);background:rgba(229,185,92,0.1);">
+                                👋 AMIGO
                             </div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);" id="dashboardBlocLabel">Bloque: Comunidad</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- LBWM Tabs -->
-                <div class="lbwm-tabs">
-                    <div class="lbwm-tab active" onclick="switchLbwmTab('resumen')" data-lbwm-tab="resumen">
-                        📊 Resumen
+                <div class="lbwm-tabs" style="flex-wrap: wrap;">
+                    <div class="lbwm-tab active" onclick="switchLbwmTab('dashboard')" data-lbwm-tab="dashboard">
+                        📊 Dashboard
                     </div>
-                    <div class="lbwm-tab" onclick="switchLbwmTab('que-son')" data-lbwm-tab="que-son">
-                        ❓ Qué son
+                    <div class="lbwm-tab" onclick="switchLbwmTab('propuestas')" data-lbwm-tab="propuestas">
+                        🏛️ Propuestas <span id="tabBadgeProposals" style="display:none;background:var(--color-error);color:#fff;font-size:0.6rem;font-weight:700;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-left:0.2rem;"></span>
                     </div>
-                    <div class="lbwm-tab" onclick="switchLbwmTab('como-ganar')" data-lbwm-tab="como-ganar">
-                        💡 Cómo Ganar
+                    <div class="lbwm-tab" onclick="switchLbwmTab('verificaciones')" data-lbwm-tab="verificaciones">
+                        💰 Verificaciones <span id="tabBadgeVerifications" style="display:none;background:#FF9800;color:#fff;font-size:0.6rem;font-weight:700;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-left:0.2rem;"></span>
                     </div>
                     <div class="lbwm-tab" onclick="switchLbwmTab('mis-aportaciones')" data-lbwm-tab="mis-aportaciones">
-                        📋 Mis Aportaciones
+                        📋 Historial
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('bloques-voto')" data-lbwm-tab="bloques-voto">
+                        🗳️ Bloques
                     </div>
                     <div class="lbwm-tab" onclick="switchLbwmTab('ledger')" data-lbwm-tab="ledger">
                         📖 Ledger
                     </div>
-                    <div class="lbwm-tab" onclick="switchLbwmTab('bloques-voto')" data-lbwm-tab="bloques-voto">
-                        🗳️ Bloques de Voto
+                    <div class="lbwm-tab" onclick="switchLbwmTab('niveles')" data-lbwm-tab="niveles">
+                        🏛️ Niveles
+                    </div>
+                    <div class="lbwm-tab" onclick="switchLbwmTab('info')" data-lbwm-tab="info">
+                        ℹ️ Info
                     </div>
                 </div>
 
-                <!-- Tab: Resumen -->
-                <div class="lbwm-tab-content active" id="lbwm-tab-resumen">
-                    <div class="lbwm-grid-3" style="margin-bottom: 2rem;">
-                        <!-- Card: Sistema Meritocrático -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 1: DASHBOARD (functional) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content active" id="lbwm-tab-dashboard">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="mobile-grid-1col">
+                        <!-- Gauge -->
                         <div class="lbwm-card">
-                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">🎯 Principio Fundamental</h3>
-                            <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                En LiberBit World <strong>no existe "una persona, un voto"</strong>. 
-                                La influencia es proporcional al <strong>valor real aportado</strong> a lo largo del tiempo.
-                            </p>
-                            <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem; border-left: 3px solid var(--color-gold);">
-                                <em style="font-size: 0.9rem; color: var(--color-text-secondary);">
-                                    "El poder emerge de quien demuestra, una y otra vez, que puede crear valor y asumir riesgos."
-                                </em>
-                            </div>
-                        </div>
-
-                        <!-- Card: Tipos de Aportación -->
-                        <div class="lbwm-card">
-                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">📊 Tipos de Aportación</h3>
-                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">💰 Económica</span>
-                                        <span style="color: var(--color-gold); font-weight: 700;">Peso 1.0</span>
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        BTC donado, liquidez, aportaciones definitivas
-                                    </div>
+                            <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 0.5rem;">🎯 Gauge de Ciudadanía</h3>
+                            <div style="text-align: center;">
+                                <canvas id="meritsGaugeCanvas" width="420" height="240" style="max-width: 100%; height: auto;"></canvas>
+                                <div id="meritsGaugeMeritCount" style="font-family: var(--font-mono); font-size: 2rem; font-weight: 800; color: var(--color-gold); margin-top: 0.5rem;">0</div>
+                                <div id="meritsGaugeBadge" style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--color-gold); color: var(--color-gold); background: rgba(229,185,92,0.1); margin-top: 0.5rem;">
+                                    👋 Amigo
                                 </div>
-                                
-                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">🛠️ Productiva</span>
-                                        <span style="color: var(--color-gold); font-weight: 700;">Peso 1.0</span>
+                                <!-- Progress to next level -->
+                                <div id="meritsProgressBar" style="margin-top: 1rem; display: none;">
+                                    <div style="background: rgba(255,255,255,0.08); border-radius: 8px; height: 8px; overflow: hidden;">
+                                        <div id="meritsProgressFill" style="background: linear-gradient(90deg, var(--color-gold), #d4a84e); height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 8px;"></div>
                                     </div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Desarrollo, diseño, operación, servicios profesionales
-                                    </div>
-                                </div>
-                                
-                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">🔐 Responsabilidad</span>
-                                        <span style="color: var(--color-success); font-weight: 700;">Peso 1.2</span>
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Gobernanza, custodia, arbitraje (requiere 1.000+ méritos)
-                                    </div>
-                                </div>
-                                
-                                <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--color-text-primary);">⏳ Financiada</span>
-                                        <span style="color: var(--color-teal-light); font-weight: 700;">Peso 0.6</span>
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
-                                        Trabajo adelantado, aportaciones con financiación aplazada
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.3rem;">
+                                        <span id="meritsProgressLabel">Progreso</span>
+                                        <span id="meritsProgressRemaining" style="color: var(--color-gold);"></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Card: Estadísticas -->
+                        <!-- Category Breakdown -->
                         <div class="lbwm-card">
-                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">📊 Estadísticas</h3>
-                            
-                            <!-- Estadísticas del Sistema -->
-                            <div style="background: var(--color-bg-dark); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                <h4 style="color: var(--color-teal-light); font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Sistema Global</h4>
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;" class="mobile-grid-2col">
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_total_lbwm">0</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Aportantes</div>
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_aportantes">0</div>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Emisiones</div>
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary);" id="stat_emisiones">0</div>
-                                    </div>
-                                </div>
+                            <h3 style="color: var(--color-gold); font-size: 1.1rem; margin-bottom: 0.5rem;">📊 Desglose por Categoría</h3>
+                            <div id="meritsCategoryBreakdown" style="text-align:center;padding:1rem;color:var(--color-text-secondary);font-size:0.85rem;">
+                                Cargando desglose...
                             </div>
-                            
-                            <!-- Mis Estadísticas -->
-                            <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px; border: 1px solid var(--color-gold);">
-                                <h4 style="color: var(--color-gold); font-size: 0.85rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Mi Participación</h4>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
-                                    <div>
-                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">Mi Balance</div>
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-gold);" id="stat_mi_balance">0</div>
+                            <!-- Activity legacy row -->
+                            <div id="activityLegacyRow" style="display:none;border-left:3px solid var(--color-teal-light);padding:0.5rem 0.8rem;background:var(--color-bg-dark);border-radius:0 10px 10px 0;margin-top:0.5rem;">
+                                <div style="display:flex;align-items:center;gap:0.6rem;">
+                                    <span style="font-size:1.1rem;">🏃</span>
+                                    <div style="flex:1;">
+                                        <div style="font-size:0.85rem;font-weight:600;">Actividad <span style="font-size:0.7rem;opacity:0.6;">cap 300</span></div>
                                     </div>
-                                    <div>
-                                        <div style="font-size: 0.7rem; color: var(--color-text-secondary);">% Participación</div>
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-gold);" id="stat_mi_participacion">0%</div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Barra de participación visual -->
-                                <div style="background: var(--color-bg-dark); border-radius: 8px; height: 8px; overflow: hidden;">
-                                    <div id="participacionBar" style="background: linear-gradient(90deg, var(--color-gold) 0%, #d4a84e 100%); height: 100%; width: 0%; transition: width 0.5s ease;"></div>
-                                </div>
-                                <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.5rem; text-align: right;">
-                                    Tu influencia en la red
+                                    <span id="activityMeritsValue" style="font-family:var(--font-mono);font-size:0.85rem;font-weight:700;color:var(--color-teal-light);">0</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Modelo de Aportación Financiada -->
-                    <div class="lbwm-warning-box">
-                        <h3 style="color: #C65911; margin-bottom: 1rem; font-size: 1.2rem;">💡 Aportación Financiada: Innovación Clave</h3>
-                        <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6;">
-                            LiberBit World reconoce que <strong>financiar valor cuando la red no puede hacerlo</strong> 
-                            es una contribución meritoria, aunque menor que renunciar completamente a ese valor.
+                    <!-- Stats boxes -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1rem;" class="mobile-grid-3col">
+                        <div class="lbwm-card" style="text-align: center; padding: 1rem;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-gold);" id="stat_mi_balance">0</div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Balance Total</div>
+                        </div>
+                        <div class="lbwm-card" style="text-align: center; padding: 1rem;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: #FF9800;" id="stat_pending_proposals">0</div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Pendientes Voto</div>
+                        </div>
+                        <div class="lbwm-card" style="text-align: center; padding: 1rem;">
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-success);" id="stat_pending_verifications">0</div>
+                            <div style="font-size: 0.75rem; color: var(--color-text-secondary);">Verificaciones</div>
+                        </div>
+                    </div>
+
+                    <!-- Formula box -->
+                    <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(229,185,92,0.08); border-radius: 10px; border: 1px solid rgba(229,185,92,0.2); font-size: 0.8rem; color: var(--color-text-secondary);">
+                        <strong style="color: var(--color-gold);">Fórmula v2.0:</strong> 
+                        💰 Económica → ⚡auto (Lightning/BTC) ó 👑Gobernador (banco/otro) → méritos · 
+                        🛠️⏳🔐 Resto → propuesta → votación → méritos si aprobada · 
+                        🏃 Actividad +300 máx
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 2: PROPUESTAS (functional) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content" id="lbwm-tab-propuestas">
+                    <div class="lbwm-card">
+                        <h3 style="color: var(--color-gold); font-size: 1.2rem; margin-bottom: 0.5rem;">🏛️ Propuestas de Aportación de Valor</h3>
+                        <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+                            Productivas, responsabilidad y financiadas se someten a votación. Quorum: 30% · Periodo: 3 días · Mayoría simple.
                         </p>
-                        <div class="lbwm-info-grid" style="margin-top: 1.5rem;">
-                            <div>
-                                <h4 style="color: var(--color-gold); margin-bottom: 0.75rem;">✅ Qué Obtienes</h4>
-                                <ul style="color: var(--color-text-secondary); line-height: 1.8; list-style: none; padding-left: 0;">
-                                    <li>✓ LBWM parciales inmediatos (30-60%)</li>
-                                    <li>✓ Mérito permanente</li>
-                                    <li>✓ Crédito condicional registrado</li>
-                                    <li>✓ Posible devolución futura</li>
-                                </ul>
+
+                        <!-- Filter pills -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;" id="proposalFilterPills">
+                                <button class="btn btn-sm" style="font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:20px;background:rgba(229,185,92,0.15);color:var(--color-gold);border:1px solid var(--color-gold);" onclick="filterMeritProposals('all')" data-filter="all">Todas</button>
+                                <button class="btn btn-sm" style="font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:20px;background:var(--color-bg-dark);color:var(--color-text-secondary);border:1px solid var(--color-border);" onclick="filterMeritProposals('voting')" data-filter="voting">🗳️ Votación</button>
+                                <button class="btn btn-sm" style="font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:20px;background:var(--color-bg-dark);color:var(--color-text-secondary);border:1px solid var(--color-border);" onclick="filterMeritProposals('approved')" data-filter="approved">✅ Aprobadas</button>
+                                <button class="btn btn-sm" style="font-size:0.75rem;padding:0.3rem 0.6rem;border-radius:20px;background:var(--color-bg-dark);color:var(--color-text-secondary);border:1px solid var(--color-border);" onclick="filterMeritProposals('rejected')" data-filter="rejected">❌ Rechazadas</button>
                             </div>
-                            <div>
-                                <h4 style="color: #C65911; margin-bottom: 0.75rem;">📌 Importante</h4>
-                                <ul style="color: var(--color-text-secondary); line-height: 1.8; list-style: none; padding-left: 0;">
-                                    <li>• NO es deuda garantizada</li>
-                                    <li>• Devolución sujeta a viabilidad</li>
-                                    <li>• El mérito se conserva siempre</li>
-                                    <li>• Premia confiar antes, no cobrar después</li>
-                                </ul>
+                            <button class="btn btn-primary btn-sm" onclick="showContributionForm()" style="font-size: 0.8rem;">+ Nueva Propuesta</button>
+                        </div>
+
+                        <!-- Proposals list -->
+                        <div id="meritProposalsList" style="min-height: 100px;">
+                            <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏛️</div>
+                                <p>No hay propuestas de valor activas</p>
+                                <p style="font-size: 0.8rem; margin-top: 0.5rem;">Las aportaciones productivas, de responsabilidad y financiadas se someten a votación aquí.</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab: Qué son los LBWM -->
-                <div class="lbwm-tab-content" id="lbwm-tab-que-son">
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 3: VERIFICACIONES (Governor panel) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content" id="lbwm-tab-verificaciones">
                     <div class="lbwm-card">
-                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">❓ ¿Qué son los LBWM?</h2>
+                        <h3 style="color: var(--color-gold); font-size: 1.2rem; margin-bottom: 0.5rem;">💰 Verificación de Aportaciones Económicas</h3>
                         
-                        <div style="background: rgba(229, 185, 92, 0.1); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--color-gold); margin-bottom: 2rem;">
-                            <p style="font-size: 1.05rem; line-height: 1.8; color: var(--color-text-primary);">
-                                <strong>LBWM (LiberBit World Merits)</strong> son unidades de mérito funcional que 
-                                representan el <strong>valor real aportado</strong> a LiberBit World a lo largo del tiempo.
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                            <strong style="color: var(--color-gold);">Doble capa de verificación:</strong><br>
+                            ⚡ <strong>Lightning / ⛓️ Bitcoin on-chain</strong> → verificación automática (sin intervención humana)<br>
+                            🏦 <strong>Banco / 📄 Otro</strong> → requiere verificación manual por un 👑 Gobernador (≥3.000 méritos)
+                        </div>
+
+                        <!-- Governor gate message -->
+                        <div id="governorGateMsg" style="display:none; padding: 1rem; background: rgba(156,39,176,0.1); border: 1px solid rgba(156,39,176,0.3); border-radius: 10px; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: #CE93D8; font-weight: 600; font-size: 0.9rem;">
+                                🔒 Panel exclusivo de Gobernadores
+                            </div>
+                            <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.5rem;">
+                                Necesitas ≥3.000 méritos para verificar aportaciones económicas de otros miembros.
                             </p>
                         </div>
 
-                        <div class="lbwm-grid-2" style="margin-bottom: 2rem;">
-                            <!-- Lo que SON -->
-                            <div class="lbwm-card" style="background: var(--color-bg-dark);">
-                                <h3 style="color: var(--color-success); font-size: 1.1rem;">✅ Los LBWM SON:</h3>
-                                <ul style="color: var(--color-text-secondary); line-height: 2; margin-top: 1rem; padding-left: 1.5rem;">
-                                    <li><strong>Unidades de mérito funcional</strong> que reflejan valor neto aportado</li>
-                                    <li><strong>Peso proporcional</strong> en decisiones de red</li>
-                                    <li><strong>Influencia</strong> en la asignación de recursos comunes</li>
-                                    <li><strong>Capacidad de orientar</strong> la evolución estratégica de LBW</li>
-                                    <li><strong>Acceso preferente</strong> a proyectos y responsabilidades</li>
-                                    <li><strong>Reconocimiento permanente</strong> de tu contribución</li>
-                                </ul>
+                        <!-- Pending verifications list -->
+                        <div id="pendingVerificationsList">
+                            <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">💰</div>
+                                <p>No hay aportaciones pendientes de verificación</p>
                             </div>
-
-                            <!-- Lo que NO son -->
-                            <div class="lbwm-card" style="background: var(--color-bg-dark);">
-                                <h3 style="color: var(--color-error); font-size: 1.1rem;">❌ Los LBWM NO son:</h3>
-                                <ul style="color: var(--color-text-secondary); line-height: 2; margin-top: 1rem; padding-left: 1.5rem;">
-                                    <li><strong>Un token financiero</strong> negociable en mercados</li>
-                                    <li><strong>Equity legal</strong> o propiedad jurídica</li>
-                                    <li><strong>Libremente transferibles</strong> entre personas</li>
-                                    <li><strong>Poder sobre personas</strong> o territorios</li>
-                                    <li><strong>Dividendos garantizados</strong> o rendimientos</li>
-                                    <li><strong>Derechos territoriales</strong> sobre LiberBit Citys</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Para qué sirven -->
-                        <div class="lbwm-card" style="background: linear-gradient(135deg, var(--color-teal-dark) 0%, var(--color-bg-card) 100%); border: 2px solid var(--color-gold);">
-                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">🎯 ¿Para qué sirven los LBWM?</h3>
-                            
-                            <div style="display: grid; gap: 1.5rem;">
-                                <div style="display: flex; gap: 1rem; align-items: start;">
-                                    <div style="font-size: 2rem; flex-shrink: 0;">🏛️</div>
-                                    <div>
-                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">1. Participación en Gobernanza</h4>
-                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                            Tus LBWM determinan tu <strong>peso en decisiones</strong> sobre fondos comunes, 
-                                            infraestructura compartida, protocolos y estrategia global de LiberBit World. 
-                                            <em>No es "una persona, un voto" — es influencia proporcional al valor aportado.</em>
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 1rem; align-items: start;">
-                                    <div style="font-size: 2rem; flex-shrink: 0;">⭐</div>
-                                    <div>
-                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">2. Reputación y Confianza</h4>
-                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                            Los LBWM son una <strong>señal pública de confianza</strong>. Cuando otros ven 
-                                            tu balance de méritos, saben que has contribuido valor real verificado.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 1rem; align-items: start;">
-                                    <div style="font-size: 2rem; flex-shrink: 0;">🔑</div>
-                                    <div>
-                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">3. Acceso Preferente</h4>
-                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                            Algunos proyectos, residencias piloto, grants o roles críticos pueden 
-                                            <strong>priorizar a quienes tienen más LBWM</strong>.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 1rem; align-items: start;">
-                                    <div style="font-size: 2rem; flex-shrink: 0;">🌐</div>
-                                    <div>
-                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">4. Coordinación Inter-City</h4>
-                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                            Los LBWM <strong>solo aplican a nivel global</strong> de LiberBit World, no dentro 
-                                            de cada City individual. Sirven para coordinar proyectos de ámbito global.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 1rem; align-items: start;">
-                                    <div style="font-size: 2rem; flex-shrink: 0;">🎯</div>
-                                    <div>
-                                        <h4 style="color: var(--color-gold); margin-bottom: 0.5rem;">5. Alineación de Incentivos</h4>
-                                        <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                            Los LBWM alinean los incentivos: <strong>quien más contribuye, más responsabilidad 
-                                            asume</strong> sobre la dirección de la red. Esto evita que quienes no arriesgan 
-                                            nada decidan sobre quienes sí lo hacen.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Principios Clave -->
-                        <div class="lbwm-grid-2" style="margin-top: 2rem;">
-                            <div class="lbwm-warning-box">
-                                <h4 style="color: #C65911; margin-bottom: 1rem;">⚡ Principio de Emisión</h4>
-                                <p style="color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 1rem;">
-                                    Los LBWM <strong>solo se emiten cuando se crea valor real</strong>, nunca por expectativas. 
-                                    La emisión es siempre <em>ex-post</em>, tras verificación del Comité de Emisión.
-                                </p>
-                                <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; font-family: var(--font-mono); font-size: 0.9rem; color: var(--color-gold);">
-                                    LBWM = Valor Referencia × Peso (wᵢ)
-                                </div>
-                            </div>
-
-                            <div class="lbwm-highlight-box">
-                                <h4 style="color: var(--color-gold); margin-bottom: 1rem;">🛡️ Protección del Mérito</h4>
-                                <p style="color: var(--color-text-secondary); line-height: 1.6;">
-                                    Los LBWM son <strong>permanentes</strong> (no caducan) y solo pueden perderse por 
-                                    <em>slashing</em> en caso de fraude probado o incumplimiento grave. 
-                                    El proceso de slashing es público, motivado y apelable.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Ejemplo Práctico -->
-                        <div class="lbwm-card" style="background: var(--color-bg-dark); margin-top: 2rem;">
-                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">💼 Ejemplo Práctico</h3>
-                            
-                            <div style="background: rgba(229, 185, 92, 0.05); padding: 1.5rem; border-radius: 12px; border-left: 3px solid var(--color-gold);">
-                                <p style="color: var(--color-text-secondary); line-height: 1.8; margin-bottom: 1rem;">
-                                    <strong style="color: var(--color-text-primary);">Escenario:</strong> Ana desarrolla un módulo de pagos Lightning para LBW valorado en 5,000 EUR 
-                                    (según tarifa de mercado). El Comité lo verifica y aprueba.
-                                </p>
-                                
-                                <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                    <div style="font-family: var(--font-mono); font-size: 0.9rem;">
-                                        <div style="color: var(--color-teal-light);">// Cálculo de LBWM</div>
-                                        <div style="color: var(--color-text-primary); margin: 0.5rem 0;">
-                                            <span style="color: var(--color-gold);">LBWM_emitidos</span> = 
-                                            <span style="color: var(--color-success);">5,000</span> × 
-                                            <span style="color: var(--color-success);">1.0</span> = 
-                                            <strong style="color: var(--color-gold);">5,000 LBWM</strong>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <p style="color: var(--color-text-secondary); line-height: 1.8;">
-                                    <strong style="color: var(--color-text-primary);">Resultado:</strong> Ana ahora tiene 5,000 LBWM. Si el total de la red es 100,000 LBWM, 
-                                    Ana tiene <strong style="color: var(--color-gold);">5% de influencia</strong> en decisiones globales.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Frase Final -->
-                        <div style="background: linear-gradient(135deg, var(--color-bg-dark) 0%, var(--color-teal-dark) 100%); padding: 2rem; border-radius: 12px; margin-top: 2rem; text-align: center; border: 2px solid var(--color-gold);">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">💎</div>
-                            <p style="font-size: 1.1rem; color: var(--color-gold); font-weight: 700; line-height: 1.6; margin-bottom: 0.5rem;">
-                                "El poder emerge de quien demuestra, una y otra vez,<br>que puede crear valor y asumir riesgos."
-                            </p>
-                            <p style="font-size: 0.9rem; color: var(--color-text-secondary); font-style: italic;">
-                                — Principio Fundacional de LiberBit World
-                            </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab: Cómo Ganar LBWM -->
-                <div class="lbwm-tab-content" id="lbwm-tab-como-ganar">
-                    <div class="lbwm-card">
-                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">💡 Cómo Ganar Méritos LBWM</h2>
-                        
-                        <div class="lbwm-grid-3" style="margin-top: 2rem;">
-                            <!-- Aportación Económica -->
-                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-gold);">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">💰</div>
-                                <h3 style="color: var(--color-gold); margin-bottom: 1rem; font-size: 1.1rem;">Aportación Económica</h3>
-                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
-                                    Aporta BTC a fondos comunes, liquidez a sistemas monetarios LBW, 
-                                    o financia infraestructura sin expectativa de retorno.
-                                </p>
-                                <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 8px;">
-                                    <div style="font-weight: 700; color: var(--color-gold); margin-bottom: 0.5rem;">
-                                        LBWM = Valor aportado × 1.0
-                                    </div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                                        Ejemplo: 10,000 € → 10,000 LBWM
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Aportación Productiva -->
-                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-teal-light);">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
-                                <h3 style="color: var(--color-teal-light); margin-bottom: 1rem; font-size: 1.1rem;">Aportación Productiva</h3>
-                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
-                                    Desarrollo de software, operación de nodos, coordinación de red, 
-                                    educación y contenidos, expansión del ecosistema.
-                                </p>
-                                <div style="background: rgba(61, 117, 133, 0.1); padding: 1rem; border-radius: 8px;">
-                                    <div style="font-weight: 700; color: var(--color-teal-light); margin-bottom: 0.5rem;">
-                                        LBWM = Presupuesto aprobado × 1.0
-                                    </div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                                        Valoración basada en tarifa de mercado
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Aportación de Responsabilidad -->
-                            <div style="padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px; border: 2px solid var(--color-success);">
-                                <div style="font-size: 3rem; margin-bottom: 1rem;">🛡️</div>
-                                <h3 style="color: var(--color-success); margin-bottom: 1rem; font-size: 1.1rem;">Responsabilidad</h3>
-                                <p style="color: var(--color-text-secondary); margin-bottom: 1rem; line-height: 1.6; font-size: 0.9rem;">
-                                    Custodia de fondos comunes, arbitraje inter-City, operación de infraestructura crítica. 
-                                    Mayor riesgo, mayor mérito.
-                                </p>
-                                <div style="background: rgba(82, 196, 26, 0.1); padding: 1rem; border-radius: 8px;">
-                                    <div style="font-weight: 700; color: var(--color-success); margin-bottom: 0.5rem;">
-                                        LBWM = Valor × 1.2
-                                    </div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                                        ⚠️ Sujeto a slashing por incumplimiento
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Proceso de Emisión -->
-                        <div class="lbwm-card" style="margin-top: 2rem; background: var(--color-bg-dark);">
-                            <h3 style="margin-bottom: 1.5rem; color: var(--color-gold); font-size: 1.2rem;">📝 Proceso de Emisión</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-                                <div style="text-align: center; padding: 1rem;">
-                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">1️⃣</div>
-                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Aporta Valor</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Realiza tu contribución</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem;">
-                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">2️⃣</div>
-                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Presenta Formulario</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Con evidencias verificables</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem;">
-                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">3️⃣</div>
-                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Comité Verifica</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Aprueba valoración</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem;">
-                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">4️⃣</div>
-                                    <div style="font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">LBWM Emitidos</div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Registrados en Ledger</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; margin-top: 2rem;">
-                            <button class="btn btn-primary" onclick="showContributionForm()" style="font-size: 1rem; padding: 1rem 2.5rem;">
-                                📝 Presentar Aportación de Valor
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: Mis Aportaciones -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 4: HISTORIAL (existing - Mis Aportaciones) -->
+                <!-- ═══════════════════════════════════════════════ -->
                 <div class="lbwm-tab-content" id="lbwm-tab-mis-aportaciones">
                     <div class="lbwm-card">
-                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">📋 Mis Aportaciones</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="color: var(--color-gold); font-size: 1.2rem;">📋 Mis Aportaciones</h3>
+                            <button class="btn btn-primary btn-sm" onclick="showContributionForm()" style="font-size: 0.8rem;">+ Nueva</button>
+                        </div>
                         
-                        <div id="myContributionsList" style="margin-top: 2rem;">
+                        <div id="myContributionsList">
                             <div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
-                                <p>No has presentado aportaciones profesionales aún</p>
+                                <p>No has presentado aportaciones aún</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab: Ledger Maestro -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 5: BLOQUES DE VOTO (existing, enhanced) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content" id="lbwm-tab-bloques-voto">
+                    <div class="lbwm-card">
+                        <h3 style="color:var(--color-gold);font-size:1.2rem;">🗳️ Distribución del Poder de Voto</h3>
+                        <p style="color:var(--color-text-secondary);margin-bottom:1.5rem;line-height:1.6;font-size:0.85rem;">
+                            El poder de voto se organiza en 3 bloques. Gobernanza mantiene mín 51%.
+                        </p>
+
+                        <!-- Visual vote bar -->
+                        <div id="votingBarDisplay" style="display:flex;border-radius:10px;overflow:hidden;height:40px;margin-bottom:1rem;background:var(--color-bg-dark);">
+                            <div id="voteBarGob" style="background:#9C27B0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.75rem;font-weight:700;width:51%;transition:width 0.5s;">51%</div>
+                            <div id="voteBarCiud" style="background:#FF9800;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.75rem;font-weight:700;width:29%;transition:width 0.5s;">29%</div>
+                            <div id="voteBarCom" style="background:#4CAF50;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.75rem;font-weight:700;width:20%;transition:width 0.5s;">20%</div>
+                        </div>
+
+                        <!-- Block legend -->
+                        <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;font-size:0.8rem;">
+                            <div style="display:flex;align-items:center;gap:0.3rem;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:#9C27B0;"></div>
+                                <span style="color:var(--color-text-secondary);">Gobernanza: <strong id="blocGobPct" style="color:#CE93D8;">51%</strong> (<span id="blocGobCount">0</span>) — mín 51%</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.3rem;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:#FF9800;"></div>
+                                <span style="color:var(--color-text-secondary);">Ciudadanía: <strong id="blocCiudPct" style="color:#FFB74D;">0%</strong> (<span id="blocCiudCount">0</span>) — máx 29%</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.3rem;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:#4CAF50;"></div>
+                                <span style="color:var(--color-text-secondary);">Comunidad: <strong id="blocComPct" style="color:#81C784;">0%</strong> (<span id="blocComCount">0</span>) — máx 20%</span>
+                            </div>
+                        </div>
+
+                        <!-- Detailed voting blocks from JS -->
+                        <div id="votingBlocksDisplay" style="text-align:center;padding:1rem;color:var(--color-text-secondary);">
+                            Cargando distribución...
+                        </div>
+                    </div>
+
+                    <!-- Category breakdown duplicate for this tab -->
+                    <div class="lbwm-card" style="margin-top:1rem;">
+                        <h3 style="color:var(--color-gold);font-size:1.1rem;margin-bottom:0.75rem;">📊 Desglose de Categorías</h3>
+                        <div id="votingCategoryBreakdown" style="text-align:center;padding:1rem;color:var(--color-text-secondary);font-size:0.85rem;">
+                            Cargando...
+                        </div>
+                        <div style="margin-top:0.75rem;padding:0.6rem;background:var(--color-bg-dark);border-radius:8px;font-size:0.8rem;color:var(--color-text-secondary);">
+                            <div>💰 <strong>Económica:</strong> Aportaciones directas (×1.0)</div>
+                            <div>🛠️ <strong>Productiva:</strong> Trabajo y servicios (×1.0)</div>
+                            <div>🔐 <strong>Responsabilidad:</strong> Requiere 1.000+ méritos base (×1.2)</div>
+                            <div>⏳ <strong>Financiada:</strong> Aportaciones aplazadas (×0.6)</div>
+                        </div>
+                        <div style="margin-top:0.5rem;text-align:center;">
+                            <span style="color: #FFB74D; font-size: 0.85rem;">⚠️ La categoría Responsabilidad requiere al menos 1.000 méritos acumulados en otras categorías.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 6: LEDGER (existing) -->
+                <!-- ═══════════════════════════════════════════════ -->
                 <div class="lbwm-tab-content" id="lbwm-tab-ledger">
                     <div class="lbwm-card">
-                        <h2 style="color: var(--color-gold); font-size: 1.5rem;">📖 Ledger Maestro LBWM</h2>
-                        <p style="color: var(--color-text-secondary); margin-bottom: 2rem;">
-                            Registro público y auditable de todas las emisiones de mérito en LiberBit World
+                        <h3 style="color: var(--color-gold); font-size: 1.2rem;">📖 Ledger Maestro LBWM</h3>
+                        <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">
+                            Registro público y auditable de todas las emisiones de mérito
                         </p>
                         
                         <div style="overflow-x: auto;">
@@ -1689,59 +1492,137 @@
                             </table>
                         </div>
 
-                        <div style="margin-top: 2rem; padding: 1.5rem; background: var(--color-bg-dark); border-radius: 12px;">
-                            <h4 style="color: var(--color-gold); margin-bottom: 1rem;">📊 Estadísticas del Ledger</h4>
-                            <div class="lbwm-grid-3">
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: var(--color-bg-dark); border-radius: 12px;">
+                            <h4 style="color: var(--color-gold); margin-bottom: 0.75rem; font-size: 0.95rem;">📊 Estadísticas del Ledger</h4>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;" class="mobile-grid-3col">
                                 <div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Total Emitido</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_total_emitido">0 LBWM</div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Total Emitido</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_total_emitido">0 LBWM</div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Emisiones Registradas</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_emisiones">0</div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Emisiones</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_emisiones">0</div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 0.85rem; color: var(--color-text-secondary);">Aportantes Únicos</div>
-                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_aportantes">0</div>
+                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Aportantes</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_aportantes">0</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- [v2.0] Tab: Bloques de Voto -->
-                <div class="lbwm-tab-content" id="lbwm-tab-bloques-voto">
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 7: NIVELES (new functional) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content" id="lbwm-tab-niveles">
                     <div class="lbwm-card">
-                        <h3 style="color:var(--color-gold);font-size:1.2rem;">🗳️ Distribución del Poder de Voto</h3>
-                        <p style="color:var(--color-text-secondary);margin-bottom:1.5rem;line-height:1.6;">
-                            El poder de voto se organiza en 3 bloques. Gobernanza mantiene mín 51%.
-                        </p>
-                        <div id="votingBlocksDisplay" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">
-                            Cargando distribución...
+                        <h3 style="color: var(--color-gold); font-size: 1.2rem; margin-bottom: 1rem;">🏛️ Escala de Ciudadanía LBWM</h3>
+                        <div id="citizenshipLevelsDisplay">
+                            <!-- Populated by JS -->
                         </div>
                     </div>
-                    <div class="lbwm-card" style="margin-top:1rem;">
-                        <h3 style="color:var(--color-gold);font-size:1.2rem;">📊 Desglose por Categoría</h3>
-                        <div id="meritsCategoryBreakdown" style="text-align:center;padding:1rem;color:var(--color-text-secondary);font-size:0.85rem;">
-                            Sin datos de categorías.
+                </div>
+
+                <!-- ═══════════════════════════════════════════════ -->
+                <!-- Tab 8: INFO (condensed educational) -->
+                <!-- ═══════════════════════════════════════════════ -->
+                <div class="lbwm-tab-content" id="lbwm-tab-info">
+                    <div class="lbwm-card">
+                        <h3 style="color: var(--color-gold); font-size: 1.2rem; margin-bottom: 1rem;">ℹ️ ¿Qué son los LBWM?</h3>
+                        
+                        <div style="background: rgba(229, 185, 92, 0.1); padding: 1rem; border-radius: 10px; border-left: 3px solid var(--color-gold); margin-bottom: 1.5rem;">
+                            <p style="font-size: 0.95rem; line-height: 1.7; color: var(--color-text-primary);">
+                                <strong>LBWM (LiberBit World Merits)</strong> son unidades de mérito funcional que representan el <strong>valor real aportado</strong> a LiberBit World. No es "una persona, un voto" — la influencia es proporcional al valor demostrado.
+                            </p>
                         </div>
-                    </div>
-                    <div class="lbwm-card" style="margin-top:1rem;background:rgba(229,185,92,0.05);">
-                        <h3 style="color:var(--color-gold);font-size:1rem;">🔑 Reglas v2.0</h3>
-                        <div style="display:grid;gap:0.5rem;font-size:0.85rem;color:var(--color-text-secondary);line-height:1.6;">
-                            <div>💰 <strong>Económica:</strong> ⚡ auto (Lightning/BTC) o 👑 Gobernador (banco/otro)</div>
-                            <div>🗳️ <strong>Valor:</strong> Propuesta → votación (3d, quorum 30%, mayoría simple)</div>
-                            <div>👑 <strong>Governor Cap:</strong> Poder de voto igualado a 3.000</div>
-                            <div>🛡️ <strong>Suelo 51%:</strong> Bloque Gobernanza siempre ≥51%</div>
-                            <div>🔐 <strong>Responsabilidad:</strong> Requiere 1.000+ méritos base (×1.2)</div>
-                            <div>📐 <strong>Fórmula:</strong> Nostr + min(actividad×10, 300). Lineal</div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;" class="mobile-grid-1col">
+                            <div style="background: var(--color-bg-dark); padding: 1rem; border-radius: 10px;">
+                                <h4 style="color: var(--color-success); font-size: 0.95rem; margin-bottom: 0.5rem;">✅ Los LBWM SON:</h4>
+                                <div style="color: var(--color-text-secondary); font-size: 0.85rem; line-height: 1.8;">
+                                    Unidades de mérito funcional · Peso en gobernanza · Señal de confianza pública · Acceso preferente a proyectos · Reconocimiento permanente
+                                </div>
+                            </div>
+                            <div style="background: var(--color-bg-dark); padding: 1rem; border-radius: 10px;">
+                                <h4 style="color: var(--color-error); font-size: 0.95rem; margin-bottom: 0.5rem;">❌ Los LBWM NO son:</h4>
+                                <div style="color: var(--color-text-secondary); font-size: 0.85rem; line-height: 1.8;">
+                                    Token financiero · Equity legal · Transferibles · Poder sobre personas · Dividendos garantizados
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Categorías -->
+                        <h4 style="color: var(--color-gold); font-size: 1rem; margin-bottom: 0.75rem;">📊 Tipos de Aportación</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.5rem;" class="mobile-grid-1col">
+                            <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px; border-left: 3px solid var(--color-gold);">
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.9rem;">💰 Económica <span style="color: var(--color-gold);">×1.0</span></div>
+                                <div style="font-size: 0.8rem; color: var(--color-text-secondary);">BTC, liquidez · Verificación directa</div>
+                            </div>
+                            <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px; border-left: 3px solid var(--color-teal-light);">
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.9rem;">🛠️ Productiva <span style="color: var(--color-teal-light);">×1.0</span></div>
+                                <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Desarrollo, servicios · Propuesta + votación</div>
+                            </div>
+                            <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px; border-left: 3px solid var(--color-success);">
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.9rem;">🔐 Responsabilidad <span style="color: var(--color-success);">×1.2</span></div>
+                                <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Gobernanza, custodia · Req. 1.000+ méritos</div>
+                            </div>
+                            <div style="padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px; border-left: 3px solid #FFB74D;">
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.9rem;">⏳ Financiada <span style="color: #FFB74D;">×0.6</span></div>
+                                <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Trabajo adelantado · Propuesta + votación</div>
+                            </div>
+                        </div>
+
+                        <!-- Proceso -->
+                        <h4 style="color: var(--color-gold); font-size: 1rem; margin-bottom: 0.75rem;">📝 Proceso de Emisión</h4>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1.5rem;" class="mobile-grid-2col">
+                            <div style="text-align: center; padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                <div style="font-size: 1.5rem;">1️⃣</div>
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.85rem;">Aporta Valor</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                <div style="font-size: 1.5rem;">2️⃣</div>
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.85rem;">Formulario</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                <div style="font-size: 1.5rem;">3️⃣</div>
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.85rem;">Verificación</div>
+                            </div>
+                            <div style="text-align: center; padding: 0.75rem; background: var(--color-bg-dark); border-radius: 8px;">
+                                <div style="font-size: 1.5rem;">4️⃣</div>
+                                <div style="font-weight: 600; color: var(--color-text-primary); font-size: 0.85rem;">LBWM ✅</div>
+                            </div>
+                        </div>
+
+                        <!-- Principios -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" class="mobile-grid-1col">
+                            <div style="padding: 1rem; background: rgba(198,89,17,0.08); border: 1px solid rgba(198,89,17,0.2); border-radius: 10px;">
+                                <h4 style="color: #C65911; font-size: 0.9rem; margin-bottom: 0.5rem;">⚡ Emisión ex-post</h4>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.5;">
+                                    LBWM solo se emiten cuando se crea valor real verificado. Nunca por expectativas.
+                                </p>
+                                <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-gold); margin-top: 0.5rem; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                                    LBWM = Valor × Peso (wᵢ)
+                                </div>
+                            </div>
+                            <div style="padding: 1rem; background: rgba(229,185,92,0.08); border: 1px solid rgba(229,185,92,0.2); border-radius: 10px;">
+                                <h4 style="color: var(--color-gold); font-size: 0.9rem; margin-bottom: 0.5rem;">🛡️ Mérito permanente</h4>
+                                <p style="font-size: 0.8rem; color: var(--color-text-secondary); line-height: 1.5;">
+                                    Los LBWM no caducan. Solo se pierden por <em>slashing</em> en caso de fraude probado (público, motivado y apelable).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 1.5rem;">
+                            <button class="btn btn-primary" onclick="showContributionForm()" style="font-size: 0.95rem; padding: 0.8rem 2rem;">
+                                📝 Presentar Aportación de Valor
+                            </button>
                         </div>
                     </div>
                 </div>
 
             </div>
         </section>
-
         <!-- Contribution Form Modal (LBWM) -->
         <div class="modal" id="contributionFormModal">
             <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; padding: 2rem;">
