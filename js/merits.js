@@ -83,6 +83,18 @@ async function loadMeritsData() {
         // [v2.0] Update voting blocks display
         updateVotingBlocksDisplay();
 
+        // [v2.0] Dashboard gauge + level badges
+        updateDashboardDisplay(totalMerits);
+
+        // [v2.0] Proposals tab
+        loadMeritProposals();
+
+        // [v2.0] Verifications tab (governor panel)
+        loadPendingVerifications();
+
+        // [v2.0] Citizenship levels tab
+        renderCitizenshipLevels(totalMerits);
+
     } catch (err) {
         if (!(err.message && err.message.includes('DataCloneError'))) {
             console.error('Error loading merits:', err.message);
@@ -231,6 +243,9 @@ function updateVotingBlocksDisplay() {
     }
 
     container.innerHTML = barHtml + legendHtml + userBlocHtml;
+
+    // [v2.0] Also update the visual voting bar in bloques tab
+    updateVotingBarDisplay(blocs);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -412,10 +427,13 @@ function switchLbwmTab(tabName) {
     const content = document.getElementById(`lbwm-tab-${tabName}`);
     if (content) content.classList.add('active');
 
-    // [v2.0] Load voting blocks on tab switch
-    if (tabName === 'bloques-voto') {
-        updateVotingBlocksDisplay();
-    }
+    // [v2.0] Refresh data on tab switch
+    if (tabName === 'bloques-voto') updateVotingBlocksDisplay();
+    if (tabName === 'dashboard') { var m = parseInt(document.getElementById('userTotalMerits')?.textContent) || 0; updateDashboardDisplay(m); }
+    if (tabName === 'propuestas') loadMeritProposals();
+    if (tabName === 'verificaciones') loadPendingVerifications();
+    if (tabName === 'niveles') { var m2 = parseInt(document.getElementById('userTotalMerits')?.textContent) || 0; renderCitizenshipLevels(m2); }
+    if (tabName === 'mis-aportaciones') loadMyContributions();
 }
 
 function toggleFinanciada() {
@@ -773,4 +791,417 @@ function loadMyContributions() {
             </div>
         `;
     }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0-NEW] DASHBOARD GAUGE
+// ═══════════════════════════════════════════════════════════════
+
+const GAUGE_LEVELS = [
+    { name: "Amigo",            min: 0,    emoji: "👋", color: "#4CAF50", bloc: "Comunidad" },
+    { name: "E-Residency",      min: 100,  emoji: "🪪", color: "#8BC34A", bloc: "Comunidad" },
+    { name: "Colaborador",      min: 500,  emoji: "🤝", color: "#CDDC39", bloc: "Comunidad" },
+    { name: "Ciudadano Senior", min: 1000, emoji: "🛂", color: "#FF9800", bloc: "Ciudadanía" },
+    { name: "Embajador",        min: 2000, emoji: "🌍", color: "#FF5722", bloc: "Ciudadanía" },
+    { name: "Gobernador",       min: 3000, emoji: "👑", color: "#9C27B0", bloc: "Gobernanza" },
+];
+const GAUGE_THRESH = GAUGE_LEVELS.map(s => s.min);
+const GAUGE_RANGES = [100, 400, 500, 1000, 1000, 500];
+const SEG_ANG = Math.PI / GAUGE_LEVELS.length;
+const GAP = 0.02;
+
+function _meritsToAngle(m) {
+    if (m >= 3000) { var extra = Math.min(m - 3000, GAUGE_RANGES[5]); return Math.PI - 5 * SEG_ANG - (extra / GAUGE_RANGES[5]) * SEG_ANG; }
+    for (var i = 0; i < 5; i++) { if (m < GAUGE_THRESH[i + 1]) { return Math.PI - i * SEG_ANG - ((m - GAUGE_THRESH[i]) / GAUGE_RANGES[i]) * SEG_ANG; } }
+    return 0;
+}
+
+function _getGaugeLevel(merits) {
+    var level = Object.assign({}, GAUGE_LEVELS[0], { idx: 0 });
+    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
+        if (merits >= GAUGE_LEVELS[i].min) level = Object.assign({}, GAUGE_LEVELS[i], { idx: i });
+    }
+    return level;
+}
+
+function _getNextLevel(merits) {
+    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
+        if (merits < GAUGE_LEVELS[i].min) return { level: GAUGE_LEVELS[i], remaining: GAUGE_LEVELS[i].min - merits, progress: merits / GAUGE_LEVELS[i].min };
+    }
+    return null;
+}
+
+var _gaugeAnimFrame = null;
+var _gaugeCurrentAngle = Math.PI;
+
+function drawMeritsGauge(merits) {
+    var canvas = document.getElementById('meritsGaugeCanvas');
+    if (!canvas) return;
+
+    var targetAngle = _meritsToAngle(merits);
+    var level = _getGaugeLevel(merits);
+
+    if (_gaugeAnimFrame) cancelAnimationFrame(_gaugeAnimFrame);
+
+    function animate() {
+        var diff = targetAngle - _gaugeCurrentAngle;
+        if (Math.abs(diff) < 0.005) { _gaugeCurrentAngle = targetAngle; }
+        else { _gaugeCurrentAngle += diff * 0.08; _gaugeAnimFrame = requestAnimationFrame(animate); }
+        _renderGauge(canvas, merits, _gaugeCurrentAngle, level);
+    }
+    animate();
+}
+
+function _renderGauge(canvas, merits, needleAng, level) {
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height, CX = W / 2, CY = H - 30, R = 160, BAND = 30;
+    ctx.clearRect(0, 0, W, H);
+
+    // Draw segments
+    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
+        var startA = Math.PI - i * SEG_ANG + GAP;
+        var endA = Math.PI - (i + 1) * SEG_ANG - GAP;
+        ctx.beginPath();
+        ctx.arc(CX, CY, R, endA, startA);
+        ctx.arc(CX, CY, R - BAND, startA, endA, true);
+        ctx.closePath();
+        ctx.fillStyle = (i <= level.idx) ? GAUGE_LEVELS[i].color + 'CC' : GAUGE_LEVELS[i].color + '33';
+        ctx.fill();
+
+        // Label
+        var midA = (startA + endA) / 2;
+        var lx = CX + Math.cos(midA) * (R + 15);
+        var ly = CY + Math.sin(midA) * (R + 15);
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText(GAUGE_LEVELS[i].emoji, lx, ly);
+    }
+
+    // Needle
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(needleAng);
+    ctx.beginPath();
+    ctx.moveTo(-4, 0); ctx.lineTo(0, -(R - BAND - 10)); ctx.lineTo(4, 0);
+    ctx.fillStyle = '#E5B95C';
+    ctx.fill();
+    ctx.restore();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(CX, CY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#E5B95C';
+    ctx.fill();
+}
+
+function updateDashboardDisplay(merits) {
+    var level = _getGaugeLevel(merits);
+    var next = _getNextLevel(merits);
+
+    // Gauge merit count
+    var countEl = document.getElementById('meritsGaugeMeritCount');
+    if (countEl) countEl.textContent = merits.toLocaleString('es-ES');
+
+    // Gauge badge
+    var badgeEl = document.getElementById('meritsGaugeBadge');
+    if (badgeEl) {
+        badgeEl.textContent = level.emoji + ' ' + level.name;
+        badgeEl.style.borderColor = level.color;
+        badgeEl.style.color = level.color;
+        badgeEl.style.background = level.color + '18';
+    }
+
+    // Header badge
+    var hBadge = document.getElementById('dashboardLevelBadge');
+    if (hBadge) {
+        hBadge.textContent = level.emoji + ' ' + level.name.toUpperCase();
+        hBadge.style.borderColor = level.color;
+        hBadge.style.color = level.color;
+        hBadge.style.background = level.color + '18';
+    }
+
+    // Bloc label
+    var blocLabel = document.getElementById('dashboardBlocLabel');
+    if (blocLabel) blocLabel.textContent = 'Bloque: ' + level.bloc;
+
+    // Progress bar
+    var progressBar = document.getElementById('meritsProgressBar');
+    var progressFill = document.getElementById('meritsProgressFill');
+    var progressLabel = document.getElementById('meritsProgressLabel');
+    var progressRemaining = document.getElementById('meritsProgressRemaining');
+    if (progressBar && next) {
+        progressBar.style.display = 'block';
+        var prevMin = GAUGE_LEVELS[level.idx].min;
+        var pct = ((merits - prevMin) / (next.level.min - prevMin)) * 100;
+        if (progressFill) progressFill.style.width = Math.min(100, pct) + '%';
+        if (progressLabel) progressLabel.textContent = 'Progreso a ' + next.level.name;
+        if (progressRemaining) progressRemaining.textContent = 'Faltan ' + next.remaining.toLocaleString('es-ES');
+    } else if (progressBar) {
+        progressBar.style.display = 'none';
+    }
+
+    // Activity row
+    if (typeof getUnifiedMerits === 'function') {
+        var data = getUnifiedMerits();
+        var actRow = document.getElementById('activityLegacyRow');
+        var actVal = document.getElementById('activityMeritsValue');
+        if (actRow && data.activityMerits > 0) {
+            actRow.style.display = 'block';
+            if (actVal) actVal.textContent = data.activityMerits + ' pts';
+        }
+    }
+
+    // Draw gauge
+    drawMeritsGauge(merits);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0-NEW] PROPOSALS TAB
+// ═══════════════════════════════════════════════════════════════
+
+var _currentProposalFilter = 'all';
+
+function loadMeritProposals() {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.getProposals) {
+        return;
+    }
+
+    var allProposals = LBW_Governance.getProposals();
+    // Filter to merit-related proposals (those with [Aportación] in title)
+    var meritProposals = allProposals.filter(function(p) {
+        return p.title && (p.title.includes('[Aportación') || p.title.includes('Aportación'));
+    });
+
+    // If no merit-specific proposals, show all proposals
+    if (meritProposals.length === 0) meritProposals = allProposals;
+
+    // Apply filter
+    var filtered = meritProposals;
+    if (_currentProposalFilter !== 'all') {
+        filtered = meritProposals.filter(function(p) {
+            if (_currentProposalFilter === 'voting') return p.status === 'active' || p.status === 'voting';
+            if (_currentProposalFilter === 'approved') return p.status === 'approved' || p.status === 'passed';
+            if (_currentProposalFilter === 'rejected') return p.status === 'rejected' || p.status === 'failed';
+            return true;
+        });
+    }
+
+    // Count unvoted for badge
+    var unvotedCount = meritProposals.filter(function(p) {
+        return (p.status === 'active' || p.status === 'voting') && !p.hasVoted;
+    }).length;
+
+    var badge = document.getElementById('tabBadgeProposals');
+    if (badge) {
+        if (unvotedCount > 0) { badge.style.display = 'inline-flex'; badge.textContent = unvotedCount; }
+        else { badge.style.display = 'none'; }
+    }
+
+    // Update stats
+    var statEl = document.getElementById('stat_pending_proposals');
+    if (statEl) statEl.textContent = unvotedCount;
+
+    // Render
+    var container = document.getElementById('meritProposalsList');
+    if (!container) return;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-secondary);">Sin propuestas' + (_currentProposalFilter !== 'all' ? ' con filtro "' + _currentProposalFilter + '"' : '') + '</div>';
+        return;
+    }
+
+    var statusColors = { active: '#9C27B0', voting: '#9C27B0', approved: '#4CAF50', passed: '#4CAF50', rejected: '#F44336', failed: '#F44336' };
+    var statusLabels = { active: '🗳️ En Votación', voting: '🗳️ En Votación', approved: '✅ Aprobada', passed: '✅ Aprobada', rejected: '❌ Rechazada', failed: '❌ Rechazada' };
+
+    container.innerHTML = filtered.map(function(p) {
+        var color = statusColors[p.status] || '#9C27B0';
+        var label = statusLabels[p.status] || p.status;
+        var votesFor = p.votesFor || p.votes_for || 0;
+        var votesAgainst = p.votesAgainst || p.votes_against || 0;
+        var totalVotes = votesFor + votesAgainst;
+        var forPct = totalVotes > 0 ? (votesFor / totalVotes) * 100 : 0;
+        var againstPct = totalVotes > 0 ? (votesAgainst / totalVotes) * 100 : 0;
+
+        return '<div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;border-left:4px solid ' + color + ';margin-bottom:0.75rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;">' +
+                '<div style="flex:1;">' +
+                    '<div style="font-weight:700;font-size:0.95rem;color:var(--color-text-primary);">' + (p.title || p.description || '-') + '</div>' +
+                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por <strong>' + (p.author || p.authorName || 'Anónimo') + '</strong></div>' +
+                '</div>' +
+                '<span style="padding:0.3rem 0.6rem;background:' + color + '22;color:' + color + ';border-radius:8px;font-size:0.75rem;font-weight:600;white-space:nowrap;">' + label + '</span>' +
+            '</div>' +
+            // Vote bar
+            '<div style="display:flex;border-radius:6px;overflow:hidden;height:6px;background:rgba(255,255,255,0.08);margin:0.5rem 0;">' +
+                '<div style="background:var(--color-success);width:' + forPct + '%;transition:width 0.3s;"></div>' +
+                '<div style="background:var(--color-error);width:' + againstPct + '%;transition:width 0.3s;"></div>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--color-text-secondary);">' +
+                '<span>✅ ' + votesFor + '</span><span>❌ ' + votesAgainst + '</span><span>👥 ' + totalVotes + '</span>' +
+            '</div>' +
+            // Vote buttons (if active)
+            ((p.status === 'active' || p.status === 'voting') && !p.hasVoted ?
+                '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+                    '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + p.id + '\',\'for\')">✅ A favor</button>' +
+                    '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + p.id + '\',\'against\')">❌ En contra</button>' +
+                '</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+function filterMeritProposals(filter) {
+    _currentProposalFilter = filter;
+
+    // Update pill styles
+    var pills = document.querySelectorAll('#proposalFilterPills button');
+    pills.forEach(function(pill) {
+        if (pill.getAttribute('data-filter') === filter) {
+            pill.style.background = 'rgba(229,185,92,0.15)';
+            pill.style.color = 'var(--color-gold)';
+            pill.style.borderColor = 'var(--color-gold)';
+        } else {
+            pill.style.background = 'var(--color-bg-dark)';
+            pill.style.color = 'var(--color-text-secondary)';
+            pill.style.borderColor = 'var(--color-border)';
+        }
+    });
+
+    loadMeritProposals();
+}
+
+async function voteMeritProposal(proposalId, vote) {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.vote) {
+        showNotification('Sistema de gobernanza no disponible', 'error');
+        return;
+    }
+    try {
+        await LBW_Governance.vote(proposalId, vote === 'for');
+        showNotification('✅ Voto registrado', 'success');
+        setTimeout(function() { loadMeritProposals(); }, 500);
+    } catch (err) {
+        showNotification('Error: ' + err.message, 'error');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0-NEW] VERIFICATIONS TAB (Governor panel)
+// ═══════════════════════════════════════════════════════════════
+
+function loadPendingVerifications() {
+    var container = document.getElementById('pendingVerificationsList');
+    var gateMsg = document.getElementById('governorGateMsg');
+    if (!container) return;
+
+    var isGovernor = false;
+    if (typeof getUnifiedMerits === 'function') {
+        isGovernor = getUnifiedMerits().isGovernor;
+    } else if (typeof LBW_Merits !== 'undefined') {
+        var myData = LBW_Merits.getMyMerits();
+        isGovernor = myData && myData.total >= 3000;
+    }
+
+    // Show/hide governor gate
+    if (gateMsg) gateMsg.style.display = isGovernor ? 'none' : 'block';
+
+    // Get pending economic contributions needing verification
+    var pending = [];
+    if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getAllContributions) {
+        var allContribs = LBW_Merits.getAllContributions();
+        pending = allContribs.filter(function(c) {
+            return c.category === 'economica' && (c.status === 'pending_verification' || c.status === 'pending');
+        });
+    }
+
+    // Update badge
+    var badge = document.getElementById('tabBadgeVerifications');
+    var statEl = document.getElementById('stat_pending_verifications');
+    if (badge) {
+        if (pending.length > 0) { badge.style.display = 'inline-flex'; badge.textContent = pending.length; }
+        else { badge.style.display = 'none'; }
+    }
+    if (statEl) statEl.textContent = pending.length;
+
+    if (pending.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-secondary);"><div style="font-size:2rem;margin-bottom:0.5rem;">✅</div><p>No hay aportaciones pendientes de verificación</p></div>';
+        return;
+    }
+
+    container.innerHTML = pending.map(function(c) {
+        var payLabel = c.payMethod === 'lightning' ? '⚡ Lightning' : c.payMethod === 'btc_onchain' ? '⛓️ On-chain' : c.payMethod === 'bank' ? '🏦 Banco' : '📄 Otro';
+
+        return '<div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;border-left:4px solid #FF9800;margin-bottom:0.75rem;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+                '<div>' +
+                    '<div style="font-weight:700;color:var(--color-text-primary);">' + (c.description || 'Aportación Económica') + '</div>' +
+                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por ' + (c.authorName || c.pubkey?.substring(0,12) || 'Anónimo') + ' · ' + payLabel + '</div>' +
+                '</div>' +
+                '<div style="text-align:right;min-width:80px;">' +
+                    '<div style="font-family:var(--font-mono);font-weight:700;color:var(--color-gold);font-size:1.1rem;">' + (c.amount || 0) + '</div>' +
+                    '<div style="font-size:0.7rem;color:var(--color-text-secondary);">LBWM</div>' +
+                '</div>' +
+            '</div>' +
+            (c.txProof ? '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--color-text-secondary);word-break:break-all;">📎 ' + c.txProof + '</div>' : '') +
+            (isGovernor ? '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+                '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="verifyDeposit(\'' + c.id + '\')">✅ Verificar y Emitir</button>' +
+                '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="rejectDeposit(\'' + c.id + '\')">❌ Rechazar</button>' +
+            '</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0-NEW] CITIZENSHIP LEVELS TAB
+// ═══════════════════════════════════════════════════════════════
+
+function renderCitizenshipLevels(currentMerits) {
+    var container = document.getElementById('citizenshipLevelsDisplay');
+    if (!container) return;
+
+    currentMerits = currentMerits || 0;
+    var currentLevel = _getGaugeLevel(currentMerits);
+
+    container.innerHTML = GAUGE_LEVELS.map(function(l, i) {
+        var isActive = currentLevel.idx === i;
+        var isPassed = currentLevel.idx > i;
+        var nextMin = (i < GAUGE_LEVELS.length - 1) ? GAUGE_LEVELS[i + 1].min - 1 : '∞';
+        var bgStyle = isActive ? 'border:2px solid ' + l.color + ';background:' + l.color + '18' : isPassed ? 'background:var(--color-bg-dark);opacity:0.7' : 'background:var(--color-bg-dark);opacity:0.4';
+
+        return '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border-radius:10px;margin-bottom:0.5rem;' + bgStyle + ';">' +
+            '<span style="font-size:1.5rem;">' + l.emoji + '</span>' +
+            '<div style="flex:1;">' +
+                '<div style="font-weight:700;color:' + (isActive ? l.color : 'var(--color-text-primary)') + ';font-size:0.95rem;">' + l.name + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--color-text-secondary);">' + l.bloc + '</div>' +
+            '</div>' +
+            '<span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--color-text-secondary);">' + l.min.toLocaleString('es-ES') + '—' + (typeof nextMin === 'number' ? nextMin.toLocaleString('es-ES') : nextMin) + '</span>' +
+            '<span style="font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:10px;background:rgba(229,185,92,0.15);color:var(--color-gold);">' + l.bloc + '</span>' +
+            (isActive ? '<span style="font-size:0.75rem;color:' + l.color + ';font-weight:700;">← TÚ</span>' : '') +
+        '</div>';
+    }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0-NEW] VOTING BLOCKS BAR (enhanced visual)
+// ═══════════════════════════════════════════════════════════════
+
+function updateVotingBarDisplay(blocks) {
+    if (!blocks) return;
+
+    var sets = [
+        ['voteBarGob', 'blocGobPct', 'blocGobCount', 'Gobernanza'],
+        ['voteBarCiud', 'blocCiudPct', 'blocCiudCount', 'Ciudadanía'],
+        ['voteBarCom', 'blocComPct', 'blocComCount', 'Comunidad']
+    ];
+
+    sets.forEach(function(s) {
+        var barEl = document.getElementById(s[0]);
+        var pctEl = document.getElementById(s[1]);
+        var countEl = document.getElementById(s[2]);
+        var block = blocks[s[3]];
+        if (block) {
+            var pct = (block.pct || 0) * 100;
+            if (barEl) { barEl.style.width = pct + '%'; barEl.textContent = pct > 5 ? pct.toFixed(0) + '%' : ''; }
+            if (pctEl) pctEl.textContent = pct.toFixed(1) + '%';
+            if (countEl) countEl.textContent = block.count || 0;
+        }
+    });
 }
