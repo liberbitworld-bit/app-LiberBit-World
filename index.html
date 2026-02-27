@@ -2194,9 +2194,27 @@
             }
         }
 
-        // Define continueAfterLogin - called after NIP-07 and private key login
+        // Define continueAfterLogin - bridges Nostr login with legacy UI system
         function continueAfterLogin() {
             if (typeof closeAuthModal === 'function') closeAuthModal();
+            
+            // Bridge: Nostr login sets lbw_nostr_session but legacy UI needs currentUser + liberbit_keys
+            if (!currentUser) {
+                try {
+                    const nostrSession = JSON.parse(localStorage.getItem('lbw_nostr_session') || 'null');
+                    if (nostrSession && nostrSession.npub) {
+                        currentUser = {
+                            id: nostrSession.pubkey,
+                            pubkey: nostrSession.npub,
+                            publicKey: nostrSession.npub,
+                            name: nostrSession.name || nostrSession.npub.substring(0, 16) + '...',
+                            created_at: nostrSession.loginTime || Date.now()
+                        };
+                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    }
+                } catch(e) { console.warn('[Auth] Bridge error:', e); }
+            }
+            
             if (typeof showMainMenu === 'function' && currentUser) showMainMenu();
         }
         // Make it globally accessible
