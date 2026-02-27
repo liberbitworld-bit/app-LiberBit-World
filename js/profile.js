@@ -30,9 +30,12 @@ function getUnifiedMerits() {
         }
     }
 
-    // Source 2: Activity (legacy)
-    const userPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser)
+    // Source 2: Activity — Nostr chat + legacy Supabase posts + marketplace + governance
+    const chatMessages = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount)
+        ? LBW_NostrBridge.getMyChatCount() : 0;
+    const legacyPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser)
         ? allPosts.filter(p => p.author === currentUser.name).length : 0;
+    const userPosts = chatMessages + legacyPosts;
     const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount)
         ? LBW_NostrBridge.getMyOffersCount() : 0;
     const govStats = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats() : { myVotes: 0, myProposals: 0 };
@@ -305,9 +308,32 @@ async function loadUserProfile() {
     
     updateProfileDisplay();
     
-    // Re-update after a delay to catch late-loaded posts/offers/votes data
+    // Re-update after delays to catch late-loaded feeds (chat, marketplace, governance)
     setTimeout(() => updateProfileDisplay(), 2000);
     setTimeout(() => updateProfileDisplay(), 5000);
+    setTimeout(() => updateProfileDisplay(), 10000);
+    
+    // Try Nostr profile picture if no avatar loaded yet
+    if (!userProfile.avatarUrl) {
+        try {
+            const hexKey = isNpubFormat(pubKey) ? npubToHex(pubKey) : pubKey;
+            if (hexKey && typeof LBW_Sync !== 'undefined' && LBW_Sync.resolveProfile) {
+                const nostrProfile = await LBW_Sync.resolveProfile(hexKey);
+                if (nostrProfile && nostrProfile.picture) {
+                    const avatarEl = document.getElementById('profileAvatar');
+                    if (avatarEl) avatarEl.src = nostrProfile.picture;
+                    userProfile.avatarUrl = nostrProfile.picture;
+                    localStorage.setItem('userProfile_' + pubKey, JSON.stringify(userProfile));
+                    // Also update home avatar
+                    const homeAvatar = document.getElementById('homeAvatar');
+                    if (homeAvatar) homeAvatar.src = nostrProfile.picture;
+                    console.log('[Profile] ✅ Avatar loaded from Nostr profile');
+                }
+            }
+        } catch (e) {
+            console.warn('[Profile] Nostr avatar lookup failed:', e);
+        }
+    }
 }
 
 function updateProfileDisplay() {
