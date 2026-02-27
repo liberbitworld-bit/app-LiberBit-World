@@ -1,4 +1,6 @@
 // Profile Functions
+// Wrapped in IIFE to avoid const collision with merits.js (GAUGE_THRESH, GAUGE_RANGES)
+(function() {
 
 // ============================================
 // LBWM v2.0 Citizenship Scale (auto-calculated)
@@ -699,3 +701,20 @@ async function saveCitizenship() {
         showNotification('Error al actualizar ciudad', 'error');
     }
 }
+
+// Expose functions needed globally (called from index.html onclick, merits.js, ui.js, etc.)
+window.getCitizenshipLevel = getCitizenshipLevel;
+window.getUnifiedMerits = getUnifiedMerits;
+window.updateCitizenshipGauge = updateCitizenshipGauge;
+window.initializeUserProfile = initializeUserProfile;
+window.loadUserProfile = loadUserProfile;
+window.updateProfileDisplay = updateProfileDisplay;
+window.showCitizenshipModal = showCitizenshipModal;
+window.closeCitizenshipModal = closeCitizenshipModal;
+window.toggleCustomCity = toggleCustomCity;
+window.handleAvatarUpload = handleAvatarUpload;
+window.saveCitizenship = saveCitizenship;
+window.drawGaugeCanvas = drawGaugeCanvas;
+window.gaugeAnimate = gaugeAnimate;
+
+})(); // End IIFE
