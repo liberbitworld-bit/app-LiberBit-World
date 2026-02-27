@@ -2195,7 +2195,7 @@
         }
 
         // Define continueAfterLogin - bridges Nostr login with legacy UI system
-        function continueAfterLogin() {
+        async function continueAfterLogin() {
             if (typeof closeAuthModal === 'function') closeAuthModal();
             
             // Bridge: Nostr login sets lbw_nostr_session but legacy UI needs currentUser + liberbit_keys
@@ -2203,13 +2203,45 @@
                 try {
                     const nostrSession = JSON.parse(localStorage.getItem('lbw_nostr_session') || 'null');
                     if (nostrSession && nostrSession.npub) {
+                        const npubKey = nostrSession.npub;
+                        const hexKey  = nostrSession.pubkey; // pubkeyHex
+                        
                         currentUser = {
-                            id: nostrSession.pubkey,
-                            pubkey: nostrSession.npub,
-                            publicKey: nostrSession.npub,
-                            name: nostrSession.name || nostrSession.npub.substring(0, 16) + '...',
+                            pubkey: npubKey,
+                            publicKey: npubKey,
+                            name: nostrSession.name || npubKey.substring(0, 16) + '...',
                             created_at: nostrSession.loginTime || Date.now()
                         };
+                        
+                        // Resolve Supabase user: try npub first, then hex (avatar may be stored under either)
+                        try {
+                            let sbUser = null;
+                            const { data: d1 } = await supabaseClient.from('users').select('*').eq('public_key', npubKey).maybeSingle();
+                            if (d1) {
+                                sbUser = d1;
+                            } else if (hexKey) {
+                                const { data: d2 } = await supabaseClient.from('users').select('*').eq('public_key', hexKey).maybeSingle();
+                                if (d2) {
+                                    sbUser = d2;
+                                    // Migrate Supabase record from hex to npub
+                                    await supabaseClient.from('users').update({ public_key: npubKey }).eq('id', d2.id);
+                                    console.log('[Auth] Migrated Supabase user key hex → npub');
+                                }
+                            }
+                            if (sbUser) {
+                                currentUser.id = sbUser.id;
+                                if (sbUser.name) currentUser.name = sbUser.name;
+                                // Pre-cache profile with avatar for immediate display
+                                const profile = {
+                                    citizenshipType: sbUser.citizenship_type || 'Amigo',
+                                    city: sbUser.city || '',
+                                    registrationDate: sbUser.registration_date || new Date().toISOString(),
+                                    avatarUrl: sbUser.avatar_url || null
+                                };
+                                localStorage.setItem('userProfile_' + npubKey, JSON.stringify(profile));
+                            }
+                        } catch(sbErr) { console.warn('[Auth] Supabase lookup:', sbErr.message); }
+                        
                         localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
                     }
                 } catch(e) { console.warn('[Auth] Bridge error:', e); }
