@@ -18,7 +18,7 @@
     <script src="https://unpkg.com/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
     
     <!-- Tailwind CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
@@ -32,7 +32,7 @@
     <div class="container">
         <header>
             <div class="logo-container" id="logoContainer" style="cursor: pointer;">
-                <img src="" alt="LiberBit Logo" class="logo-img" id="logoImg">
+                <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="LiberBit Logo" class="logo-img" id="logoImg">
                 <div class="logo-text">
                     <div class="logo-title">LiberBit World</div>
                     <div class="logo-subtitle">Decentralized Network State</div>
@@ -638,7 +638,7 @@
                             <label style="display: block; font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Dirección Lightning de LiberBit World</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--color-bg-dark); border: 2px solid #FF9800; border-radius: 12px; padding: 1rem;">
                                 <span style="font-size: 1.2rem; flex-shrink: 0;">⚡</span>
-                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="600c09020512020914170f120c0420020c090e0b4e1316">[email&#160;protected]</a></code>
+                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;">liberbitworld@blink.sv</code>
                                 <button onclick="copyLnAddress()" style="background: rgba(255, 152, 0, 0.2); border: 1px solid #FF9800; border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; color: #FFB74D; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,152,0,0.4)'" onmouseout="this.style.background='rgba(255,152,0,0.2)'">
                                     📋 Copiar
                                 </button>
@@ -2122,7 +2122,7 @@
 
 
     <!-- JavaScript Modules -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js"></script>
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/ui.js"></script>
     <!-- SOS Functions -->
@@ -2194,6 +2194,14 @@
             }
         }
 
+        // Define continueAfterLogin - called after NIP-07 and private key login
+        function continueAfterLogin() {
+            if (typeof closeAuthModal === 'function') closeAuthModal();
+            if (typeof showMainMenu === 'function' && currentUser) showMainMenu();
+        }
+        // Make it globally accessible
+        window.continueAfterLogin = continueAfterLogin;
+
         // NIP-07 detection for login form
         setTimeout(async () => {
             const hasExt = await LBW_Nostr.waitForExtension(2000);
@@ -2201,7 +2209,7 @@
             if (hasExt && btn2) { btn2.classList.remove('hidden'); btn2.style.display = ''; }
         }, 600);
 
-        // Wire auth buttons to Nostr bridge (on top of existing Supabase auth)
+        // Wire auth buttons to Nostr bridge (primary auth handler)
         const importBtn = document.getElementById('importAccountBtn');
         if (importBtn) {
             importBtn.addEventListener('click', async () => {
