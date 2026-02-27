@@ -59,6 +59,13 @@ const LBW_Merits = (() => {
             emoji: '⏳',
             description: 'Aportaciones con financiación aplazada',
             weight: 0.6
+        },
+        fundacional: {
+            label: 'Fundacional',
+            emoji: '🏗️',
+            description: 'Aportación fundacional — valor aportado antes del lanzamiento del sistema LBWM',
+            weight: 1.0,
+            isBootstrap: true  // Not selectable in contribution form
         }
     };
 
@@ -111,6 +118,7 @@ const LBW_Merits = (() => {
         if (!data.description?.trim()) throw new Error('Descripción requerida.');
         if (!data.category) throw new Error('Categoría requerida.');
         if (!CATEGORIES[data.category]) throw new Error(`Categoría inválida: ${data.category}`);
+        if (CATEGORIES[data.category].isBootstrap) throw new Error('La categoría fundacional solo se asigna via bootstrap.');
 
         const catDef = CATEGORIES[data.category];
         const pubkey = LBW_Nostr.getPubkey();
@@ -404,6 +412,7 @@ const LBW_Merits = (() => {
             'productiva': 'productiva',
             'responsabilidad': 'responsabilidad',
             'financiada': 'financiada',
+            'fundacional': 'fundacional',
             // v1.0 → v2.0 mapping
             'participation': 'productiva',
             'professional': 'productiva',
@@ -630,6 +639,81 @@ const LBW_Merits = (() => {
         _lastSnapshot = null;
     }
 
+    // ── Bootstrap: Foundational Merit Award ──────────────────
+    // Solves the "chicken-and-egg" problem: no Governor → no one
+    // can verify economic contributions → no merits → no Governor.
+    //
+    // The founder gets a one-time merit award recognizing pre-launch
+    // value (app development, infrastructure, system design, etc.).
+    // This is auditable on the Nostr relay and visible in the ledger.
+    //
+    // Phase 0: Only founder is Governor (≥3000). Verifies first deposits.
+    // Phase 1: Early members accumulate merits. Voting begins.
+    // Phase 2: Other users reach Governor organically. Power dilutes naturally.
+
+    async function bootstrapFounder(founderPubkey, amount, reason) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+        if (!founderPubkey) throw new Error('Pubkey del fundador requerida.');
+        if (!amount || amount < 3000) throw new Error('Los méritos fundacionales deben ser ≥3000 para habilitar Gobernador.');
+
+        // Check if founder already has merits (prevent duplicate bootstrap)
+        const existing = _merits.get(founderPubkey);
+        if (existing && existing.total >= 3000) {
+            console.log('[Merits] 🏗️ Bootstrap: Founder already has sufficient merits, skipping.');
+            return { alreadyBootstrapped: true, total: existing.total };
+        }
+
+        const pubkey = LBW_Nostr.getPubkey();
+        const nowSecs = Math.floor(Date.now() / 1000);
+        const dTag = `bootstrap-fundacional-${founderPubkey.substring(0, 8)}`;
+
+        const content = JSON.stringify({
+            reason: reason || 'Méritos fundacionales — valor aportado pre-lanzamiento (desarrollo app, infraestructura, diseño sistema LBWM, documentación)',
+            amount,
+            awardedBy: pubkey,
+            isBootstrap: true,
+            timestamp: nowSecs
+        });
+
+        const tags = [
+            ['d', dTag],
+            ['p', founderPubkey],
+            ['amount', String(amount)],
+            ['category', 'fundacional'],
+            ['reason', reason || 'Bootstrap fundacional'],
+            ['awarded-by', pubkey],
+            ['t', 'lbw-merits'],
+            ['t', 'lbw-merit-award'],
+            ['t', 'lbw-bootstrap'],
+            ['client', 'LiberBit World']
+        ];
+
+        const result = await LBW_Nostr.publishEvent({
+            kind: KIND.MERIT,
+            content,
+            tags
+        });
+
+        console.log(`[Merits] 🏗️ Bootstrap fundacional: ${amount} méritos → ${founderPubkey.substring(0, 8)}`);
+        return { ...result, dTag, amount, bootstrapped: true };
+    }
+
+    // Check if a pubkey has foundational merits
+    function hasFoundationalMerits(pubkey) {
+        const pk = pubkey || (LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '');
+        const userData = _merits.get(pk);
+        if (!userData) return false;
+        return (userData.byCategory && userData.byCategory['fundacional'] > 0);
+    }
+
+    // Check if current user is Governor (≥3000 merits)
+    function isGovernor(pubkey) {
+        const pk = pubkey || (LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '');
+        const userData = _merits.get(pk);
+        if (!userData) return false;
+        return userData.total >= 3000;
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         // Constants
@@ -643,6 +727,7 @@ const LBW_Merits = (() => {
         submitContribution,
         awardMerit,
         publishSnapshot,
+        bootstrapFounder,
 
         // Subscribe
         subscribeMerits,
@@ -660,6 +745,8 @@ const LBW_Merits = (() => {
         getUserVotingPower,
         calculateVotingPower,
         getStats,
+        hasFoundationalMerits,
+        isGovernor,
 
         // Lifecycle
         reset
