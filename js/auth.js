@@ -58,10 +58,26 @@ async function checkExistingSession() {
             }
         }
         
-        // Sync with Supabase to get user ID if not present
-        if (!currentUser.id && (currentUser.publicKey || currentUser.pubkey)) {
+        // Recover name from lbw_nostr_session if currentUser.name is missing or is a truncated npub
+        const currentPubKey = currentUser.publicKey || currentUser.pubkey;
+        const nameIsMissing = !currentUser.name || 
+            currentUser.name.startsWith('npub1') || 
+            currentUser.name.endsWith('...');
+        
+        if (nameIsMissing) {
             try {
-                const currentPubKey = currentUser.publicKey || currentUser.pubkey;
+                const nostrSession = JSON.parse(localStorage.getItem('lbw_nostr_session') || 'null');
+                if (nostrSession && nostrSession.name && !nostrSession.name.startsWith('npub1') && !nostrSession.name.endsWith('...')) {
+                    currentUser.name = nostrSession.name;
+                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    console.log('[Auth] Name recovered from Nostr session:', currentUser.name);
+                }
+            } catch (e) {}
+        }
+        
+        // Sync with Supabase to get user ID and name if not present
+        if (currentPubKey) {
+            try {
                 const { data, error } = await supabaseClient
                     .from('users')
                     .select('*')
@@ -69,9 +85,21 @@ async function checkExistingSession() {
                     .single();
                 
                 if (data) {
-                    currentUser.id = data.id;
+                    if (!currentUser.id) {
+                        currentUser.id = data.id;
+                    }
                     currentUser.pubkey = currentPubKey;
                     currentUser.publicKey = currentPubKey;
+                    
+                    // Recover name from Supabase if local name is still missing/truncated
+                    const localNameBad = !currentUser.name || 
+                        currentUser.name.startsWith('npub1') || 
+                        currentUser.name.endsWith('...');
+                    if (localNameBad && data.name) {
+                        currentUser.name = data.name;
+                        console.log('[Auth] Name recovered from Supabase:', currentUser.name);
+                    }
+                    
                     localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
                 }
             } catch (err) {
