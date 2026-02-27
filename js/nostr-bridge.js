@@ -28,6 +28,7 @@ const LBW_NostrBridge = (() => {
     let _activeDMPubkey = null;
     let _seenChatIds = new Set();  // dedup chat render
     let _seenMarketIds = new Set();
+    let _myChatCount = 0;          // count of my community chat messages
 
     // ── Init ─────────────────────────────────────────────────
     async function init() {
@@ -237,6 +238,7 @@ const LBW_NostrBridge = (() => {
         _marketplaceListings = [];
         _seenChatIds.clear();
         _seenMarketIds.clear();
+        _myChatCount = 0;
         _activeDMPubkey = null;
         if (typeof LBW_Governance !== 'undefined') LBW_Governance.reset();
         if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
@@ -374,6 +376,7 @@ const LBW_NostrBridge = (() => {
     async function startCommunityChat() {
         if (_chatFeedId) LBW_Sync.unsyncFeed(_chatFeedId);
         _seenChatIds.clear();
+        _myChatCount = 0;
 
         _chatFeedId = await LBW_Sync.syncCommunityChat(
             (msg) => {
@@ -404,6 +407,7 @@ const LBW_NostrBridge = (() => {
         if (document.getElementById(`msg-${msg.id}`)) return;
 
         const isMine = msg.pubkey === LBW_Nostr.getPubkey();
+        if (isMine) _myChatCount++;
 
         _resolveName(msg.pubkey).then(name => {
             const el = document.createElement('div');
@@ -992,6 +996,10 @@ const LBW_NostrBridge = (() => {
         }).length;
     }
 
+    function getMyChatCount() {
+        return _myChatCount;
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
@@ -1001,7 +1009,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, getDebugStats, getMyOffersCount,
+        _resolveName, getDebugStats, getMyOffersCount, getMyChatCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
