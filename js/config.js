@@ -11,7 +11,7 @@
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : 'https://liberbit-api.vercel.app/api'; ;  // ← CAMBIAR por tu URL de Vercel
+    : 'https://liberbit-api.vercel.app/api';  // ← CAMBIAR por tu URL de Vercel
 
 console.log('🔒 LiberBit World - Modo seguro (API proxy)');
 
