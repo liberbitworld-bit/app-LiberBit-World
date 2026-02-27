@@ -206,9 +206,17 @@ const LBW_NostrBridge = (() => {
         setTimeout(async () => {
             const p = await LBW_Sync.resolveProfile(result.pubkeyHex);
             if (p) {
-                session.name = p.name || p.display_name || '';
-                localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
-                _updateDisplayName(session.name);
+                const resolvedName = p.name || p.display_name || '';
+                if (resolvedName) {
+                    session.name = resolvedName;
+                    localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
+                    _updateDisplayName(resolvedName);
+                    // Also persist in currentUser and liberbit_keys
+                    if (typeof currentUser !== 'undefined' && currentUser) {
+                        currentUser.name = resolvedName;
+                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    }
+                }
             }
         }, 2500);
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
@@ -300,10 +308,16 @@ const LBW_NostrBridge = (() => {
     }
 
     function _updateDisplayName(name) {
+        if (!name) return;
         ['homeUserName', 'userName', 'profileName'].forEach(id => {
             const el = document.getElementById(id);
-            if (el && name) el.textContent = name;
+            if (el) el.textContent = name;
         });
+        // Persist name in currentUser and liberbit_keys so it survives page reloads
+        if (typeof currentUser !== 'undefined' && currentUser) {
+            currentUser.name = name;
+            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+        }
     }
 
     // ── Feature Lifecycle ────────────────────────────────────
