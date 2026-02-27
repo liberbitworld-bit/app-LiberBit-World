@@ -2123,7 +2123,7 @@
 
     <!-- JavaScript Modules -->
     <script src="js/config.js"></script>
-    <script src="js/auth.js?v=20260227c"></script>
+    <script src="js/auth.js?v=20260227d"></script>
     <script src="js/ui.js"></script>
     <!-- SOS Functions -->
     <script>
@@ -2143,7 +2143,7 @@
     <script src="js/lightning.js"></script>
     <script src="js/governance.js"></script>
     <script src="js/merits.js"></script>
-    <script src="js/profile.js?v=20260227c"></script>
+    <script src="js/profile.js?v=20260227d"></script>
     <script src="js/wallet.js"></script>
     <script src="js/verification.js"></script>
 
@@ -2155,7 +2155,7 @@
     <script src="js/nostr-sync.js"></script>
     <script src="js/nostr-governance.js"></script>
     <script src="js/nostr-merits.js"></script>
-    <script src="js/nostr-bridge.js?v=20260227c"></script>
+    <script src="js/nostr-bridge.js?v=20260227d"></script>
 
     <!-- Nostr Marketplace Helper -->
     <script>
@@ -2245,20 +2245,51 @@
                                     currentUser.name = sbUser.name;
                                 } else if (nameIsGood(sessionName)) {
                                     currentUser.name = sessionName;
-                                    // Push good name to Supabase
                                     await supabaseClient.from('users').update({ name: sessionName }).eq('id', sbUser.id);
+                                }
+                                // If no avatar, try to inherit from another profile with same name
+                                let avatarUrl = sbUser.avatar_url || null;
+                                if (!avatarUrl && nameIsGood(currentUser.name)) {
+                                    try {
+                                        const { data: donor } = await supabaseClient.from('users')
+                                            .select('avatar_url')
+                                            .eq('name', currentUser.name)
+                                            .not('avatar_url', 'is', null)
+                                            .limit(1)
+                                            .maybeSingle();
+                                        if (donor && donor.avatar_url) {
+                                            avatarUrl = donor.avatar_url;
+                                            await supabaseClient.from('users').update({ avatar_url: avatarUrl }).eq('id', sbUser.id);
+                                            console.log('[Auth] ✅ Avatar heredado de perfil existente');
+                                        }
+                                    } catch(e) {}
                                 }
                                 // Pre-cache profile with avatar for immediate display
                                 const profile = {
                                     citizenshipType: sbUser.citizenship_type || 'Amigo',
                                     city: sbUser.city || '',
                                     registrationDate: sbUser.registration_date || new Date().toISOString(),
-                                    avatarUrl: sbUser.avatar_url || null
+                                    avatarUrl: avatarUrl
                                 };
                                 localStorage.setItem('userProfile_' + npubKey, JSON.stringify(profile));
                             } else {
-                                // ALWAYS create Supabase user (even with truncated name)
-                                // This ensures avatar uploads and other features work
+                                // No record found by npub — create new user
+                                // But first, check if a profile with same name exists (to inherit avatar)
+                                let inheritedAvatar = null;
+                                if (nameIsGood(currentUser.name)) {
+                                    try {
+                                        const { data: donor } = await supabaseClient.from('users')
+                                            .select('avatar_url, citizenship_type, city, registration_date')
+                                            .eq('name', currentUser.name)
+                                            .not('avatar_url', 'is', null)
+                                            .limit(1)
+                                            .maybeSingle();
+                                        if (donor) {
+                                            inheritedAvatar = donor.avatar_url;
+                                            console.log('[Auth] ✅ Avatar encontrado en perfil existente con mismo nombre');
+                                        }
+                                    } catch(e) {}
+                                }
                                 try {
                                     const newId = generateUUID();
                                     const { data: newUser } = await supabaseClient.from('users')
@@ -2266,13 +2297,22 @@
                                             id: newId,
                                             public_key: npubKey,
                                             name: currentUser.name,
-                                            citizenship_type: 'Amigo'
+                                            citizenship_type: 'Amigo',
+                                            avatar_url: inheritedAvatar
                                         }])
                                         .select()
                                         .single();
                                     if (newUser) {
                                         currentUser.id = newUser.id;
                                         console.log('[Auth] ✅ Created Supabase user:', currentUser.name);
+                                        // Cache profile
+                                        const profile = {
+                                            citizenshipType: 'Amigo',
+                                            city: '',
+                                            registrationDate: new Date().toISOString(),
+                                            avatarUrl: inheritedAvatar
+                                        };
+                                        localStorage.setItem('userProfile_' + npubKey, JSON.stringify(profile));
                                     }
                                 } catch(createErr) { console.warn('[Auth] User creation:', createErr.message); }
                             }
@@ -2287,6 +2327,18 @@
                                 if (el) el.textContent = currentUser.name;
                             });
                         }
+                        
+                        // Apply cached avatar to UI
+                        try {
+                            const cachedProfile = JSON.parse(localStorage.getItem('userProfile_' + npubKey) || 'null');
+                            if (cachedProfile && cachedProfile.avatarUrl) {
+                                const homeAvatar = document.getElementById('homeAvatar');
+                                const profileAvatar = document.getElementById('profileAvatar');
+                                if (homeAvatar) homeAvatar.src = cachedProfile.avatarUrl;
+                                if (profileAvatar) profileAvatar.src = cachedProfile.avatarUrl;
+                                console.log('[Auth] ✅ Avatar aplicado al UI');
+                            }
+                        } catch(e) {}
                         
                         // Background retry: if name is still truncated npub, check again after profile resolves
                         if (!nameIsGood(currentUser.name)) {
