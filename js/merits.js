@@ -15,8 +15,8 @@ async function loadMeritsData() {
         LBW_Merits.subscribeContributions();
         LBW_Merits.subscribeSnapshots();
 
-        // Wait briefly for initial data
-        await new Promise(r => setTimeout(r, 500));
+        // Wait for relay data (cache provides instant data, this catches relay updates)
+        await new Promise(r => setTimeout(r, 2000));
 
         // [v2.0] Use getUnifiedMerits() if available, else fallback
         let totalMerits = 0;
