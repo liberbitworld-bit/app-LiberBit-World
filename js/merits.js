@@ -603,7 +603,8 @@ async function submitContribution(event) {
                 category,
                 amount: value,
                 currency: document.getElementById('contrib_currency')?.value || 'EUR',
-                evidence: evidence ? [evidence, `payMethod:${payMethod}`] : [`payMethod:${payMethod}`]
+                evidence: evidence ? [evidence, `payMethod:${payMethod}`] : [`payMethod:${payMethod}`],
+                status: isAutoVerifiable ? 'verified' : 'pending_verification'
             });
 
             if (isAutoVerifiable) {
@@ -622,13 +623,14 @@ async function submitContribution(event) {
             }
         } else {
             // ── PROPOSAL FLOW (productiva, responsabilidad, financiada) ──
-            // Submit as contribution AND create governance proposal
+            // Submit as contribution record (pending vote, NO merits yet)
             await LBW_Merits.submitContribution({
                 description,
                 category,
                 amount: value,
                 currency: document.getElementById('contrib_currency')?.value || 'EUR',
-                evidence: evidence ? [evidence] : []
+                evidence: evidence ? [evidence] : [],
+                status: 'pending_vote'
             });
 
             // If governance system available, also create a proposal for voting
@@ -732,7 +734,7 @@ function loadMyContributions() {
             currency: c.currency || 'units',
             factor_proposed: c.weight,
             lbwm_estimated: c.meritPoints,
-            status: c.status || 'approved',
+            status: c.status || 'pending_vote',
             source: 'nostr',
             category: c.category,
             verifiedBy: c.verifiedBy || null
@@ -749,12 +751,12 @@ function loadMyContributions() {
     }
 
     const statusColors = {
-        pending: '#FF9800', pending_verification: '#FF9800',
+        pending: '#FF9800', pending_verification: '#FF9800', pending_vote: '#9C27B0',
         approved: '#4CAF50', verified: '#4CAF50',
         rejected: '#F44336', voting: '#9C27B0'
     };
     const statusLabels = {
-        pending: '⏳ Pendiente', pending_verification: '⏳ Verificando',
+        pending: '⏳ Pendiente', pending_verification: '⏳ Verificando', pending_vote: '🗳️ Pendiente de Voto',
         approved: '✅ Aprobada', verified: '✅ Verificada',
         rejected: '❌ Rechazada', voting: '🗳️ En Votación'
     };
