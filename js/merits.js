@@ -1071,6 +1071,15 @@ function loadMeritProposals() {
     // If no merit-specific proposals, show all proposals
     if (meritProposals.length === 0) meritProposals = allProposals;
 
+    // Enrich proposals with hasVoted field by checking getMyVote
+    meritProposals = meritProposals.map(function(p) {
+        var myVote = null;
+        if (LBW_Governance.getMyVote) {
+            myVote = LBW_Governance.getMyVote(p.dTag || p.id);
+        }
+        return Object.assign({}, p, { hasVoted: !!myVote, myVote: myVote });
+    });
+
     // Apply filter
     var filtered = meritProposals;
     if (_currentProposalFilter !== 'all') {
@@ -1118,6 +1127,26 @@ function loadMeritProposals() {
         var forPct = totalVotes > 0 ? (votesFor / totalVotes) * 100 : 0;
         var againstPct = totalVotes > 0 ? (votesAgainst / totalVotes) * 100 : 0;
 
+        // Determine what to show based on vote status
+        var voteSection = '';
+        if (p.status === 'active' || p.status === 'voting') {
+            if (p.hasVoted) {
+                // User already voted - show their vote
+                var voteOption = p.myVote ? (p.myVote.option || p.myVote.vote || 'Votado') : 'Votado';
+                var voteIcon = (voteOption === 'A favor' || voteOption === 'for') ? '✅' : '❌';
+                voteSection = '<div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.75rem;padding:0.5rem 0.75rem;background:rgba(229,185,92,0.1);border-radius:8px;border-left:3px solid var(--color-gold);">' +
+                    '<span style="font-size:1.1rem;">' + voteIcon + '</span>' +
+                    '<span style="font-size:0.85rem;color:var(--color-gold);font-weight:600;">Ya votaste: ' + voteOption + '</span>' +
+                '</div>';
+            } else {
+                // User hasn't voted - show vote buttons
+                voteSection = '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+                    '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'for\')">✅ A favor</button>' +
+                    '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'against\')">❌ En contra</button>' +
+                '</div>';
+            }
+        }
+
         return '<div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;border-left:4px solid ' + color + ';margin-bottom:0.75rem;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;">' +
                 '<div style="flex:1;">' +
@@ -1134,12 +1163,7 @@ function loadMeritProposals() {
             '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--color-text-secondary);">' +
                 '<span>✅ ' + votesFor + '</span><span>❌ ' + votesAgainst + '</span><span>👥 ' + totalVotes + '</span>' +
             '</div>' +
-            // Vote buttons (if active)
-            ((p.status === 'active' || p.status === 'voting') && !p.hasVoted ?
-                '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
-                    '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'for\')">✅ A favor</button>' +
-                    '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'against\')">❌ En contra</button>' +
-                '</div>' : '') +
+            voteSection +
         '</div>';
     }).join('');
 }
