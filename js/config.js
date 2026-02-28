@@ -42,6 +42,13 @@ class SupabaseProxyQuery {
         return this;
     }
 
+    upsert(data, opts) {
+        this._operation = 'upsert';
+        this._data = data;
+        if (opts) this._options.upsertOptions = opts;
+        return this;
+    }
+
     update(data) {
         this._operation = 'update';
         this._data = data;
@@ -64,6 +71,7 @@ class SupabaseProxyQuery {
     ilike(col, val) { this._filters.push({ method: 'ilike', args: [col, val] }); return this; }
     in(col, val)    { this._filters.push({ method: 'in', args: [col, val] }); return this; }
     is(col, val)    { this._filters.push({ method: 'is', args: [col, val] }); return this; }
+    not(col, op, val){ this._filters.push({ method: 'not', args: [col, op, val] }); return this; }
     or(expr)        { this._filters.push({ method: 'or', args: [expr] }); return this; }
     order(col, opts){ this._filters.push({ method: 'order', args: [col, opts] }); return this; }
     limit(n)        { this._filters.push({ method: 'limit', args: [n] }); return this; }
@@ -114,11 +122,17 @@ class SupabaseProxyQuery {
             const hasMaybeSingle = this._filters.some(f => f.method === 'maybeSingle');
             
             if (hasSingle && result.data && Array.isArray(result.data)) {
+                if (result.data.length > 1) {
+                    console.warn(`[Proxy] single() returned ${result.data.length} rows for table ${this._table} — using first match`);
+                }
                 result.data = result.data[0] || null;
                 if (!result.data) {
                     result.error = 'Row not found';
                 }
             } else if (hasMaybeSingle && result.data && Array.isArray(result.data)) {
+                if (result.data.length > 1) {
+                    console.warn(`[Proxy] maybeSingle() returned ${result.data.length} rows for table ${this._table} — using first match`);
+                }
                 result.data = result.data[0] || null;
             }
 
