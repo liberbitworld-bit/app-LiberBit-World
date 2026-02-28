@@ -199,7 +199,7 @@ const LBW_NostrBridge = (() => {
         const result = LBW_Nostr.loginWithPrivateKey(input);
         const session = {
             pubkey: result.pubkeyHex, npub: result.npub,
-            name: '', method: 'nsec', loginTime: Date.now()
+            name: '', picture: '', method: 'nsec', loginTime: Date.now()
         };
         // Store nsec in localStorage for persistence across tab close/reopen
         // Also keep in sessionStorage for backward compatibility
@@ -214,27 +214,37 @@ const LBW_NostrBridge = (() => {
             if (typeof supabaseClient !== 'undefined') {
                 const { data } = await supabaseClient
                     .from('users')
-                    .select('name, id')
+                    .select('name, id, avatar_url')
                     .eq('public_key', result.npub)
                     .single();
                 if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
                     session.name = data.name;
                     console.log('[Bridge] ✅ Nombre desde Supabase:', data.name);
                 }
+                if (data && data.avatar_url) {
+                    session.picture = data.avatar_url;
+                    console.log('[Bridge] ✅ Avatar desde Supabase');
+                }
             }
             
             // 2. If Supabase had no name, try relays
-            if (!session.name) {
+            if (!session.name || !session.picture) {
                 await new Promise(r => setTimeout(r, 1500));
                 const p = await Promise.race([
                     LBW_Sync.resolveProfile(result.pubkeyHex),
                     new Promise(r => setTimeout(() => r(null), 4000))
                 ]);
                 if (p) {
-                    const resolvedName = p.name || p.display_name || '';
-                    if (resolvedName) {
-                        session.name = resolvedName;
-                        console.log('[Bridge] ✅ Nombre desde relays:', resolvedName);
+                    if (!session.name) {
+                        const resolvedName = p.name || p.display_name || '';
+                        if (resolvedName) {
+                            session.name = resolvedName;
+                            console.log('[Bridge] ✅ Nombre desde relays:', resolvedName);
+                        }
+                    }
+                    if (!session.picture && p.picture) {
+                        session.picture = p.picture;
+                        console.log('[Bridge] ✅ Avatar desde relays');
                     }
                 }
             }
@@ -322,12 +332,15 @@ const LBW_NostrBridge = (() => {
                 }
             }
             
-            // ── Fix bad names: check Supabase first, then relays ──
+            // ── Fix bad names or missing picture: check Supabase first, then relays ──
             if (sessionRestored && s.pubkey) {
                 const nameIsBad = !s.name || s.name.startsWith('npub1') || s.name.endsWith('...');
-                if (nameIsBad) {
-                    console.log('[Bridge] Nombre malo detectado, buscando en Supabase...');
+                const needsPicture = !s.picture;
+                
+                if (nameIsBad || needsPicture) {
+                    console.log('[Bridge] Datos faltantes, buscando...');
                     let resolvedName = '';
+                    let resolvedPicture = '';
                     
                     // 1. Try Supabase (primary source of truth)
                     try {
@@ -336,38 +349,60 @@ const LBW_NostrBridge = (() => {
                             if (npub) {
                                 const { data } = await supabaseClient
                                     .from('users')
-                                    .select('name')
+                                    .select('name, avatar_url')
                                     .eq('public_key', npub)
                                     .single();
-                                if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
-                                    resolvedName = data.name;
-                                    console.log('[Bridge] ✅ Nombre desde Supabase:', resolvedName);
+                                if (data) {
+                                    if (nameIsBad && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
+                                        resolvedName = data.name;
+                                        console.log('[Bridge] ✅ Nombre desde Supabase:', resolvedName);
+                                    }
+                                    if (needsPicture && data.avatar_url) {
+                                        resolvedPicture = data.avatar_url;
+                                        console.log('[Bridge] ✅ Avatar desde Supabase');
+                                    }
                                 }
                             }
                         }
                     } catch(e) {}
                     
                     // 2. Fallback: try relays
-                    if (!resolvedName) {
+                    if ((nameIsBad && !resolvedName) || (needsPicture && !resolvedPicture)) {
                         try {
                             const p = await Promise.race([
                                 LBW_Sync.resolveProfile(s.pubkey),
                                 new Promise(r => setTimeout(() => r(null), 4000))
                             ]);
-                            if (p) resolvedName = p.name || p.display_name || '';
+                            if (p) {
+                                if (nameIsBad && !resolvedName) resolvedName = p.name || p.display_name || '';
+                                if (needsPicture && !resolvedPicture && p.picture) resolvedPicture = p.picture;
+                            }
                         } catch(e) {}
                     }
                     
-                    // 3. Apply resolved name
+                    // 3. Apply resolved data
+                    let updated = false;
                     if (resolvedName && !resolvedName.startsWith('npub1')) {
                         s.name = resolvedName;
-                        localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
                         _updateDisplayName(resolvedName);
                         if (typeof currentUser !== 'undefined' && currentUser) {
                             currentUser.name = resolvedName;
                             localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
                         }
                         console.log('[Bridge] ✅ Nombre restaurado:', resolvedName);
+                        updated = true;
+                    }
+                    if (resolvedPicture) {
+                        s.picture = resolvedPicture;
+                        ['homeAvatar', 'profileAvatar'].forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) el.src = resolvedPicture;
+                        });
+                        console.log('[Bridge] ✅ Avatar restaurado');
+                        updated = true;
+                    }
+                    if (updated) {
+                        localStorage.setItem('lbw_nostr_session', JSON.stringify(s));
                     }
                 }
             }
@@ -394,6 +429,13 @@ const LBW_NostrBridge = (() => {
             const el = document.getElementById(id);
             if (el) el.classList.remove('hidden');
         });
+        // Aplicar avatar si existe en la sesión
+        if (session.picture) {
+            ['homeAvatar', 'profileAvatar'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.src = session.picture;
+            });
+        }
     }
 
     function _updateDisplayName(name) {
