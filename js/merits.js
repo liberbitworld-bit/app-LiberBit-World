@@ -2,6 +2,65 @@
 // All data flows through LBW_Merits → Nostr relays
 // Zero Supabase dependencies
 // [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, governor verification
+// [v2.1] Fixed: getUnifiedMerits, verifyDeposit, rejectDeposit, removed fake auto-verify
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.1] UNIFIED MERITS FUNCTION - Combines Nostr + Activity merits
+// ═══════════════════════════════════════════════════════════════
+function getUnifiedMerits() {
+    if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.isLoggedIn()) {
+        return { 
+            total: 0, 
+            byCategory: {}, 
+            activityMerits: 0, 
+            activityCount: 0, 
+            isGovernor: false,
+            source: 'none'
+        };
+    }
+
+    // Get Nostr-based merits
+    const myData = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyMerits() : null;
+    const nostrMerits = myData ? myData.total : 0;
+    const breakdown = myData ? { ...myData.byCategory } : {};
+
+    // Calculate activity-based merits (capped)
+    let activityContribs = 0;
+    
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount) {
+        activityContribs += LBW_NostrBridge.getMyChatCount();
+    }
+    if (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && typeof currentUser !== 'undefined' && currentUser) {
+        activityContribs += allPosts.filter(function(p) { return p.author === currentUser.name; }).length;
+    }
+    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) {
+        activityContribs += LBW_NostrBridge.getMyOffersCount();
+    }
+    if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getStats) {
+        const govStats = LBW_Governance.getStats();
+        activityContribs += govStats.myVotes || 0;
+        activityContribs += govStats.myProposals || 0;
+    }
+
+    // Cap activity merits at 300
+    const ACTIVITY_CAP = 300;
+    const activityMerits = Math.min(activityContribs * 10, ACTIVITY_CAP);
+    const total = nostrMerits + activityMerits;
+
+    return {
+        total: total,
+        byCategory: breakdown,
+        nostrMerits: nostrMerits,
+        activityMerits: activityMerits,
+        activityCount: activityContribs,
+        isGovernor: total >= 3000,
+        level: (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(total) : null,
+        source: nostrMerits > 0 ? 'nostr+activity' : (activityMerits > 0 ? 'activity' : 'none')
+    };
+}
+
+// Expose globally
+window.getUnifiedMerits = getUnifiedMerits;
 
 async function loadMeritsData() {
     try {
@@ -499,7 +558,7 @@ function updateContributionFactor() {
     updatePreviewCalculation();
 }
 
-// [v2.0-NEW] Show flow indicator based on category + payMethod
+// [v2.1] Show flow indicator based on category + payMethod
 function updateFlowIndicator() {
     const flowEl = document.getElementById('flowIndicator');
     const submitBtn = document.getElementById('submitContribBtn');
@@ -509,7 +568,6 @@ function updateFlowIndicator() {
     const category = document.getElementById('contrib_type')?.value || '';
     const payMethod = document.getElementById('contrib_payMethod')?.value || 'lightning';
     const isEcon = category === 'economica';
-    const isAutoVerifiable = isEcon && (payMethod === 'lightning' || payMethod === 'btc_onchain');
 
     if (!category) {
         flowEl.style.display = 'none';
@@ -518,20 +576,15 @@ function updateFlowIndicator() {
 
     flowEl.style.display = 'block';
 
-    if (isAutoVerifiable) {
-        flowEl.style.background = 'rgba(76,175,80,0.1)';
-        flowEl.style.border = '1px solid rgba(76,175,80,0.3)';
-        flowEl.style.color = '#81C784';
-        flowEl.innerHTML = `<strong>${payMethod === 'lightning' ? '⚡' : '⛓️'} Verificación Automática</strong><br/>
-            El pago se verifica directamente en ${payMethod === 'lightning' ? 'Lightning Network' : 'la blockchain de Bitcoin'}. Los méritos se emiten automáticamente.`;
-        if (submitBtn) submitBtn.textContent = '⚡ Verificar y Registrar';
-        if (approvalNote) approvalNote.textContent = 'Méritos emitidos automáticamente al verificar TX';
-    } else if (isEcon) {
+    if (isEcon) {
+        // [v2.1] TODAS las aportaciones económicas requieren verificación por Gobernador
+        // Ya no hay "auto-verificación" - incluso crypto necesita confirmación manual
+        const payIcon = payMethod === 'lightning' ? '⚡' : payMethod === 'btc_onchain' ? '⛓️' : payMethod === 'bank' ? '🏦' : '📄';
         flowEl.style.background = 'rgba(156,39,176,0.1)';
         flowEl.style.border = '1px solid rgba(156,39,176,0.3)';
         flowEl.style.color = '#CE93D8';
         flowEl.innerHTML = `<strong>👑 Verificación por Gobernador</strong><br/>
-            Un Gobernador (≥3.000 méritos) revisará la prueba de pago y confirmará la recepción antes de emitir méritos.`;
+            ${payIcon} Un Gobernador (≥3.000 méritos) verificará ${payMethod === 'lightning' || payMethod === 'btc_onchain' ? 'la transacción en la blockchain' : 'la prueba de pago'} antes de emitir los méritos.`;
         if (submitBtn) submitBtn.textContent = '👑 Enviar a Gobernador';
         if (approvalNote) approvalNote.textContent = 'Pendiente de verificación por Gobernador';
     } else {
@@ -588,7 +641,6 @@ async function submitContribution(event) {
         const evidence = document.getElementById('contrib_evidence')?.value || '';
         const payMethod = document.getElementById('contrib_payMethod')?.value || '';
         const isEcon = category === 'economica';
-        const isAutoVerifiable = isEcon && (payMethod === 'lightning' || payMethod === 'btc_onchain');
 
         if (!category || !description.trim() || value <= 0) {
             showNotification('Rellena todos los campos obligatorios', 'error');
@@ -597,28 +649,23 @@ async function submitContribution(event) {
 
         if (isEcon) {
             // ── ECONOMIC FLOW ──
-            // Step 1: Register contribution in Nostr
+            // [v2.1] TODAS las aportaciones económicas requieren verificación por Gobernador
+            // NO hay auto-verificación - incluso crypto requiere confirmación manual
+            // Esto previene fraude y asegura que los pagos realmente se recibieron
+            
             const result = await LBW_Merits.submitContribution({
                 description,
                 category,
                 amount: value,
                 currency: document.getElementById('contrib_currency')?.value || 'EUR',
                 evidence: evidence ? [evidence, `payMethod:${payMethod}`] : [`payMethod:${payMethod}`],
-                status: isAutoVerifiable ? 'verified' : 'pending_verification'
+                status: 'pending_verification'
             });
 
-            if (isAutoVerifiable) {
-                // Step 2a: Auto-verify (crypto payment)
-                // In production this would check the blockchain/Lightning.
-                // For now, auto-award merits since TX is verifiable.
-                const pubkey = LBW_Nostr.getPubkey();
-                await LBW_Merits.awardMerit(
-                    pubkey, value, category,
-                    `Auto-verificado: ${payMethod === 'lightning' ? '⚡ Lightning' : '⛓️ Bitcoin on-chain'}`
-                );
-                showNotification('✅ Pago verificado automáticamente. Méritos emitidos.', 'success');
+            // Mensaje según método de pago
+            if (payMethod === 'lightning' || payMethod === 'btc_onchain') {
+                showNotification('📨 Aportación registrada. Un Gobernador verificará la transacción en la blockchain.', 'success');
             } else {
-                // Step 2b: Pending governor verification
                 showNotification('📨 Aportación registrada. Pendiente de verificación por Gobernador.', 'success');
             }
         } else {
@@ -668,35 +715,48 @@ async function submitContribution(event) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// [v2.0-NEW] GOVERNOR VERIFICATION (for bank/other deposits)
+// [v2.1] GOVERNOR VERIFICATION (FIXED)
 // ═══════════════════════════════════════════════════════════════
 
 async function verifyDeposit(contribId) {
-    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
+    // [v2.1] Usar getUnifiedMerits() que ahora existe
+    const unifiedData = getUnifiedMerits();
+    if (!unifiedData.isGovernor) {
         showNotification('Solo los Gobernadores (≥3.000 méritos) pueden verificar aportaciones.', 'error');
         return;
     }
 
     try {
-        // Award merit to the contributor
-        // In production: fetch contrib details from Nostr, then awardMerit
-        const contrib = LBW_Merits.getMyContributions().find(c => c.id === contribId);
+        // [v2.1] FIX: Usar getAllContributions() en lugar de getMyContributions()
+        // para encontrar contribuciones de OTROS usuarios
+        const contrib = LBW_Merits.getAllContributions().find(c => c.id === contribId);
         if (!contrib) {
             showNotification('Aportación no encontrada', 'error');
             return;
         }
 
+        // Verificar que no es una auto-verificación
+        const myPubkey = LBW_Nostr.getPubkey();
+        if (contrib.pubkey === myPubkey) {
+            showNotification('No puedes verificar tu propia aportación', 'error');
+            return;
+        }
+
+        // Emitir méritos al contribuyente
         await LBW_Merits.awardMerit(
-            contrib.pubkey, contrib.amount, contrib.category,
-            '👑 Verificado por Gobernador'
+            contrib.pubkey, 
+            contrib.amount, 
+            contrib.category,
+            `👑 Verificado por Gobernador ${myPubkey.substring(0, 8)}`
         );
 
-        showNotification('✅ Aportación verificada. Méritos emitidos.', 'success');
+        showNotification('✅ Aportación verificada. Méritos emitidos al contribuyente.', 'success');
 
         // Refresh
         setTimeout(async () => {
             await loadMeritsData();
             loadMyContributions();
+            loadPendingVerifications();
         }, 500);
 
     } catch (err) {
@@ -706,12 +766,57 @@ async function verifyDeposit(contribId) {
 }
 
 async function rejectDeposit(contribId) {
-    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
+    // [v2.1] Usar getUnifiedMerits()
+    const unifiedData = getUnifiedMerits();
+    if (!unifiedData.isGovernor) {
         showNotification('Solo los Gobernadores pueden rechazar aportaciones.', 'error');
         return;
     }
-    // In production: publish rejection event
-    showNotification('❌ Aportación rechazada.', 'error');
+
+    try {
+        // [v2.1] FIX: Buscar en todas las contribuciones
+        const contrib = LBW_Merits.getAllContributions().find(c => c.id === contribId);
+        if (!contrib) {
+            showNotification('Aportación no encontrada', 'error');
+            return;
+        }
+
+        const myPubkey = LBW_Nostr.getPubkey();
+        
+        // [v2.1] FIX: Publicar evento de rechazo para persistencia
+        await LBW_Nostr.publishEvent({
+            kind: 31003, // Mismo kind que contribución
+            content: JSON.stringify({
+                type: 'rejection',
+                originalContribId: contribId,
+                originalPubkey: contrib.pubkey,
+                reason: 'Rechazado por Gobernador - no se pudo verificar el pago',
+                rejectedBy: myPubkey,
+                timestamp: Math.floor(Date.now() / 1000)
+            }),
+            tags: [
+                ['d', `reject-${contribId.substring(0, 12)}-${Math.floor(Date.now() / 1000)}`],
+                ['e', contribId],
+                ['p', contrib.pubkey],
+                ['status', 'rejected'],
+                ['rejected-by', myPubkey],
+                ['t', 'lbw-merits'],
+                ['t', 'lbw-rejection'],
+                ['client', 'LiberBit World']
+            ]
+        });
+
+        showNotification('❌ Aportación rechazada y registrada.', 'success');
+
+        // Refresh
+        setTimeout(async () => {
+            loadPendingVerifications();
+        }, 500);
+
+    } catch (err) {
+        console.error('Error rejecting deposit:', err);
+        showNotification('Error: ' + err.message, 'error');
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1119,8 +1224,12 @@ function loadPendingVerifications() {
     var pending = [];
     if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getAllContributions) {
         var allContribs = LBW_Merits.getAllContributions();
+        var myPubkey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
+        // [v2.1] Filtrar: solo económicas pendientes Y que no sean mías (no puedo verificar mis propias)
         pending = allContribs.filter(function(c) {
-            return c.category === 'economica' && (c.status === 'pending_verification' || c.status === 'pending');
+            return c.category === 'economica' && 
+                   (c.status === 'pending_verification' || c.status === 'pending') &&
+                   c.pubkey !== myPubkey;
         });
     }
 
@@ -1139,20 +1248,32 @@ function loadPendingVerifications() {
     }
 
     container.innerHTML = pending.map(function(c) {
-        var payLabel = c.payMethod === 'lightning' ? '⚡ Lightning' : c.payMethod === 'btc_onchain' ? '⛓️ On-chain' : c.payMethod === 'bank' ? '🏦 Banco' : '📄 Otro';
+        // [v2.1] Extraer payMethod de evidence array
+        var payMethod = 'other';
+        if (c.evidence && Array.isArray(c.evidence)) {
+            var pmEntry = c.evidence.find(function(e) { return e && e.startsWith('payMethod:'); });
+            if (pmEntry) payMethod = pmEntry.replace('payMethod:', '');
+        }
+        var payLabel = payMethod === 'lightning' ? '⚡ Lightning' : payMethod === 'btc_onchain' ? '⛓️ On-chain' : payMethod === 'bank' ? '🏦 Banco' : '📄 Otro';
+        // Extraer txProof (primer elemento de evidence que no sea payMethod)
+        var txProof = '';
+        if (c.evidence && Array.isArray(c.evidence)) {
+            var proofEntry = c.evidence.find(function(e) { return e && !e.startsWith('payMethod:'); });
+            if (proofEntry) txProof = proofEntry;
+        }
 
         return '<div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;border-left:4px solid #FF9800;margin-bottom:0.75rem;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
                 '<div>' +
                     '<div style="font-weight:700;color:var(--color-text-primary);">' + (c.description || 'Aportación Económica') + '</div>' +
-                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por ' + (c.authorName || c.pubkey?.substring(0,12) || 'Anónimo') + ' · ' + payLabel + '</div>' +
+                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por ' + (c.npub ? c.npub.substring(0,16) + '...' : c.pubkey?.substring(0,12) || 'Anónimo') + ' · ' + payLabel + '</div>' +
                 '</div>' +
                 '<div style="text-align:right;min-width:80px;">' +
                     '<div style="font-family:var(--font-mono);font-weight:700;color:var(--color-gold);font-size:1.1rem;">' + (c.amount || 0) + '</div>' +
                     '<div style="font-size:0.7rem;color:var(--color-text-secondary);">LBWM</div>' +
                 '</div>' +
             '</div>' +
-            (c.txProof ? '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--color-text-secondary);word-break:break-all;">📎 ' + c.txProof + '</div>' : '') +
+            (txProof ? '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--color-text-secondary);word-break:break-all;">📎 ' + txProof + '</div>' : '') +
             (isGovernor ? '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
                 '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="verifyDeposit(\'' + c.id + '\')">✅ Verificar y Emitir</button>' +
                 '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="rejectDeposit(\'' + c.id + '\')">❌ Rechazar</button>' +
