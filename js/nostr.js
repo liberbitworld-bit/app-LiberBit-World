@@ -1,4 +1,4 @@
-    // ============================================================
+// ============================================================
 // LiberBit World — Nostr Integration Layer v2.0 (nostr.js)
 // 
 // CHANGES v2.0:
@@ -385,8 +385,8 @@ const LBW_Nostr = (() => {
             return false;
         }
 
-        // 5. Rate limit: per pubkey
-        if (!_rateLimiter.checkPubkey(event.pubkey)) {
+        // 5. Rate limit: per pubkey (exempt own pubkey — own events arrive from multiple feeds)
+        if (event.pubkey !== _pubkey && !_rateLimiter.checkPubkey(event.pubkey)) {
             console.warn(`[Nostr] ⚠️ Rate limit pubkey ${event.pubkey.substring(0, 8)}`);
             return false;
         }
@@ -1236,5 +1236,3 @@ const LBW_Nostr = (() => {
 })();
 
 window.LBW_Nostr = LBW_Nostr;
-
-    
