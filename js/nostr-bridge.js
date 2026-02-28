@@ -201,8 +201,12 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name: '', method: 'nsec', loginTime: Date.now()
         };
-        // Store nsec in sessionStorage (cleared on tab close, secure enough)
-        try { sessionStorage.setItem('lbw_nsec_session', input); } catch (e) {}
+        // Store nsec in localStorage for persistence across tab close/reopen
+        // Also keep in sessionStorage for backward compatibility
+        try { 
+            localStorage.setItem('lbw_nsec_persist', input);
+            sessionStorage.setItem('lbw_nsec_session', input); 
+        } catch (e) {}
 
         // ── Resolve name: Supabase first, then relays ──
         try {
@@ -252,7 +256,10 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name, method: 'created', loginTime: Date.now()
         };
-        try { sessionStorage.setItem('lbw_nsec_session', result.nsec); } catch (e) {}
+        try { 
+            localStorage.setItem('lbw_nsec_persist', result.nsec);
+            sessionStorage.setItem('lbw_nsec_session', result.nsec); 
+        } catch (e) {}
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _updateLoginModeUI('created');
         await _startAllFeeds();
@@ -272,6 +279,7 @@ const LBW_NostrBridge = (() => {
         if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
         _updateLoginModeUI(null);
         localStorage.removeItem('lbw_nostr_session');
+        localStorage.removeItem('lbw_nsec_persist');
         try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
     }
 
@@ -291,7 +299,16 @@ const LBW_NostrBridge = (() => {
                     sessionRestored = true;
                 }
             } else if (s.method === 'nsec' || s.method === 'created') {
-                const nsec = sessionStorage.getItem('lbw_nsec_session');
+                // Try sessionStorage first (same tab), then localStorage (persists across tabs)
+                let nsec = sessionStorage.getItem('lbw_nsec_session');
+                if (!nsec) {
+                    nsec = localStorage.getItem('lbw_nsec_persist');
+                    if (nsec) {
+                        // Re-populate sessionStorage for this tab
+                        try { sessionStorage.setItem('lbw_nsec_session', nsec); } catch(e) {}
+                        console.log('[Bridge] ✅ nsec recuperada desde localStorage (tab nuevo)');
+                    }
+                }
                 if (nsec) {
                     LBW_Nostr.loginWithPrivateKey(nsec);
                     _applyLoginToUI(s);
@@ -300,7 +317,7 @@ const LBW_NostrBridge = (() => {
                     console.log('[Bridge] ✅ Sesión nsec restaurada');
                     sessionRestored = true;
                 } else {
-                    console.warn('[Bridge] Sesión nsec guardada pero clave no disponible (tab nuevo). Re-login necesario.');
+                    console.warn('[Bridge] Sesión nsec guardada pero clave no disponible. Re-login necesario.');
                     localStorage.removeItem('lbw_nostr_session');
                 }
             }
