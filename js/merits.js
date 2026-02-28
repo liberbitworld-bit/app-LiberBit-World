@@ -632,14 +632,15 @@ async function submitContribution(event) {
             });
 
             // If governance system available, also create a proposal for voting
-            if (typeof LBW_Governance !== 'undefined' && LBW_Governance.createProposal) {
+            if (typeof LBW_Governance !== 'undefined' && LBW_Governance.publishProposal) {
                 try {
                     const catDef = LBW_Merits.CATEGORIES[category];
-                    await LBW_Governance.createProposal(
-                        `[Aportación ${catDef.emoji} ${catDef.label}] ${description}`,
-                        `Valor: ${value} · Peso: ×${catDef.weight} · LBWM estimados: ${(value * catDef.weight).toFixed(2)}` +
-                        (evidence ? `\nEvidencia: ${evidence}` : '')
-                    );
+                    await LBW_Governance.publishProposal({
+                        title: `[Aportación ${catDef.emoji} ${catDef.label}] ${description}`,
+                        description: `Valor: ${value} · Peso: ×${catDef.weight} · LBWM estimados: ${(value * catDef.weight).toFixed(2)}` +
+                            (evidence ? `\nEvidencia: ${evidence}` : ''),
+                        category: 'referendum'
+                    });
                     showNotification('🗳️ Propuesta creada. Sometida a votación comunitaria (3 días).', 'success');
                 } catch (govErr) {
                     console.warn('[Merits] Governance proposal failed, contribution still registered:', govErr);
@@ -966,11 +967,11 @@ function updateDashboardDisplay(merits) {
 var _currentProposalFilter = 'all';
 
 function loadMeritProposals() {
-    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.getProposals) {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.getAllProposals) {
         return;
     }
 
-    var allProposals = LBW_Governance.getProposals();
+    var allProposals = LBW_Governance.getAllProposals();
     // Filter to merit-related proposals (those with [Aportación] in title)
     var meritProposals = allProposals.filter(function(p) {
         return p.title && (p.title.includes('[Aportación') || p.title.includes('Aportación'));
@@ -1045,8 +1046,8 @@ function loadMeritProposals() {
             // Vote buttons (if active)
             ((p.status === 'active' || p.status === 'voting') && !p.hasVoted ?
                 '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
-                    '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + p.id + '\',\'for\')">✅ A favor</button>' +
-                    '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + p.id + '\',\'against\')">❌ En contra</button>' +
+                    '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'for\')">✅ A favor</button>' +
+                    '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="voteMeritProposal(\'' + (p.dTag || p.id) + '\',\'against\')">❌ En contra</button>' +
                 '</div>' : '') +
         '</div>';
     }).join('');
@@ -1072,13 +1073,19 @@ function filterMeritProposals(filter) {
     loadMeritProposals();
 }
 
-async function voteMeritProposal(proposalId, vote) {
-    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.vote) {
+async function voteMeritProposal(proposalDTag, vote) {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Governance.publishVote) {
         showNotification('Sistema de gobernanza no disponible', 'error');
         return;
     }
     try {
-        await LBW_Governance.vote(proposalId, vote === 'for');
+        const proposal = LBW_Governance.getProposal(proposalDTag);
+        if (!proposal) {
+            showNotification('Propuesta no encontrada', 'error');
+            return;
+        }
+        const option = vote === 'for' ? 'A favor' : 'En contra';
+        await LBW_Governance.publishVote(proposal.id, proposalDTag, option);
         showNotification('✅ Voto registrado', 'success');
         setTimeout(function() { loadMeritProposals(); }, 500);
     } catch (err) {
