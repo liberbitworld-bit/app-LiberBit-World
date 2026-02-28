@@ -221,35 +221,114 @@ const LBW_NostrBridge = (() => {
         // Clear old profile cache for this key
         try { localStorage.removeItem('userProfile_' + result.npub); } catch(e) {}
 
-        // ── Resolve name & avatar: Supabase first, then relays ──
+        // ── Resolve name & avatar: Supabase with auto-migration ──
+        let foundInSupabase = false;
         try {
-            // 1. Try Supabase (where createIdentity stores names)
             if (typeof supabaseClient !== 'undefined') {
-                const { data } = await supabaseClient
+                // Step 1: Try exact match by npub (correct format)
+                let { data } = await supabaseClient
                     .from('users')
-                    .select('name, id, avatar_url')
+                    .select('name, id, avatar_url, public_key')
                     .eq('public_key', result.npub)
-                    .single();
-                if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
-                    session.name = data.name;
-                    currentUser.name = data.name;
-                    console.log('[Bridge] ✅ Nombre desde Supabase:', data.name);
+                    .maybeSingle();
+                
+                // Step 2: If not found, try by hex format (old format)
+                if (!data) {
+                    const hexResult = await supabaseClient
+                        .from('users')
+                        .select('name, id, avatar_url, public_key')
+                        .eq('public_key', result.pubkeyHex)
+                        .maybeSingle();
+                    
+                    if (hexResult.data) {
+                        data = hexResult.data;
+                        // Auto-migrate hex to npub format
+                        console.log('[Bridge] 🔄 Migrando public_key de hex a npub...');
+                        await supabaseClient
+                            .from('users')
+                            .update({ public_key: result.npub })
+                            .eq('id', data.id);
+                        console.log('[Bridge] ✅ public_key migrado a npub');
+                    }
                 }
-                if (data && data.id) {
-                    currentUser.id = data.id;
+                
+                // Step 3: If still not found, get name from Nostr relays first
+                if (!data) {
+                    console.log('[Bridge] 🔍 Usuario no encontrado por npub/hex, buscando en relays...');
+                    await new Promise(r => setTimeout(r, 1500));
+                    const nostrProfile = await Promise.race([
+                        LBW_Sync.resolveProfile(result.pubkeyHex),
+                        new Promise(r => setTimeout(() => r(null), 4000))
+                    ]);
+                    
+                    // If we got a name from Nostr, try to find user by name (legacy migration)
+                    if (nostrProfile && nostrProfile.name) {
+                        const nameToSearch = nostrProfile.name;
+                        console.log('[Bridge] 🔍 Buscando por nombre:', nameToSearch);
+                        
+                        const nameResult = await supabaseClient
+                            .from('users')
+                            .select('name, id, avatar_url, public_key')
+                            .eq('name', nameToSearch);
+                        
+                        // Only migrate if EXACTLY ONE user found with that name
+                        if (nameResult.data && nameResult.data.length === 1) {
+                            data = nameResult.data[0];
+                            const oldKey = data.public_key;
+                            
+                            // Update to correct npub
+                            console.log('[Bridge] 🔄 Migrando public_key legacy:', oldKey.substring(0,20), '→', result.npub.substring(0,20));
+                            await supabaseClient
+                                .from('users')
+                                .update({ public_key: result.npub })
+                                .eq('id', data.id);
+                            console.log('[Bridge] ✅ public_key legacy migrado correctamente');
+                        } else if (nameResult.data && nameResult.data.length > 1) {
+                            console.warn('[Bridge] ⚠️ Múltiples usuarios con nombre "' + nameToSearch + '", no se puede migrar automáticamente');
+                        }
+                        
+                        // Use Nostr profile data
+                        if (nostrProfile.name) {
+                            session.name = nostrProfile.name;
+                            currentUser.name = nostrProfile.name;
+                        }
+                        if (nostrProfile.picture) {
+                            session.picture = nostrProfile.picture;
+                        }
+                    }
                 }
-                if (data && data.avatar_url) {
-                    session.picture = data.avatar_url;
-                    console.log('[Bridge] ✅ Avatar desde Supabase');
+                
+                // Apply data if found
+                if (data) {
+                    foundInSupabase = true;
+                    if (data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
+                        session.name = data.name;
+                        currentUser.name = data.name;
+                        console.log('[Bridge] ✅ Nombre desde Supabase:', data.name);
+                    }
+                    if (data.id) {
+                        currentUser.id = data.id;
+                    }
+                    if (data.avatar_url) {
+                        session.picture = data.avatar_url;
+                        console.log('[Bridge] ✅ Avatar desde Supabase');
+                    }
                 }
             }
-            
-            // 2. If Supabase had no name, try relays
-            if (!session.name || !session.picture) {
-                await new Promise(r => setTimeout(r, 1500));
+        } catch(e) {
+            console.warn('[Bridge] Supabase lookup failed:', e.message);
+        }
+        
+        // ── Fallback: If still no name/picture, try relays ──
+        if (!session.name || !session.picture) {
+            try {
+                if (!foundInSupabase) {
+                    // Only wait if we haven't already fetched from relays above
+                    await new Promise(r => setTimeout(r, 1000));
+                }
                 const p = await Promise.race([
                     LBW_Sync.resolveProfile(result.pubkeyHex),
-                    new Promise(r => setTimeout(() => r(null), 4000))
+                    new Promise(r => setTimeout(() => r(null), 3000))
                 ]);
                 if (p) {
                     if (!session.name) {
@@ -265,9 +344,9 @@ const LBW_NostrBridge = (() => {
                         console.log('[Bridge] ✅ Avatar desde relays');
                     }
                 }
+            } catch(e) {
+                console.warn('[Bridge] Relay lookup failed:', e.message);
             }
-        } catch(e) {
-            console.warn('[Bridge] Name resolution failed:', e.message);
         }
 
         // Save synced currentUser to localStorage
