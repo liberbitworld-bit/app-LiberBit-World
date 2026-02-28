@@ -208,16 +208,20 @@ const LBW_NostrBridge = (() => {
             sessionStorage.setItem('lbw_nsec_session', input); 
         } catch (e) {}
 
-        // ══ CRITICAL: Sync currentUser and liberbit_keys with new login ══
-        if (typeof currentUser === 'undefined' || !currentUser) {
-            currentUser = {};
-        }
-        currentUser.pubkey = result.npub;
-        currentUser.publicKey = result.npub;
-        currentUser.privateKey = input;
-        // Don't overwrite name yet - will be resolved below
+        // ══ CRITICAL: Reset currentUser COMPLETELY for new login ══
+        // This prevents data from previous sessions bleeding into new login
+        currentUser = {
+            pubkey: result.npub,
+            publicKey: result.npub,
+            privateKey: input,
+            name: '',
+            id: null
+        };
+        
+        // Clear old profile cache for this key
+        try { localStorage.removeItem('userProfile_' + result.npub); } catch(e) {}
 
-        // ── Resolve name: Supabase first, then relays ──
+        // ── Resolve name & avatar: Supabase first, then relays ──
         try {
             // 1. Try Supabase (where createIdentity stores names)
             if (typeof supabaseClient !== 'undefined') {
@@ -305,9 +309,17 @@ const LBW_NostrBridge = (() => {
         if (typeof LBW_Governance !== 'undefined') LBW_Governance.reset();
         if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
         _updateLoginModeUI(null);
+        
+        // ══ Clear ALL session data to prevent data bleeding ══
         localStorage.removeItem('lbw_nostr_session');
         localStorage.removeItem('lbw_nsec_persist');
+        localStorage.removeItem('liberbit_keys');
         try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
+        
+        // Reset currentUser
+        if (typeof currentUser !== 'undefined') {
+            currentUser = null;
+        }
     }
 
     async function restoreSession() {
@@ -339,16 +351,14 @@ const LBW_NostrBridge = (() => {
                 if (nsec) {
                     LBW_Nostr.loginWithPrivateKey(nsec);
                     
-                    // ══ CRITICAL: Sync currentUser with session data ══
-                    if (typeof currentUser === 'undefined' || !currentUser) {
-                        currentUser = {};
-                    }
-                    currentUser.pubkey = s.npub;
-                    currentUser.publicKey = s.npub;
-                    currentUser.privateKey = nsec;
-                    if (s.name && !s.name.startsWith('npub1') && !s.name.endsWith('...')) {
-                        currentUser.name = s.name;
-                    }
+                    // ══ CRITICAL: Reset currentUser COMPLETELY with session data ══
+                    currentUser = {
+                        pubkey: s.npub,
+                        publicKey: s.npub,
+                        privateKey: nsec,
+                        name: (s.name && !s.name.startsWith('npub1') && !s.name.endsWith('...')) ? s.name : '',
+                        id: null
+                    };
                     try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
                     
                     _applyLoginToUI(s);
