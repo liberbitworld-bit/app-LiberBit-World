@@ -208,6 +208,15 @@ const LBW_NostrBridge = (() => {
             sessionStorage.setItem('lbw_nsec_session', input); 
         } catch (e) {}
 
+        // ══ CRITICAL: Sync currentUser and liberbit_keys with new login ══
+        if (typeof currentUser === 'undefined' || !currentUser) {
+            currentUser = {};
+        }
+        currentUser.pubkey = result.npub;
+        currentUser.publicKey = result.npub;
+        currentUser.privateKey = input;
+        // Don't overwrite name yet - will be resolved below
+
         // ── Resolve name: Supabase first, then relays ──
         try {
             // 1. Try Supabase (where createIdentity stores names)
@@ -219,7 +228,11 @@ const LBW_NostrBridge = (() => {
                     .single();
                 if (data && data.name && !data.name.startsWith('npub1') && !data.name.endsWith('...')) {
                     session.name = data.name;
+                    currentUser.name = data.name;
                     console.log('[Bridge] ✅ Nombre desde Supabase:', data.name);
+                }
+                if (data && data.id) {
+                    currentUser.id = data.id;
                 }
                 if (data && data.avatar_url) {
                     session.picture = data.avatar_url;
@@ -239,6 +252,7 @@ const LBW_NostrBridge = (() => {
                         const resolvedName = p.name || p.display_name || '';
                         if (resolvedName) {
                             session.name = resolvedName;
+                            currentUser.name = resolvedName;
                             console.log('[Bridge] ✅ Nombre desde relays:', resolvedName);
                         }
                     }
@@ -251,6 +265,9 @@ const LBW_NostrBridge = (() => {
         } catch(e) {
             console.warn('[Bridge] Name resolution failed:', e.message);
         }
+
+        // Save synced currentUser to localStorage
+        try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
 
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _applyLoginToUI(session);
@@ -321,6 +338,19 @@ const LBW_NostrBridge = (() => {
                 }
                 if (nsec) {
                     LBW_Nostr.loginWithPrivateKey(nsec);
+                    
+                    // ══ CRITICAL: Sync currentUser with session data ══
+                    if (typeof currentUser === 'undefined' || !currentUser) {
+                        currentUser = {};
+                    }
+                    currentUser.pubkey = s.npub;
+                    currentUser.publicKey = s.npub;
+                    currentUser.privateKey = nsec;
+                    if (s.name && !s.name.startsWith('npub1') && !s.name.endsWith('...')) {
+                        currentUser.name = s.name;
+                    }
+                    try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+                    
                     _applyLoginToUI(s);
                     _updateLoginModeUI('nsec');
                     await _startAllFeeds();
@@ -349,7 +379,7 @@ const LBW_NostrBridge = (() => {
                             if (npub) {
                                 const { data } = await supabaseClient
                                     .from('users')
-                                    .select('name, avatar_url')
+                                    .select('name, avatar_url, id')
                                     .eq('public_key', npub)
                                     .single();
                                 if (data) {
@@ -360,6 +390,9 @@ const LBW_NostrBridge = (() => {
                                     if (needsPicture && data.avatar_url) {
                                         resolvedPicture = data.avatar_url;
                                         console.log('[Bridge] ✅ Avatar desde Supabase');
+                                    }
+                                    if (data.id && typeof currentUser !== 'undefined' && currentUser) {
+                                        currentUser.id = data.id;
                                     }
                                 }
                             }
