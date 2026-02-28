@@ -242,12 +242,21 @@ const LBW_NostrBridge = (() => {
                     
                     if (hexResult.data) {
                         data = hexResult.data;
+                        const oldHexKey = data.public_key;
                         // Auto-migrate hex to npub format
                         console.log('[Bridge] 🔄 Migrando public_key de hex a npub...');
                         await supabaseClient
                             .from('users')
                             .update({ public_key: result.npub })
                             .eq('id', data.id);
+                        // Migrate related tables
+                        try {
+                            await supabaseClient.from('posts').update({ author_public_key: result.npub }).eq('author_public_key', oldHexKey);
+                            await supabaseClient.from('offers').update({ author_public_key: result.npub }).eq('author_public_key', oldHexKey);
+                            await supabaseClient.from('post_likes').update({ user_public_key: result.npub }).eq('user_public_key', oldHexKey);
+                        } catch (migErr) {
+                            console.warn('[Bridge] ⚠️ Migración tablas relacionadas (hex):', migErr.message);
+                        }
                         console.log('[Bridge] ✅ public_key migrado a npub');
                     }
                 }
@@ -282,6 +291,14 @@ const LBW_NostrBridge = (() => {
                                 .from('users')
                                 .update({ public_key: result.npub })
                                 .eq('id', data.id);
+                            // Migrate related tables
+                            try {
+                                await supabaseClient.from('posts').update({ author_public_key: result.npub }).eq('author_public_key', oldKey);
+                                await supabaseClient.from('offers').update({ author_public_key: result.npub }).eq('author_public_key', oldKey);
+                                await supabaseClient.from('post_likes').update({ user_public_key: result.npub }).eq('user_public_key', oldKey);
+                            } catch (migErr) {
+                                console.warn('[Bridge] ⚠️ Migración tablas relacionadas (legacy):', migErr.message);
+                            }
                             console.log('[Bridge] ✅ public_key legacy migrado correctamente');
                         } else if (nameResult.data && nameResult.data.length > 1) {
                             console.warn('[Bridge] ⚠️ Múltiples usuarios con nombre "' + nameToSearch + '", no se puede migrar automáticamente');
@@ -298,6 +315,53 @@ const LBW_NostrBridge = (() => {
                     }
                 }
                 
+                // Step 4: If still not found, ask user for their name (manual migration)
+                if (!data) {
+                    console.log('[Bridge] 🔍 Usuario no encontrado automáticamente, pidiendo nombre...');
+                    const userName = prompt(
+                        '⚠️ No se encontró tu cuenta automáticamente.\n\n' +
+                        'Si ya tenías cuenta en LiberBit World, escribe tu nombre de usuario exacto para vincular tu identidad.\n\n' +
+                        'Si eres nuevo, pulsa Cancelar y usa "Crear Identidad" en su lugar.'
+                    );
+                    
+                    if (userName && userName.trim()) {
+                        const trimmedName = userName.trim();
+                        console.log('[Bridge] 🔍 Buscando por nombre manual:', trimmedName);
+                        
+                        const nameResult = await supabaseClient
+                            .from('users')
+                            .select('name, id, avatar_url, public_key')
+                            .ilike('name', trimmedName);
+                        
+                        if (nameResult.data && nameResult.data.length === 1) {
+                            data = nameResult.data[0];
+                            const oldKey = data.public_key;
+                            
+                            // Migrate public_key in users table
+                            console.log('[Bridge] 🔄 Migrando public_key manual:', oldKey.substring(0,20), '→', result.npub.substring(0,20));
+                            await supabaseClient
+                                .from('users')
+                                .update({ public_key: result.npub })
+                                .eq('id', data.id);
+                            
+                            // Migrate related tables
+                            try {
+                                await supabaseClient.from('posts').update({ author_public_key: result.npub }).eq('author_public_key', oldKey);
+                                await supabaseClient.from('offers').update({ author_public_key: result.npub }).eq('author_public_key', oldKey);
+                                await supabaseClient.from('post_likes').update({ user_public_key: result.npub }).eq('user_public_key', oldKey);
+                            } catch (migErr) {
+                                console.warn('[Bridge] ⚠️ Migración tablas relacionadas:', migErr.message);
+                            }
+                            
+                            console.log('[Bridge] ✅ Migración manual completada para:', trimmedName);
+                        } else if (nameResult.data && nameResult.data.length > 1) {
+                            alert('⚠️ Hay múltiples usuarios con ese nombre. Contacta al administrador para resolver la migración.');
+                        } else {
+                            alert('❌ No se encontró ningún usuario con el nombre "' + trimmedName + '".\n\nSi eres nuevo, usa "Crear Identidad".');
+                        }
+                    }
+                }
+
                 // Apply data if found
                 if (data) {
                     foundInSupabase = true;
