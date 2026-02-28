@@ -102,6 +102,53 @@ const LBW_Merits = (() => {
     let _subContribs = null;
     let _subSnapshots = null;
 
+    const MERITS_STORAGE_KEY = 'lbw_merits_cache';
+    const CONTRIBS_STORAGE_KEY = 'lbw_contribs_cache';
+
+    // ── LocalStorage Persistence ─────────────────────────────
+    function _persistMeritsToStorage() {
+        try {
+            const data = {};
+            _merits.forEach((v, k) => { data[k] = v; });
+            localStorage.setItem(MERITS_STORAGE_KEY, JSON.stringify(data));
+        } catch (e) { console.warn('[Merits] Storage save error:', e); }
+    }
+
+    function _persistContribsToStorage() {
+        try {
+            localStorage.setItem(CONTRIBS_STORAGE_KEY, JSON.stringify(_contributions));
+        } catch (e) { console.warn('[Merits] Contribs storage save error:', e); }
+    }
+
+    function _loadMeritsFromStorage() {
+        try {
+            const raw = localStorage.getItem(MERITS_STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                Object.entries(data).forEach(([pubkey, userData]) => {
+                    if (!_merits.has(pubkey)) {
+                        // Restore level object from stored data
+                        userData.level = getCitizenshipLevel(userData.total);
+                        _merits.set(pubkey, userData);
+                    }
+                });
+                console.log(`[Merits] 📂 ${_merits.size} usuarios cargados de caché`);
+                
+                // Restore myContributions from separate cache
+                const rawC = localStorage.getItem(CONTRIBS_STORAGE_KEY);
+                if (rawC) {
+                    const contribs = JSON.parse(rawC);
+                    _contributions = contribs;
+                    const myPk = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
+                    if (myPk) {
+                        _myContributions = contribs.filter(c => c.pubkey === myPk);
+                    }
+                    console.log(`[Merits] 📂 ${contribs.length} contribuciones cargadas de caché`);
+                }
+            }
+        } catch (e) { console.warn('[Merits] Storage load error:', e); }
+    }
+
     // ── Submit Contribution (v2.0) ─────────────────────────────
     // Merit = Cᵢ × wᵢ (category weight)
     //
@@ -253,6 +300,9 @@ const LBW_Merits = (() => {
         if (onMerit) _onMeritCallbacks.push(onMerit);
         if (_subMerits) return _subMerits;
 
+        // Load from cache first (instant availability)
+        if (_merits.size === 0) _loadMeritsFromStorage();
+
         _subMerits = LBW_Nostr.subscribe(
             {
                 kinds: [KIND.MERIT],
@@ -294,12 +344,13 @@ const LBW_Merits = (() => {
                 // NOTE: Contributions do NOT auto-count as merits.
                 // Merit points are only assigned via kind 31002 (awardMerit)
                 // after governance approval or auto-verification.
-                // Contributions with status 'approved' have already been
-                // awarded via a separate kind 31002 event.
 
                 if (contrib.pubkey === LBW_Nostr.getPubkey()) {
                     _myContributions.push(contrib);
                 }
+
+                // Persist contributions to cache
+                _persistContribsToStorage();
 
                 _onContribCallbacks.forEach(cb => {
                     try { cb(contrib); } catch (e) {}
@@ -458,6 +509,9 @@ const LBW_Merits = (() => {
 
         // Invalidate leaderboard cache
         _leaderboard = [];
+
+        // Persist to localStorage
+        _persistMeritsToStorage();
     }
 
     // ── Leaderboard ──────────────────────────────────────────
@@ -640,6 +694,10 @@ const LBW_Merits = (() => {
         _myContributions = [];
         _leaderboard = [];
         _lastSnapshot = null;
+        try {
+            localStorage.removeItem(MERITS_STORAGE_KEY);
+            localStorage.removeItem(CONTRIBS_STORAGE_KEY);
+        } catch (e) {}
     }
 
     // ── Bootstrap: Foundational Merit Award ──────────────────
