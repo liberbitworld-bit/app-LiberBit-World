@@ -2293,13 +2293,13 @@
                                 try {
                                     const newId = generateUUID();
                                     const { data: newUser } = await supabaseClient.from('users')
-                                        .insert([{
+                                        .upsert([{
                                             id: newId,
                                             public_key: npubKey,
                                             name: currentUser.name,
                                             citizenship_type: 'Amigo',
                                             avatar_url: inheritedAvatar
-                                        }])
+                                        }], { onConflict: 'public_key', ignoreDuplicates: false })
                                         .select()
                                         .single();
                                     if (newUser) {
