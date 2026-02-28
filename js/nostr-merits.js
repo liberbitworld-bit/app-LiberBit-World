@@ -152,6 +152,7 @@ const LBW_Merits = (() => {
         });
 
         // Tags
+        const status = data.status || 'pending_vote';
         const tags = [
             ['d', dTag],
             ['p', pubkey],
@@ -159,6 +160,7 @@ const LBW_Merits = (() => {
             ['merit-points', String(meritPoints)],
             ['category', data.category],
             ['weight', String(weight)],
+            ['status', status],
             ['t', 'lbw-merits'],
             ['t', 'lbw-contrib'],
             ['client', 'LiberBit World']
@@ -289,15 +291,11 @@ const LBW_Merits = (() => {
                 if (_contributions.some(c => c.id === contrib.id)) return;
                 _contributions.push(contrib);
 
-                // Track as merit points
-                _processMerit({
-                    pubkey: contrib.pubkey,
-                    amount: contrib.meritPoints,
-                    category: contrib.category,
-                    created_at: contrib.created_at,
-                    source: 'contribution',
-                    id: contrib.id
-                });
+                // NOTE: Contributions do NOT auto-count as merits.
+                // Merit points are only assigned via kind 31002 (awardMerit)
+                // after governance approval or auto-verification.
+                // Contributions with status 'approved' have already been
+                // awarded via a separate kind 31002 event.
 
                 if (contrib.pubkey === LBW_Nostr.getPubkey()) {
                     _myContributions.push(contrib);
@@ -395,6 +393,7 @@ const LBW_Merits = (() => {
                 weight: parseFloat(g('weight')) || parseFloat(g('factor')) || parsed.weight || parsed.factor || 1.0,
                 currency: parsed.currency || 'EUR',
                 evidence: parsed.evidence || [],
+                status: g('status') || 'pending_vote',
                 created_at: event.created_at
             };
         } catch (e) {
@@ -516,6 +515,10 @@ const LBW_Merits = (() => {
 
     function getMyContributions() {
         return [..._myContributions].sort((a, b) => b.created_at - a.created_at);
+    }
+
+    function getAllContributions() {
+        return [..._contributions].sort((a, b) => b.created_at - a.created_at);
     }
 
     // ── Citizenship Level (v2.0) ─────────────────────────────
@@ -739,6 +742,7 @@ const LBW_Merits = (() => {
         getUserMerits,
         getMyMerits,
         getMyContributions,
+        getAllContributions,
         getLeaderboard,
         getCitizenshipLevel,
         getNextLevel,
