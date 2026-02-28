@@ -224,6 +224,7 @@ const LBW_Merits = (() => {
     }
 
     // ── Award Merit (Governor-only) ──────────────────────────
+    // [v2.1] FIXED: Added Governor validation to prevent unauthorized merit emission
     async function awardMerit(recipientPubkey, amount, category, reason) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         if (!recipientPubkey) throw new Error('Destinatario requerido.');
@@ -231,6 +232,17 @@ const LBW_Merits = (() => {
         if (!CATEGORIES[category]) throw new Error(`Categoría inválida: ${category}`);
 
         const pubkey = LBW_Nostr.getPubkey();
+        
+        // [v2.1] CRITICAL FIX: Verify caller is a Governor (≥3000 merits)
+        // Exception: Bootstrap awards (category 'fundacional') can be self-awarded for initial setup
+        if (category !== 'fundacional') {
+            const callerData = _merits.get(pubkey);
+            const callerTotal = callerData ? callerData.total : 0;
+            if (callerTotal < 3000) {
+                throw new Error(`Solo los Gobernadores (≥3.000 méritos) pueden emitir méritos. Tienes ${callerTotal}.`);
+            }
+        }
+
         const nowSecs = Math.floor(Date.now() / 1000);
         const dTag = `merit-${recipientPubkey.substring(0, 8)}-${nowSecs}`;
 
@@ -264,8 +276,17 @@ const LBW_Merits = (() => {
     }
 
     // ── Publish Snapshot (Governor-only) ─────────────────────
+    // [v2.1] FIXED: Added Governor validation
     async function publishSnapshot() {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+        
+        // [v2.1] Verify caller is Governor
+        const pubkey = LBW_Nostr.getPubkey();
+        const callerData = _merits.get(pubkey);
+        const callerTotal = callerData ? callerData.total : 0;
+        if (callerTotal < 3000) {
+            throw new Error(`Solo los Gobernadores (≥3.000 méritos) pueden publicar snapshots. Tienes ${callerTotal}.`);
+        }
 
         const nowSecs = Math.floor(Date.now() / 1000);
         const dTag = `snapshot-${nowSecs}`;
