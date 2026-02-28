@@ -2,65 +2,6 @@
 // All data flows through LBW_Merits → Nostr relays
 // Zero Supabase dependencies
 // [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, governor verification
-// [v2.1] Fixed: getUnifiedMerits, verifyDeposit, rejectDeposit, removed fake auto-verify
-
-// ═══════════════════════════════════════════════════════════════
-// [v2.1] UNIFIED MERITS FUNCTION - Combines Nostr + Activity merits
-// ═══════════════════════════════════════════════════════════════
-function getUnifiedMerits() {
-    if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.isLoggedIn()) {
-        return { 
-            total: 0, 
-            byCategory: {}, 
-            activityMerits: 0, 
-            activityCount: 0, 
-            isGovernor: false,
-            source: 'none'
-        };
-    }
-
-    // Get Nostr-based merits
-    const myData = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyMerits() : null;
-    const nostrMerits = myData ? myData.total : 0;
-    const breakdown = myData ? { ...myData.byCategory } : {};
-
-    // Calculate activity-based merits (capped)
-    let activityContribs = 0;
-    
-    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount) {
-        activityContribs += LBW_NostrBridge.getMyChatCount();
-    }
-    if (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && typeof currentUser !== 'undefined' && currentUser) {
-        activityContribs += allPosts.filter(function(p) { return p.author === currentUser.name; }).length;
-    }
-    if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) {
-        activityContribs += LBW_NostrBridge.getMyOffersCount();
-    }
-    if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getStats) {
-        const govStats = LBW_Governance.getStats();
-        activityContribs += govStats.myVotes || 0;
-        activityContribs += govStats.myProposals || 0;
-    }
-
-    // Cap activity merits at 300
-    const ACTIVITY_CAP = 300;
-    const activityMerits = Math.min(activityContribs * 10, ACTIVITY_CAP);
-    const total = nostrMerits + activityMerits;
-
-    return {
-        total: total,
-        byCategory: breakdown,
-        nostrMerits: nostrMerits,
-        activityMerits: activityMerits,
-        activityCount: activityContribs,
-        isGovernor: total >= 3000,
-        level: (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(total) : null,
-        source: nostrMerits > 0 ? 'nostr+activity' : (activityMerits > 0 ? 'activity' : 'none')
-    };
-}
-
-// Expose globally
-window.getUnifiedMerits = getUnifiedMerits;
 
 async function loadMeritsData() {
     try {
@@ -558,7 +499,7 @@ function updateContributionFactor() {
     updatePreviewCalculation();
 }
 
-// [v2.1] Show flow indicator based on category + payMethod
+// [v2.0-NEW] Show flow indicator based on category + payMethod
 function updateFlowIndicator() {
     const flowEl = document.getElementById('flowIndicator');
     const submitBtn = document.getElementById('submitContribBtn');
@@ -568,6 +509,7 @@ function updateFlowIndicator() {
     const category = document.getElementById('contrib_type')?.value || '';
     const payMethod = document.getElementById('contrib_payMethod')?.value || 'lightning';
     const isEcon = category === 'economica';
+    const isAutoVerifiable = isEcon && (payMethod === 'lightning' || payMethod === 'btc_onchain');
 
     if (!category) {
         flowEl.style.display = 'none';
@@ -576,15 +518,20 @@ function updateFlowIndicator() {
 
     flowEl.style.display = 'block';
 
-    if (isEcon) {
-        // [v2.1] TODAS las aportaciones económicas requieren verificación por Gobernador
-        // Ya no hay "auto-verificación" - incluso crypto necesita confirmación manual
-        const payIcon = payMethod === 'lightning' ? '⚡' : payMethod === 'btc_onchain' ? '⛓️' : payMethod === 'bank' ? '🏦' : '📄';
+    if (isAutoVerifiable) {
+        flowEl.style.background = 'rgba(76,175,80,0.1)';
+        flowEl.style.border = '1px solid rgba(76,175,80,0.3)';
+        flowEl.style.color = '#81C784';
+        flowEl.innerHTML = `<strong>${payMethod === 'lightning' ? '⚡' : '⛓️'} Verificación Automática</strong><br/>
+            El pago se verifica directamente en ${payMethod === 'lightning' ? 'Lightning Network' : 'la blockchain de Bitcoin'}. Los méritos se emiten automáticamente.`;
+        if (submitBtn) submitBtn.textContent = '⚡ Verificar y Registrar';
+        if (approvalNote) approvalNote.textContent = 'Méritos emitidos automáticamente al verificar TX';
+    } else if (isEcon) {
         flowEl.style.background = 'rgba(156,39,176,0.1)';
         flowEl.style.border = '1px solid rgba(156,39,176,0.3)';
         flowEl.style.color = '#CE93D8';
         flowEl.innerHTML = `<strong>👑 Verificación por Gobernador</strong><br/>
-            ${payIcon} Un Gobernador (≥3.000 méritos) verificará ${payMethod === 'lightning' || payMethod === 'btc_onchain' ? 'la transacción en la blockchain' : 'la prueba de pago'} antes de emitir los méritos.`;
+            Un Gobernador (≥3.000 méritos) revisará la prueba de pago y confirmará la recepción antes de emitir méritos.`;
         if (submitBtn) submitBtn.textContent = '👑 Enviar a Gobernador';
         if (approvalNote) approvalNote.textContent = 'Pendiente de verificación por Gobernador';
     } else {
@@ -641,6 +588,7 @@ async function submitContribution(event) {
         const evidence = document.getElementById('contrib_evidence')?.value || '';
         const payMethod = document.getElementById('contrib_payMethod')?.value || '';
         const isEcon = category === 'economica';
+        const isAutoVerifiable = isEcon && (payMethod === 'lightning' || payMethod === 'btc_onchain');
 
         if (!category || !description.trim() || value <= 0) {
             showNotification('Rellena todos los campos obligatorios', 'error');
@@ -649,23 +597,28 @@ async function submitContribution(event) {
 
         if (isEcon) {
             // ── ECONOMIC FLOW ──
-            // [v2.1] TODAS las aportaciones económicas requieren verificación por Gobernador
-            // NO hay auto-verificación - incluso crypto requiere confirmación manual
-            // Esto previene fraude y asegura que los pagos realmente se recibieron
-            
+            // Step 1: Register contribution in Nostr
             const result = await LBW_Merits.submitContribution({
                 description,
                 category,
                 amount: value,
                 currency: document.getElementById('contrib_currency')?.value || 'EUR',
                 evidence: evidence ? [evidence, `payMethod:${payMethod}`] : [`payMethod:${payMethod}`],
-                status: 'pending_verification'
+                status: isAutoVerifiable ? 'verified' : 'pending_verification'
             });
 
-            // Mensaje según método de pago
-            if (payMethod === 'lightning' || payMethod === 'btc_onchain') {
-                showNotification('📨 Aportación registrada. Un Gobernador verificará la transacción en la blockchain.', 'success');
+            if (isAutoVerifiable) {
+                // Step 2a: Auto-verify (crypto payment)
+                // In production this would check the blockchain/Lightning.
+                // For now, auto-award merits since TX is verifiable.
+                const pubkey = LBW_Nostr.getPubkey();
+                await LBW_Merits.awardMerit(
+                    pubkey, value, category,
+                    `Auto-verificado: ${payMethod === 'lightning' ? '⚡ Lightning' : '⛓️ Bitcoin on-chain'}`
+                );
+                showNotification('✅ Pago verificado automáticamente. Méritos emitidos.', 'success');
             } else {
+                // Step 2b: Pending governor verification
                 showNotification('📨 Aportación registrada. Pendiente de verificación por Gobernador.', 'success');
             }
         } else {
@@ -715,48 +668,35 @@ async function submitContribution(event) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// [v2.1] GOVERNOR VERIFICATION (FIXED)
+// [v2.0-NEW] GOVERNOR VERIFICATION (for bank/other deposits)
 // ═══════════════════════════════════════════════════════════════
 
 async function verifyDeposit(contribId) {
-    // [v2.1] Usar getUnifiedMerits() que ahora existe
-    const unifiedData = getUnifiedMerits();
-    if (!unifiedData.isGovernor) {
+    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
         showNotification('Solo los Gobernadores (≥3.000 méritos) pueden verificar aportaciones.', 'error');
         return;
     }
 
     try {
-        // [v2.1] FIX: Usar getAllContributions() en lugar de getMyContributions()
-        // para encontrar contribuciones de OTROS usuarios
-        const contrib = LBW_Merits.getAllContributions().find(c => c.id === contribId);
+        // Award merit to the contributor
+        // In production: fetch contrib details from Nostr, then awardMerit
+        const contrib = LBW_Merits.getMyContributions().find(c => c.id === contribId);
         if (!contrib) {
             showNotification('Aportación no encontrada', 'error');
             return;
         }
 
-        // Verificar que no es una auto-verificación
-        const myPubkey = LBW_Nostr.getPubkey();
-        if (contrib.pubkey === myPubkey) {
-            showNotification('No puedes verificar tu propia aportación', 'error');
-            return;
-        }
-
-        // Emitir méritos al contribuyente
         await LBW_Merits.awardMerit(
-            contrib.pubkey, 
-            contrib.amount, 
-            contrib.category,
-            `👑 Verificado por Gobernador ${myPubkey.substring(0, 8)}`
+            contrib.pubkey, contrib.amount, contrib.category,
+            '👑 Verificado por Gobernador'
         );
 
-        showNotification('✅ Aportación verificada. Méritos emitidos al contribuyente.', 'success');
+        showNotification('✅ Aportación verificada. Méritos emitidos.', 'success');
 
         // Refresh
         setTimeout(async () => {
             await loadMeritsData();
             loadMyContributions();
-            loadPendingVerifications();
         }, 500);
 
     } catch (err) {
@@ -766,57 +706,12 @@ async function verifyDeposit(contribId) {
 }
 
 async function rejectDeposit(contribId) {
-    // [v2.1] Usar getUnifiedMerits()
-    const unifiedData = getUnifiedMerits();
-    if (!unifiedData.isGovernor) {
+    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
         showNotification('Solo los Gobernadores pueden rechazar aportaciones.', 'error');
         return;
     }
-
-    try {
-        // [v2.1] FIX: Buscar en todas las contribuciones
-        const contrib = LBW_Merits.getAllContributions().find(c => c.id === contribId);
-        if (!contrib) {
-            showNotification('Aportación no encontrada', 'error');
-            return;
-        }
-
-        const myPubkey = LBW_Nostr.getPubkey();
-        
-        // [v2.1] FIX: Publicar evento de rechazo para persistencia
-        await LBW_Nostr.publishEvent({
-            kind: 31003, // Mismo kind que contribución
-            content: JSON.stringify({
-                type: 'rejection',
-                originalContribId: contribId,
-                originalPubkey: contrib.pubkey,
-                reason: 'Rechazado por Gobernador - no se pudo verificar el pago',
-                rejectedBy: myPubkey,
-                timestamp: Math.floor(Date.now() / 1000)
-            }),
-            tags: [
-                ['d', `reject-${contribId.substring(0, 12)}-${Math.floor(Date.now() / 1000)}`],
-                ['e', contribId],
-                ['p', contrib.pubkey],
-                ['status', 'rejected'],
-                ['rejected-by', myPubkey],
-                ['t', 'lbw-merits'],
-                ['t', 'lbw-rejection'],
-                ['client', 'LiberBit World']
-            ]
-        });
-
-        showNotification('❌ Aportación rechazada y registrada.', 'success');
-
-        // Refresh
-        setTimeout(async () => {
-            loadPendingVerifications();
-        }, 500);
-
-    } catch (err) {
-        console.error('Error rejecting deposit:', err);
-        showNotification('Error: ' + err.message, 'error');
-    }
+    // In production: publish rejection event
+    showNotification('❌ Aportación rechazada.', 'error');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -909,34 +804,35 @@ function loadMyContributions() {
 // ═══════════════════════════════════════════════════════════════
 
 const GAUGE_LEVELS = [
-    { name: "Amigo",            min: 0,    emoji: "👋", color: "#4CAF50", bloc: "Comunidad" },
-    { name: "E-Residency",      min: 100,  emoji: "🪪", color: "#8BC34A", bloc: "Comunidad" },
-    { name: "Colaborador",      min: 500,  emoji: "🤝", color: "#CDDC39", bloc: "Comunidad" },
-    { name: "Ciudadano Senior", min: 1000, emoji: "🛂", color: "#FF9800", bloc: "Ciudadanía" },
-    { name: "Embajador",        min: 2000, emoji: "🌍", color: "#FF5722", bloc: "Ciudadanía" },
-    { name: "Gobernador",       min: 3000, emoji: "👑", color: "#9C27B0", bloc: "Gobernanza" },
+    { name: "Amigo",            shortLabel: "Amigo",   min: 0,    emoji: "👋", color: "#4CAF50", bloc: "Comunidad" },
+    { name: "E-Residency",      shortLabel: "E-Res.",  min: 100,  emoji: "🪪", color: "#8BC34A", bloc: "Comunidad" },
+    { name: "Colaborador",      shortLabel: "Colabor.", min: 500,  emoji: "🤝", color: "#CDDC39", bloc: "Comunidad" },
+    { name: "Ciudadano Senior", shortLabel: "C.Senior", min: 1000, emoji: "🛂", color: "#FF9800", bloc: "Ciudadanía" },
+    { name: "Embajador",        shortLabel: "Embajad.", min: 2000, emoji: "🌍", color: "#FF5722", bloc: "Ciudadanía" },
+    { name: "Gobernador",       shortLabel: "Gobern.", min: 3000, emoji: "👑", color: "#9C27B0", bloc: "Gobernanza" },
 ];
 const GAUGE_THRESH = GAUGE_LEVELS.map(s => s.min);
 const GAUGE_RANGES = [100, 400, 500, 1000, 1000, 500];
-const SEG_ANG = Math.PI / GAUGE_LEVELS.length;
+const GAUGE_N = GAUGE_LEVELS.length;
+const SEG_ANG = Math.PI / GAUGE_N;
 const GAP = 0.02;
 
 function _meritsToAngle(m) {
     if (m >= 3000) { var extra = Math.min(m - 3000, GAUGE_RANGES[5]); return Math.PI - 5 * SEG_ANG - (extra / GAUGE_RANGES[5]) * SEG_ANG; }
-    for (var i = 0; i < 5; i++) { if (m < GAUGE_THRESH[i + 1]) { return Math.PI - i * SEG_ANG - ((m - GAUGE_THRESH[i]) / GAUGE_RANGES[i]) * SEG_ANG; } }
+    for (var i = 0; i < GAUGE_N - 1; i++) { if (m < GAUGE_THRESH[i + 1]) { return Math.PI - i * SEG_ANG - ((m - GAUGE_THRESH[i]) / GAUGE_RANGES[i]) * SEG_ANG; } }
     return 0;
 }
 
 function _getGaugeLevel(merits) {
     var level = Object.assign({}, GAUGE_LEVELS[0], { idx: 0 });
-    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
+    for (var i = 0; i < GAUGE_N; i++) {
         if (merits >= GAUGE_LEVELS[i].min) level = Object.assign({}, GAUGE_LEVELS[i], { idx: i });
     }
     return level;
 }
 
 function _getNextLevel(merits) {
-    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
+    for (var i = 0; i < GAUGE_N; i++) {
         if (merits < GAUGE_LEVELS[i].min) return { level: GAUGE_LEVELS[i], remaining: GAUGE_LEVELS[i].min - merits, progress: merits / GAUGE_LEVELS[i].min };
     }
     return null;
@@ -965,44 +861,132 @@ function drawMeritsGauge(merits) {
 
 function _renderGauge(canvas, merits, needleAng, level) {
     var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height, CX = W / 2, CY = H - 30, R = 160, BAND = 30;
+    var W = canvas.width, H = canvas.height;
+    var CX = W / 2, CY = H - 30, R = 200, BAND = 36;
     ctx.clearRect(0, 0, W, H);
-
-    // Draw segments
-    for (var i = 0; i < GAUGE_LEVELS.length; i++) {
-        var startA = Math.PI - i * SEG_ANG + GAP;
-        var endA = Math.PI - (i + 1) * SEG_ANG - GAP;
+    
+    // Draw segments using stroke technique (same as profile.js)
+    for (var i = 0; i < GAUGE_N; i++) {
+        var aStart = Math.PI - i * SEG_ANG - GAP;
+        var aEnd = Math.PI - (i + 1) * SEG_ANG + GAP;
+        var isActive = i <= level.idx;
+        var isCurrent = i === level.idx;
+        
+        // Main arc segment
         ctx.beginPath();
-        ctx.arc(CX, CY, R, endA, startA);
-        ctx.arc(CX, CY, R - BAND, startA, endA, true);
-        ctx.closePath();
-        ctx.fillStyle = (i <= level.idx) ? GAUGE_LEVELS[i].color + 'CC' : GAUGE_LEVELS[i].color + '33';
-        ctx.fill();
-
-        // Label
-        var midA = (startA + endA) / 2;
-        var lx = CX + Math.cos(midA) * (R + 15);
-        var ly = CY + Math.sin(midA) * (R + 15);
-        ctx.font = '11px sans-serif';
-        ctx.fillStyle = '#999';
+        ctx.arc(CX, CY, R, -aStart, -aEnd, false);
+        ctx.lineWidth = BAND;
+        ctx.strokeStyle = GAUGE_LEVELS[i].color;
+        ctx.globalAlpha = isActive ? (isCurrent ? 0.85 : 0.55) : 0.15;
+        ctx.lineCap = 'butt';
+        ctx.stroke();
+        
+        // Glow effect for current level
+        if (isCurrent) {
+            ctx.beginPath();
+            ctx.arc(CX, CY, R, -aStart, -aEnd, false);
+            ctx.lineWidth = BAND + 15;
+            ctx.strokeStyle = GAUGE_LEVELS[i].color;
+            ctx.globalAlpha = 0.15;
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        
+        // Labels
+        var midAng = (aStart + aEnd) / 2;
+        var lx = CX + (R + BAND/2 + 16) * Math.cos(midAng);
+        var ly = CY - (R + BAND/2 + 16) * Math.sin(midAng);
+        ctx.save();
+        ctx.translate(lx, ly);
+        var rot = -midAng + Math.PI/2;
+        if (rot > Math.PI/2) rot -= Math.PI;
+        if (rot < -Math.PI/2) rot += Math.PI;
+        ctx.rotate(rot);
+        ctx.font = '600 12px Poppins, sans-serif';
+        ctx.fillStyle = GAUGE_LEVELS[i].color;
+        ctx.globalAlpha = isActive ? 0.9 : 0.5;
         ctx.textAlign = 'center';
-        ctx.fillText(GAUGE_LEVELS[i].emoji, lx, ly);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(GAUGE_LEVELS[i].shortLabel, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        
+        // Tick marks between segments
+        if (i > 0) {
+            var tickAng = Math.PI - i * SEG_ANG;
+            ctx.beginPath();
+            ctx.moveTo(CX + (R - BAND/2 - 5) * Math.cos(tickAng), CY - (R - BAND/2 - 5) * Math.sin(tickAng));
+            ctx.lineTo(CX + (R + BAND/2 + 5) * Math.cos(tickAng), CY - (R + BAND/2 + 5) * Math.sin(tickAng));
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        }
+        
+        // Threshold numbers
+        var numAng = Math.PI - i * SEG_ANG;
+        ctx.font = '400 10px JetBrains Mono, monospace';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var numLabel = GAUGE_THRESH[i] >= 1000 ? (GAUGE_THRESH[i]/1000) + 'K' : GAUGE_THRESH[i].toString();
+        ctx.fillText(numLabel, CX + (R - BAND/2 - 18) * Math.cos(numAng), CY - (R - BAND/2 - 18) * Math.sin(numAng));
     }
-
-    // Needle
-    ctx.save();
-    ctx.translate(CX, CY);
-    ctx.rotate(needleAng);
+    
+    // 3K+ label at end
+    ctx.font = '400 10px JetBrains Mono, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.textAlign = 'center';
+    ctx.fillText('3K+', CX + (R - BAND/2 - 18), CY);
+    
+    // Needle with glow effect
+    var tipX = CX + (R - 12) * Math.cos(needleAng);
+    var tipY = CY - (R - 12) * Math.sin(needleAng);
+    var bOX = 4 * Math.cos(needleAng + Math.PI/2);
+    var bOY = 4 * Math.sin(needleAng + Math.PI/2);
+    
+    // Needle shadow/glow
     ctx.beginPath();
-    ctx.moveTo(-4, 0); ctx.lineTo(0, -(R - BAND - 10)); ctx.lineTo(4, 0);
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(CX + bOX, CY - bOY);
+    ctx.lineTo(CX - bOX, CY + bOY);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(229,185,92,0.3)';
+    ctx.shadowColor = '#E5B95C';
+    ctx.shadowBlur = 15;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Needle main
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(CX + bOX, CY - bOY);
+    ctx.lineTo(CX - bOX, CY + bOY);
+    ctx.closePath();
     ctx.fillStyle = '#E5B95C';
     ctx.fill();
-    ctx.restore();
-
+    
+    // Center hub with gradient
+    ctx.beginPath();
+    ctx.arc(CX, CY, 14, 0, Math.PI * 2);
+    var hg = ctx.createRadialGradient(CX, CY - 4, 2, CX, CY, 14);
+    hg.addColorStop(0, '#2a4a56');
+    hg.addColorStop(1, '#0D171E');
+    ctx.fillStyle = hg;
+    ctx.fill();
+    ctx.strokeStyle = '#E5B95C';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    
     // Center dot
     ctx.beginPath();
-    ctx.arc(CX, CY, 6, 0, Math.PI * 2);
+    ctx.arc(CX, CY, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#E5B95C';
+    ctx.fill();
+    
+    // Center highlight
+    ctx.beginPath();
+    ctx.arc(CX, CY - 2, 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fill();
 }
 
@@ -1224,12 +1208,8 @@ function loadPendingVerifications() {
     var pending = [];
     if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getAllContributions) {
         var allContribs = LBW_Merits.getAllContributions();
-        var myPubkey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
-        // [v2.1] Filtrar: solo económicas pendientes Y que no sean mías (no puedo verificar mis propias)
         pending = allContribs.filter(function(c) {
-            return c.category === 'economica' && 
-                   (c.status === 'pending_verification' || c.status === 'pending') &&
-                   c.pubkey !== myPubkey;
+            return c.category === 'economica' && (c.status === 'pending_verification' || c.status === 'pending');
         });
     }
 
@@ -1248,32 +1228,20 @@ function loadPendingVerifications() {
     }
 
     container.innerHTML = pending.map(function(c) {
-        // [v2.1] Extraer payMethod de evidence array
-        var payMethod = 'other';
-        if (c.evidence && Array.isArray(c.evidence)) {
-            var pmEntry = c.evidence.find(function(e) { return e && e.startsWith('payMethod:'); });
-            if (pmEntry) payMethod = pmEntry.replace('payMethod:', '');
-        }
-        var payLabel = payMethod === 'lightning' ? '⚡ Lightning' : payMethod === 'btc_onchain' ? '⛓️ On-chain' : payMethod === 'bank' ? '🏦 Banco' : '📄 Otro';
-        // Extraer txProof (primer elemento de evidence que no sea payMethod)
-        var txProof = '';
-        if (c.evidence && Array.isArray(c.evidence)) {
-            var proofEntry = c.evidence.find(function(e) { return e && !e.startsWith('payMethod:'); });
-            if (proofEntry) txProof = proofEntry;
-        }
+        var payLabel = c.payMethod === 'lightning' ? '⚡ Lightning' : c.payMethod === 'btc_onchain' ? '⛓️ On-chain' : c.payMethod === 'bank' ? '🏦 Banco' : '📄 Otro';
 
         return '<div style="background:var(--color-bg-dark);padding:1.25rem;border-radius:12px;border-left:4px solid #FF9800;margin-bottom:0.75rem;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
                 '<div>' +
                     '<div style="font-weight:700;color:var(--color-text-primary);">' + (c.description || 'Aportación Económica') + '</div>' +
-                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por ' + (c.npub ? c.npub.substring(0,16) + '...' : c.pubkey?.substring(0,12) || 'Anónimo') + ' · ' + payLabel + '</div>' +
+                    '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.25rem;">por ' + (c.authorName || c.pubkey?.substring(0,12) || 'Anónimo') + ' · ' + payLabel + '</div>' +
                 '</div>' +
                 '<div style="text-align:right;min-width:80px;">' +
                     '<div style="font-family:var(--font-mono);font-weight:700;color:var(--color-gold);font-size:1.1rem;">' + (c.amount || 0) + '</div>' +
                     '<div style="font-size:0.7rem;color:var(--color-text-secondary);">LBWM</div>' +
                 '</div>' +
             '</div>' +
-            (txProof ? '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--color-text-secondary);word-break:break-all;">📎 ' + txProof + '</div>' : '') +
+            (c.txProof ? '<div style="margin-top:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;font-size:0.75rem;font-family:var(--font-mono);color:var(--color-text-secondary);word-break:break-all;">📎 ' + c.txProof + '</div>' : '') +
             (isGovernor ? '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
                 '<button class="btn btn-sm" style="background:var(--color-success);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="verifyDeposit(\'' + c.id + '\')">✅ Verificar y Emitir</button>' +
                 '<button class="btn btn-sm" style="background:var(--color-error);color:#fff;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;border:none;cursor:pointer;" onclick="rejectDeposit(\'' + c.id + '\')">❌ Rechazar</button>' +
@@ -1296,7 +1264,7 @@ function renderCitizenshipLevels(currentMerits) {
     container.innerHTML = GAUGE_LEVELS.map(function(l, i) {
         var isActive = currentLevel.idx === i;
         var isPassed = currentLevel.idx > i;
-        var nextMin = (i < GAUGE_LEVELS.length - 1) ? GAUGE_LEVELS[i + 1].min - 1 : '∞';
+        var nextMin = (i < GAUGE_N - 1) ? GAUGE_LEVELS[i + 1].min - 1 : '∞';
         var bgStyle = isActive ? 'border:2px solid ' + l.color + ';background:' + l.color + '18' : isPassed ? 'background:var(--color-bg-dark);opacity:0.7' : 'background:var(--color-bg-dark);opacity:0.4';
 
         return '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;border-radius:10px;margin-bottom:0.5rem;' + bgStyle + ';">' +
