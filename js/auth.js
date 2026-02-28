@@ -108,18 +108,23 @@ async function checkExistingSession() {
         }
         
         // Inicializar Nostr con las credenciales guardadas
-        if (currentUser.privateKey && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.loginWithPrivateKey) {
-            try {
-                const privKeyHex = isNsecFormat(currentUser.privateKey) 
-                    ? nsecToHex(currentUser.privateKey) 
-                    : currentUser.privateKey;
-                if (privKeyHex) {
-                    await LBW_Nostr.loginWithPrivateKey(privKeyHex);
-                    console.log('[Auth] Nostr inicializado desde sesión guardada');
+        // ONLY if NostrBridge is NOT available (it handles its own session restoration)
+        if (typeof LBW_NostrBridge === 'undefined') {
+            if (currentUser.privateKey && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.loginWithPrivateKey) {
+                try {
+                    const privKeyHex = isNsecFormat(currentUser.privateKey) 
+                        ? nsecToHex(currentUser.privateKey) 
+                        : currentUser.privateKey;
+                    if (privKeyHex) {
+                        await LBW_Nostr.loginWithPrivateKey(privKeyHex);
+                        console.log('[Auth] Nostr inicializado desde sesión guardada (legacy path)');
+                    }
+                } catch (nostrErr) {
+                    console.warn('[Auth] Error inicializando Nostr:', nostrErr);
                 }
-            } catch (nostrErr) {
-                console.warn('[Auth] Error inicializando Nostr:', nostrErr);
             }
+        } else {
+            console.log('[Auth] Nostr init delegated to LBW_NostrBridge.restoreSession()');
         }
         
         showMainMenu();
