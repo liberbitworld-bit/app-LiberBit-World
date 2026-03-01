@@ -159,7 +159,8 @@ async function appendPrivateConversationsToSidebar(container) {
         container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">🔐 Conversaciones Cifradas</div>`;
         
         conversations.forEach(conv => {
-            const initial = (conv.name || '?').charAt(0).toUpperCase();
+            const cleanInit = (conv.name || '').replace(/[^\p{L}\p{N}]/gu, '');
+            const initial = cleanInit.length > 0 ? cleanInit.charAt(0).toUpperCase() : '👤';
             const isActive = currentChatWith && currentChatWith.id === conv.pubkey;
             const preview = conv.lastMessage ? conv.lastMessage.substring(0, 30) : 'Mensaje cifrado';
             const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
