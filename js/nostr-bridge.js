@@ -742,29 +742,32 @@ const LBW_NostrBridge = (() => {
 
         _resolveName(msg.pubkey).then(name => {
             const el = document.createElement('div');
-            el.className = 'chat-message';
+            el.className = `chat-message ${isMine ? 'chat-message-mine' : 'chat-message-other'}`;
             el.id = `msg-${msg.id}`;
-            el.style.cssText = `padding:0.75rem 1rem;margin-bottom:0.5rem;border-radius:12px;
-                background:${isMine ? 'rgba(229,185,92,0.08)' : 'rgba(44,95,111,0.08)'};
-                border:1px solid ${isMine ? 'rgba(229,185,92,0.15)' : 'rgba(44,95,111,0.15)'};`;
 
             const time = new Date(msg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-            const date = new Date(msg.created_at * 1000).toLocaleDateString('es', { day: 'numeric', month: 'short' });
+            const msgDate = new Date(msg.created_at * 1000);
+            const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+            const dateKey = msgDate.toDateString();
             const src = msg._source === 'cache' ? '💾' : '📡';
+            const initial = name.charAt(0).toUpperCase();
 
             let replyHtml = '';
-            if (msg.isReply) replyHtml = `<div style="font-size:0.75rem;color:var(--color-text-secondary);margin-bottom:0.4rem;padding-left:0.5rem;border-left:2px solid var(--color-gold);">↩️ Respuesta</div>`;
+            if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
 
             el.innerHTML = `
-                ${replyHtml}
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
-                    <span style="font-weight:600;font-size:0.85rem;color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
-                    <span style="font-size:0.7rem;color:var(--color-text-secondary);">${src} ${date} ${time}</span>
+                <div class="chat-msg-header">
+                    <div class="chat-msg-author-row">
+                        <div class="chat-msg-avatar">${initial}</div>
+                        <span class="chat-msg-name" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
+                    </div>
+                    <span class="chat-msg-time">${src} ${time}</span>
                 </div>
-                <div style="font-size:0.9rem;color:var(--color-text-primary);line-height:1.5;word-break:break-word;">${_esc(msg.content)}</div>
-                <div style="display:flex;gap:0.75rem;margin-top:0.4rem;">
-                    <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">↩️ Responder</button>
-                    <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" style="background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:0.75rem;padding:0;">🤙 Zap</button>
+                ${replyHtml}
+                <div class="chat-msg-body">${_esc(msg.content)}</div>
+                <div class="chat-msg-actions">
+                    <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
+                    <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" class="chat-msg-action-btn">🤙 Zap</button>
                 </div>`;
 
             // Insert sorted by created_at
@@ -780,6 +783,10 @@ const LBW_NostrBridge = (() => {
             }
             if (!inserted) container.appendChild(el);
             el.dataset.createdAt = msg.created_at;
+            el.dataset.dateKey = dateKey;
+
+            // Insert date separator if needed
+            _insertDateSeparator(container, el, dateStr, dateKey);
 
             // Auto-scroll only for relay events (not cache hydration)
             if (msg._source !== 'cache') {
@@ -787,6 +794,19 @@ const LBW_NostrBridge = (() => {
                 if (mc) mc.scrollTop = mc.scrollHeight;
             }
         });
+    }
+
+    function _insertDateSeparator(container, msgEl, dateStr, dateKey) {
+        // Check if there's already a separator for this date
+        if (container.querySelector(`[data-date-sep="${dateKey}"]`)) return;
+        // Find the first message of this date
+        const firstOfDate = container.querySelector(`[data-date-key="${dateKey}"]`);
+        if (!firstOfDate) return;
+        const sep = document.createElement('div');
+        sep.className = 'chat-date-separator';
+        sep.dataset.dateSep = dateKey;
+        sep.innerHTML = `<span>${dateStr}</span>`;
+        container.insertBefore(sep, firstOfDate);
     }
 
     function replyToMessage(eventId, authorName) {
@@ -878,18 +898,20 @@ const LBW_NostrBridge = (() => {
         convos.forEach(c => {
             _resolveName(c.pubkey).then(name => {
                 const item = document.createElement('div');
-                item.style.cssText = 'padding:0.75rem;border-bottom:1px solid var(--color-border);cursor:pointer;transition:background 0.2s;';
-                item.onmouseover = () => { item.style.background = 'rgba(229,185,92,0.08)'; };
-                item.onmouseout = () => { item.style.background = ''; };
+                item.className = 'sidebar-conversation';
+                if (_activeDMPubkey === c.pubkey) item.classList.add('active');
                 item.onclick = () => openDMConversation(c.pubkey);
+                item.dataset.pubkey = c.pubkey;
                 const t = new Date(c.lastMsg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
                 const prev = c.lastMsg.content.substring(0, 40) + (c.lastMsg.content.length > 40 ? '...' : '');
+                const initial = name.charAt(0).toUpperCase();
                 item.innerHTML = `
-                    <div style="display:flex;justify-content:space-between;margin-bottom:0.2rem;">
-                        <span style="font-weight:600;font-size:0.85rem;color:var(--color-text-primary);">${_esc(name)}</span>
-                        <span style="font-size:0.65rem;color:var(--color-text-secondary);">${t}</span>
+                    <div class="sidebar-conv-avatar">${initial}</div>
+                    <div class="sidebar-conv-info">
+                        <div class="sidebar-conv-name">${_esc(name)}</div>
+                        <div class="sidebar-conv-preview">🔒 ${_esc(prev)}</div>
                     </div>
-                    <div style="font-size:0.75rem;color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔒 ${_esc(prev)}</div>`;
+                    <span class="sidebar-conv-time">${t}</span>`;
                 sidebar.appendChild(item);
             });
         });
@@ -903,6 +925,13 @@ const LBW_NostrBridge = (() => {
         if (ac) {
             ac.style.display = 'flex';
             ac.dataset.activePubkey = pk; // DOM backup
+        }
+        // Update sidebar active state
+        const sidebar = document.getElementById('chatSidebarList');
+        if (sidebar) {
+            sidebar.querySelectorAll('.sidebar-conversation').forEach(el => {
+                el.classList.toggle('active', el.dataset.pubkey === pk);
+            });
         }
         _resolveName(pk).then(name => {
             const n = document.getElementById('privateChatName');
@@ -919,13 +948,30 @@ const LBW_NostrBridge = (() => {
     function _renderDMMessage(msg) {
         const c = document.getElementById('privateChatMessages');
         if (!c) return;
+        // Dedup in DOM
+        if (msg.id && c.querySelector(`[data-msg-id="${msg.id}"]`)) return;
+
         const mine = msg.from === LBW_Nostr.getPubkey();
         const t = new Date(msg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
         const isNip44 = msg.encryption === 'nip44' || msg.nip44 === true;
         const nipBadge = isNip44 ? 'badge-success' : 'badge-secondary';
         const nipLabel = isNip44 ? '44' : '04';
+
+        // Date separator
+        const msgDate = new Date(msg.created_at * 1000);
+        const dateKey = msgDate.toDateString();
+        const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+        if (!c.querySelector(`[data-date-sep="${dateKey}"]`)) {
+            const sep = document.createElement('div');
+            sep.className = 'chat-date-separator';
+            sep.dataset.dateSep = dateKey;
+            sep.innerHTML = `<span>${dateStr}</span>`;
+            c.appendChild(sep);
+        }
+
         const el = document.createElement('div');
         el.className = `chat ${mine ? 'chat-end' : 'chat-start'}`;
+        if (msg.id) el.dataset.msgId = msg.id;
         el.innerHTML = `
             <div class="chat-bubble ${mine ? 'chat-bubble-warning' : 'chat-bubble-info'}" style="min-width:60px;">
                 <div class="text-sm" style="word-break:break-word;">${_esc(msg.content)}</div>
