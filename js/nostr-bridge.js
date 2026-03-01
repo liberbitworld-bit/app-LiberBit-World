@@ -741,7 +741,8 @@ const LBW_NostrBridge = (() => {
         const isMine = msg.pubkey === LBW_Nostr.getPubkey();
         if (isMine) _myChatCount++;
 
-        _resolveName(msg.pubkey).then(name => {
+        _resolveProfileData(msg.pubkey).then(profile => {
+            const name = profile.name;
             const el = document.createElement('div');
             el.className = `chat-message ${isMine ? 'chat-message-mine' : 'chat-message-other'}`;
             el.id = `msg-${msg.id}`;
@@ -751,9 +752,6 @@ const LBW_NostrBridge = (() => {
             const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
             const dateKey = msgDate.toDateString();
             const src = msg._source === 'cache' ? '💾' : '📡';
-            // Robust initial: skip emojis/special chars, fallback to 👤
-            const cleanName = name.replace(/[^\p{L}\p{N}]/gu, '');
-            const initial = cleanName.length > 0 ? cleanName.charAt(0).toUpperCase() : '👤';
 
             let replyHtml = '';
             if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
@@ -761,7 +759,7 @@ const LBW_NostrBridge = (() => {
             el.innerHTML = `
                 <div class="chat-msg-header">
                     <div class="chat-msg-author-row">
-                        <div class="chat-msg-avatar">${initial}</div>
+                        ${_avatarHtml('chat-msg-avatar', name, profile.picture)}
                         <span class="chat-msg-name" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
                     </div>
                     <span class="chat-msg-time">${src} ${time}</span>
@@ -912,7 +910,8 @@ const LBW_NostrBridge = (() => {
 
         sidebar.innerHTML = '';
         convos.forEach(c => {
-            _resolveName(c.pubkey).then(name => {
+            _resolveProfileData(c.pubkey).then(profile => {
+                const name = profile.name;
                 const item = document.createElement('div');
                 item.className = 'sidebar-conversation';
                 if (_activeDMPubkey === c.pubkey) item.classList.add('active');
@@ -920,10 +919,8 @@ const LBW_NostrBridge = (() => {
                 item.dataset.pubkey = c.pubkey;
                 const t = new Date(c.lastMsg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
                 const prev = c.lastMsg.content.substring(0, 40) + (c.lastMsg.content.length > 40 ? '...' : '');
-                const cleanN = name.replace(/[^\p{L}\p{N}]/gu, '');
-                const initial = cleanN.length > 0 ? cleanN.charAt(0).toUpperCase() : '👤';
                 item.innerHTML = `
-                    <div class="sidebar-conv-avatar">${initial}</div>
+                    ${_avatarHtml('sidebar-conv-avatar', name, profile.picture)}
                     <div class="sidebar-conv-info">
                         <div class="sidebar-conv-name">${_esc(name)}</div>
                         <div class="sidebar-conv-preview">🔒 ${_esc(prev)}</div>
@@ -1304,33 +1301,47 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
-    async function _resolveName(pubkey) {
-        // Return from cache if available
-        if (_nameCache[pubkey]) return _nameCache[pubkey];
+    let _profileCache = {};  // pubkey -> { name, picture }
 
-        // Use SyncEngine's cache-first resolution
+    async function _resolveProfileData(pubkey) {
+        if (_profileCache[pubkey]) return _profileCache[pubkey];
+
+        let name = null, picture = null;
         try {
             const profile = await LBW_Sync.resolveProfile(pubkey);
             if (profile) {
-                const name = profile.name || profile.display_name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
-                _nameCache[pubkey] = name;
-                return name;
+                name = profile.name || profile.display_name || null;
+                picture = profile.picture || profile.image || null;
             }
         } catch (e) {}
 
-        // Self
         if (pubkey === LBW_Nostr.getPubkey()) {
             const p = LBW_Nostr.getProfile();
-            if (p.name || p.display_name) {
-                const name = p.name || p.display_name;
-                _nameCache[pubkey] = name;
-                return name;
-            }
+            if (!name) name = p.name || p.display_name || null;
+            if (!picture) picture = p.picture || null;
         }
 
-        const fallback = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
-        _nameCache[pubkey] = fallback;
-        return fallback;
+        const result = {
+            name: name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...',
+            picture: picture || null
+        };
+        _profileCache[pubkey] = result;
+        _nameCache[pubkey] = result.name;
+        return result;
+    }
+
+    async function _resolveName(pubkey) {
+        const data = await _resolveProfileData(pubkey);
+        return data.name;
+    }
+
+    function _avatarHtml(cssClass, name, picture) {
+        const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
+        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
+        if (picture) {
+            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;${cssClass}&quot;>${initial}</div>')">`;
+        }
+        return `<div class="${cssClass}">${initial}</div>`;
     }
 
     function _esc(s) {
@@ -1416,7 +1427,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, getDebugStats, getMyOffersCount, getMyChatCount,
+        _resolveName, _resolveProfileData, _avatarHtml, getDebugStats, getMyOffersCount, getMyChatCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
