@@ -22,7 +22,7 @@
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
-    <link rel="stylesheet" href="css/main.css?v=phase2">
+    <link rel="stylesheet" href="css/main.css?v=phase2b">
 </head>
 <body>
     <div class="bg-animated">
@@ -457,9 +457,9 @@
                                     <button class="reply-preview-close" onclick="LBW_NostrBridge.cancelReply()">✕</button>
                                 </div>
                                 
-                                <div class="chat-main-compose-inner">
-                                    <button class="chat-compose-action" title="Emoji">😊</button>
-                                    <button class="chat-compose-action" title="Adjuntar">📎</button>
+                                <div class="chat-main-compose-inner" style="position: relative;">
+                                    <button class="chat-compose-action" title="Emoji" onclick="toggleEmojiPicker('communityEmojiPicker', 'newPostContent')">😊</button>
+                                    <button class="chat-compose-action" title="Adjuntar (próximamente)" onclick="alert('📎 Adjuntar archivos — Próximamente')">📎</button>
                                     <textarea 
                                         id="newPostContent" 
                                         placeholder="Escribe a la comunidad..." 
@@ -469,6 +469,7 @@
                                     <button class="chat-send-btn" id="publishPostBtn" title="Publicar" onclick="LBW_NostrBridge.publishCommunityPost()">
                                         ➤
                                     </button>
+                                    <div id="communityEmojiPicker" class="emoji-picker" style="display:none;"></div>
                                 </div>
                                 
                                 <div class="chat-compose-info">
@@ -519,9 +520,9 @@
                                 
                                 <!-- Compose -->
                                 <div class="chat-main-compose">
-                                    <div class="chat-main-compose-inner">
-                                        <button class="chat-compose-action" title="Emoji">😊</button>
-                                        <button class="chat-compose-action" title="Adjuntar archivo">📎</button>
+                                    <div class="chat-main-compose-inner" style="position: relative;">
+                                        <button class="chat-compose-action" title="Emoji" onclick="toggleEmojiPicker('dmEmojiPicker', 'dmContent')">😊</button>
+                                        <button class="chat-compose-action" title="Adjuntar (próximamente)" onclick="alert('📎 Adjuntar archivos — Próximamente')">📎</button>
                                         <textarea 
                                             id="dmContent" 
                                             placeholder="Mensaje cifrado E2E..." 
@@ -531,6 +532,7 @@
                                         <button class="chat-send-btn" onclick="LBW_NostrBridge.sendDM()" title="Enviar">
                                             ➤
                                         </button>
+                                        <div id="dmEmojiPicker" class="emoji-picker" style="display:none;"></div>
                                     </div>
                                     <div class="chat-compose-info">
                                         <span id="dmEncryptionBadge" class="badge badge-secondary badge-xs gap-1">🔐 NIP-44 / NIP-04</span>
@@ -2243,7 +2245,80 @@
     <script src="js/nostr-sync.js?v=phase1"></script>
     <script src="js/nostr-governance.js?v=phase1"></script>
     <script src="js/nostr-merits.js?v=phase1"></script>
-    <script src="js/nostr-bridge.js?v=phase2"></script>
+    <script src="js/nostr-bridge.js?v=phase2b"></script>
+
+    <!-- Emoji Picker -->
+    <style>
+        .emoji-picker {
+            position: absolute;
+            bottom: 50px;
+            left: 0;
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            max-width: 290px;
+            animation: fadeInUp 0.15s ease-out;
+        }
+        .emoji-picker button {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: background 0.15s;
+            line-height: 1;
+        }
+        .emoji-picker button:hover {
+            background: rgba(229, 185, 92, 0.15);
+        }
+    </style>
+    <script>
+        const _emojis = ['😊','😂','❤️','🔥','👍','👎','🎉','😎','🤔','💪','🙏','⚡','🚀','💰','🤝','✅','❌','⭐','🏆','💎','🌟','👀','😅','🤙','🫡','💬','📡','🔒','🛡️','₿','⚖️','🗳️'];
+        let _activePickerTarget = null;
+
+        function toggleEmojiPicker(pickerId, textareaId) {
+            const picker = document.getElementById(pickerId);
+            if (!picker) return;
+            if (picker.style.display !== 'none') {
+                picker.style.display = 'none';
+                return;
+            }
+            // Close any other open picker
+            document.querySelectorAll('.emoji-picker').forEach(p => p.style.display = 'none');
+            _activePickerTarget = textareaId;
+            // Populate if empty
+            if (!picker.innerHTML) {
+                picker.innerHTML = _emojis.map(e => `<button onclick="insertEmoji('${e}')">${e}</button>`).join('');
+            }
+            picker.style.display = 'grid';
+        }
+
+        function insertEmoji(emoji) {
+            if (!_activePickerTarget) return;
+            const ta = document.getElementById(_activePickerTarget);
+            if (!ta) return;
+            const start = ta.selectionStart || ta.value.length;
+            ta.value = ta.value.substring(0, start) + emoji + ta.value.substring(ta.selectionEnd || start);
+            ta.focus();
+            ta.selectionStart = ta.selectionEnd = start + emoji.length;
+            // Close picker
+            document.querySelectorAll('.emoji-picker').forEach(p => p.style.display = 'none');
+        }
+
+        // Close picker when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.emoji-picker') && !e.target.closest('.chat-compose-action')) {
+                document.querySelectorAll('.emoji-picker').forEach(p => p.style.display = 'none');
+            }
+        });
+    </script>
 
     <!-- Nostr Marketplace Helper -->
     <script>
@@ -2900,4 +2975,3 @@
             <div class="notification-list" id="notificationList">
                 <div class="notification-empty">
                     <div class="notification-empty-ic
-                    
