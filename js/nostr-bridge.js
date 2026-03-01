@@ -24,6 +24,7 @@ const LBW_NostrBridge = (() => {
 
     // ── Data ─────────────────────────────────────────────────
     let _dmConversations = {};     // pubkey -> [messages]
+    let _nameCache = {};           // pubkey -> resolved display name
     let _marketplaceListings = [];
     let _replyToEventId = null;
     let _activeDMPubkey = null;
@@ -1304,19 +1305,32 @@ const LBW_NostrBridge = (() => {
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
     async function _resolveName(pubkey) {
+        // Return from cache if available
+        if (_nameCache[pubkey]) return _nameCache[pubkey];
+
         // Use SyncEngine's cache-first resolution
         try {
             const profile = await LBW_Sync.resolveProfile(pubkey);
-            if (profile) return profile.name || profile.display_name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
+            if (profile) {
+                const name = profile.name || profile.display_name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
+                _nameCache[pubkey] = name;
+                return name;
+            }
         } catch (e) {}
 
         // Self
         if (pubkey === LBW_Nostr.getPubkey()) {
             const p = LBW_Nostr.getProfile();
-            if (p.name || p.display_name) return p.name || p.display_name;
+            if (p.name || p.display_name) {
+                const name = p.name || p.display_name;
+                _nameCache[pubkey] = name;
+                return name;
+            }
         }
 
-        return LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
+        const fallback = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
+        _nameCache[pubkey] = fallback;
+        return fallback;
     }
 
     function _esc(s) {
@@ -1347,7 +1361,7 @@ const LBW_NostrBridge = (() => {
                 const lastMsg = messages[messages.length - 1];
                 return {
                     pubkey,
-                    name: lastMsg?._resolvedName || null,
+                    name: _nameCache[pubkey] || lastMsg?._resolvedName || null,
                     lastMessage: lastMsg?.content || '',
                     timestamp: lastMsg?.created_at || 0,
                     messageCount: messages.length,
