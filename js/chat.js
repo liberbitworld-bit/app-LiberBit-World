@@ -157,21 +157,27 @@ async function appendPrivateConversationsToSidebar(container) {
         container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">🔐 Conversaciones Cifradas</div>`;
         
         for (const conv of conversations) {
-            // Resolve name asynchronously
-            let name = conv.name;
-            if (!name && LBW_NostrBridge._resolveName) {
+            // Resolve profile with photo asynchronously
+            let name = conv.name, picture = null;
+            if (LBW_NostrBridge._resolveProfileData) {
+                try {
+                    const p = await LBW_NostrBridge._resolveProfileData(conv.pubkey);
+                    name = p.name; picture = p.picture;
+                } catch(e) {}
+            } else if (!name && LBW_NostrBridge._resolveName) {
                 try { name = await LBW_NostrBridge._resolveName(conv.pubkey); } catch(e) {}
             }
             name = name || 'Usuario';
-            const cleanInit = name.replace(/[^\p{L}\p{N}]/gu, '');
-            const initial = cleanInit.length > 0 ? cleanInit.charAt(0).toUpperCase() : '👤';
+            const avatarHtml = (LBW_NostrBridge._avatarHtml)
+                ? LBW_NostrBridge._avatarHtml('sidebar-conv-avatar', name, picture)
+                : `<div class="sidebar-conv-avatar">${(name.replace(/[^\p{L}\p{N}]/gu,'')[0]||'👤').toUpperCase()}</div>`;
             const isActive = currentChatWith && currentChatWith.id === conv.pubkey;
             const preview = conv.lastMessage ? conv.lastMessage.substring(0, 30) : 'Mensaje cifrado';
             const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
             
             container.innerHTML += `
                 <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.pubkey}', '${escapeHtml(name)}')">
-                    <div class="sidebar-conv-avatar">${initial}</div>
+                    ${avatarHtml}
                     <div class="sidebar-conv-info">
                         <div class="sidebar-conv-name">${escapeHtml(name)}</div>
                         <div class="sidebar-conv-preview">🔒 ${escapeHtml(preview)}${preview.length >= 30 ? '...' : ''}</div>
