@@ -750,7 +750,9 @@ const LBW_NostrBridge = (() => {
             const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
             const dateKey = msgDate.toDateString();
             const src = msg._source === 'cache' ? '💾' : '📡';
-            const initial = name.charAt(0).toUpperCase();
+            // Robust initial: skip emojis/special chars, fallback to 👤
+            const cleanName = name.replace(/[^\p{L}\p{N}]/gu, '');
+            const initial = cleanName.length > 0 ? cleanName.charAt(0).toUpperCase() : '👤';
 
             let replyHtml = '';
             if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
@@ -770,12 +772,12 @@ const LBW_NostrBridge = (() => {
                     <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" class="chat-msg-action-btn">🤙 Zap</button>
                 </div>`;
 
-            // Insert sorted by created_at
+            // Insert sorted DESCENDING (newest first)
             const existing = container.querySelectorAll('.chat-message');
             let inserted = false;
             for (const child of existing) {
                 const childTime = parseInt(child.dataset.createdAt || '0', 10);
-                if (msg.created_at < childTime) {
+                if (msg.created_at > childTime) {
                     container.insertBefore(el, child);
                     inserted = true;
                     break;
@@ -788,10 +790,10 @@ const LBW_NostrBridge = (() => {
             // Insert date separator if needed
             _insertDateSeparator(container, el, dateStr, dateKey);
 
-            // Auto-scroll only for relay events (not cache hydration)
+            // Auto-scroll to top for new relay messages (newest are at top)
             if (msg._source !== 'cache') {
                 const mc = document.getElementById('communityMessages');
-                if (mc) mc.scrollTop = mc.scrollHeight;
+                if (mc) mc.scrollTop = 0;
             }
         });
     }
@@ -902,7 +904,8 @@ const LBW_NostrBridge = (() => {
                 item.dataset.pubkey = c.pubkey;
                 const t = new Date(c.lastMsg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
                 const prev = c.lastMsg.content.substring(0, 40) + (c.lastMsg.content.length > 40 ? '...' : '');
-                const initial = name.charAt(0).toUpperCase();
+                const cleanN = name.replace(/[^\p{L}\p{N}]/gu, '');
+                const initial = cleanN.length > 0 ? cleanN.charAt(0).toUpperCase() : '👤';
                 item.innerHTML = `
                     <div class="sidebar-conv-avatar">${initial}</div>
                     <div class="sidebar-conv-info">
