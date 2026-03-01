@@ -143,8 +143,6 @@ async function appendPrivateConversationsToSidebar(container) {
     
     // Verificar si LBW_NostrBridge tiene conversaciones
     if (typeof LBW_NostrBridge === 'undefined' || !LBW_NostrBridge.getConversations) {
-        // El bridge maneja su propio sidebar en _updateDMSidebar()
-        // Solo mostrar indicador de que se usa Nostr
         console.log('[Chat] Sidebar manejado por LBW_NostrBridge');
         return;
     }
@@ -153,29 +151,35 @@ async function appendPrivateConversationsToSidebar(container) {
         const conversations = LBW_NostrBridge.getConversations();
         
         if (!conversations || conversations.length === 0) {
-            return; // El sidebar vacío se maneja en loadPrivateConversationsSidebar
+            return;
         }
         
         container.innerHTML += `<div style="padding: 0.5rem 0.75rem; font-size: 0.7rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.5rem;">🔐 Conversaciones Cifradas</div>`;
         
-        conversations.forEach(conv => {
-            const cleanInit = (conv.name || '').replace(/[^\p{L}\p{N}]/gu, '');
+        for (const conv of conversations) {
+            // Resolve name asynchronously
+            let name = conv.name;
+            if (!name && LBW_NostrBridge._resolveName) {
+                try { name = await LBW_NostrBridge._resolveName(conv.pubkey); } catch(e) {}
+            }
+            name = name || 'Usuario';
+            const cleanInit = name.replace(/[^\p{L}\p{N}]/gu, '');
             const initial = cleanInit.length > 0 ? cleanInit.charAt(0).toUpperCase() : '👤';
             const isActive = currentChatWith && currentChatWith.id === conv.pubkey;
             const preview = conv.lastMessage ? conv.lastMessage.substring(0, 30) : 'Mensaje cifrado';
             const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
             
             container.innerHTML += `
-                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.pubkey}', '${escapeHtml(conv.name || 'Usuario')}')">
+                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.pubkey}', '${escapeHtml(name)}')">
                     <div class="sidebar-conv-avatar">${initial}</div>
                     <div class="sidebar-conv-info">
-                        <div class="sidebar-conv-name">${escapeHtml(conv.name || 'Usuario')}</div>
+                        <div class="sidebar-conv-name">${escapeHtml(name)}</div>
                         <div class="sidebar-conv-preview">🔒 ${escapeHtml(preview)}${preview.length >= 30 ? '...' : ''}</div>
                     </div>
                     <div class="sidebar-conv-time">${timeStr}</div>
                 </div>
             `;
-        });
+        }
     } catch (err) {
         console.error('[Chat] Error loading Nostr conversations:', err);
     }
