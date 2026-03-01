@@ -65,7 +65,8 @@ function switchChatTab(tab) {
     loadChatSidebar();
     
     if (tab === 'community') {
-        loadPosts();
+        // Community messages are rendered by LBW_NostrBridge._renderCommunityMessage()
+        // loadPosts() is no longer called here to avoid overwriting Nostr messages
     } else {
         loadPrivateConversationsSidebar();
     }
