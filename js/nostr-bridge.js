@@ -797,9 +797,7 @@ const LBW_NostrBridge = (() => {
     }
 
     function _insertDateSeparator(container, msgEl, dateStr, dateKey) {
-        // Check if there's already a separator for this date
         if (container.querySelector(`[data-date-sep="${dateKey}"]`)) return;
-        // Find the first message of this date
         const firstOfDate = container.querySelector(`[data-date-key="${dateKey}"]`);
         if (!firstOfDate) return;
         const sep = document.createElement('div');
