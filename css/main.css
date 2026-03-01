@@ -1520,14 +1520,14 @@
         }
 
         .chat-msg-avatar {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--color-teal-dark), var(--color-teal));
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.72rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--color-gold);
             flex-shrink: 0;
