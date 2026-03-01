@@ -364,39 +364,78 @@
             <div class="chat-section" style="max-width: 1100px;">
                 <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
                 
-                <h2 style="color: var(--color-gold); margin-bottom: 1rem;">💬 Chat <span class="badge badge-outline badge-info badge-sm align-middle">📡 Nostr Protocol</span></h2>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+                    <h2 style="color: var(--color-gold); margin: 0; font-size: 1.35rem; font-weight: 700;">
+                        💬 Chat
+                    </h2>
+                    <span class="badge badge-outline badge-info badge-sm" style="gap: 4px; font-size: 0.65rem;">
+                        📡 Nostr Protocol
+                    </span>
+                </div>
 
                 <div class="chat-layout">
-                    <!-- Sidebar: Conversations -->
+                    <!-- ═══ SIDEBAR ═══ -->
                     <div class="chat-sidebar" id="chatSidebar">
+                        <!-- Tabs -->
                         <div class="chat-sidebar-tabs">
-                            <button class="chat-sidebar-tab active indicator" id="tabCommunity" onclick="switchChatTab('community')">🌐 Comunidad <span id="badgeCommunity" class="indicator-item badge badge-error badge-xs" style="display:none;">0</span></button>
-                            <button class="chat-sidebar-tab indicator" id="tabPrivate" onclick="switchChatTab('private')">🔒 Privados <span id="badgePrivate" class="indicator-item badge badge-error badge-xs" style="display:none;">0</span></button>
+                            <button class="chat-sidebar-tab active indicator" id="tabCommunity" onclick="switchChatTab('community')">
+                                🌐 Comunidad 
+                                <span id="badgeCommunity" class="indicator-item badge badge-error badge-xs" style="display:none;">0</span>
+                            </button>
+                            <button class="chat-sidebar-tab indicator" id="tabPrivate" onclick="switchChatTab('private')">
+                                🔒 Privados 
+                                <span id="badgePrivate" class="indicator-item badge badge-error badge-xs" style="display:none;">0</span>
+                            </button>
                         </div>
-                        <!-- Search bar -->
-                        <div class="p-2 border-b border-base-300">
+                        
+                        <!-- Search -->
+                        <div class="chat-search-bar">
                             <div class="join w-full">
-                                <input type="text" id="chatUserSearch" placeholder="🔍 npub1... o buscar usuario" class="input input-bordered input-sm join-item flex-1" oninput="handleChatUserSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault(); window._startNostrDMFromSearch();}">
-                                <button onclick="window._startNostrDMFromSearch()" class="btn btn-sm btn-info join-item" title="Abrir DM Nostr">💬</button>
-                                <button onclick="clearChatSearch()" class="btn btn-ghost btn-sm join-item" title="Limpiar">✕</button>
+                                <input type="text" 
+                                    id="chatUserSearch" 
+                                    placeholder="🔍 Buscar usuario o npub1..." 
+                                    class="input input-bordered input-sm join-item flex-1" 
+                                    oninput="handleChatUserSearch(this.value)" 
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault(); window._startNostrDMFromSearch();}">
+                                <button onclick="window._startNostrDMFromSearch()" class="btn btn-sm btn-info join-item" title="Abrir DM cifrado">
+                                    💬
+                                </button>
+                                <button onclick="clearChatSearch()" class="btn btn-ghost btn-sm join-item" title="Limpiar">
+                                    ✕
+                                </button>
                             </div>
                             <div id="chatSearchResults" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 0.4rem;"></div>
                         </div>
+                        
+                        <!-- Conversations list -->
                         <div class="chat-sidebar-list" id="chatSidebarList">
-                            <!-- Populated dynamically -->
+                            <!-- Populated dynamically by JS -->
                         </div>
                     </div>
 
-                    <!-- Main chat area -->
+                    <!-- ═══ MAIN CHAT AREA ═══ -->
                     <div class="chat-main" id="chatMain">
-                        <!-- Community chat view (default) -->
+                        
+                        <!-- ─── Community View (default) ─── -->
                         <div id="communityView" style="display: flex; flex-direction: column; height: 100%;">
+                            <!-- Header -->
                             <div class="chat-main-header">
-                                <div>
-                                    <h3>🌐 Chat Comunitario</h3>
-                                    <div class="chat-main-header-sub">Todos los miembros</div>
+                                <div class="chat-header-left">
+                                    <div class="chat-header-avatar" style="background: linear-gradient(135deg, var(--color-gold), var(--color-teal));">
+                                        🌐
+                                    </div>
+                                    <div class="chat-header-info">
+                                        <h3>Chat Comunitario</h3>
+                                        <div class="chat-main-header-sub">Todos los miembros · Nostr Relay</div>
+                                    </div>
+                                </div>
+                                <div class="chat-header-actions">
+                                    <button class="chat-header-action-btn" title="Buscar en chat">🔍</button>
+                                    <button class="chat-header-action-btn" title="Info del canal">ℹ️</button>
                                 </div>
                             </div>
+                            
+                            <!-- Messages -->
                             <div class="chat-main-messages" id="communityMessages">
                                 <div id="postsList">
                                     <div class="chat-empty-state">
@@ -405,54 +444,103 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Compose -->
                             <div class="chat-main-compose">
+                                <!-- Reply preview -->
                                 <div id="replyPreview" style="display: none;" class="reply-preview">
                                     <div class="reply-preview-content">
-                                        <span>↩️ Respondiendo a </span><span class="reply-preview-author" id="replyToAuthor"></span><span id="replyToText"></span>
+                                        <span>↩️ Respondiendo a </span>
+                                        <span class="reply-preview-author" id="replyToAuthor"></span>
+                                        <span id="replyToText"></span>
                                     </div>
                                     <button class="reply-preview-close" onclick="LBW_NostrBridge.cancelReply()">✕</button>
                                 </div>
+                                
                                 <div class="chat-main-compose-inner">
-                                    <textarea id="newPostContent" placeholder="Escribe a la comunidad (vía Nostr)..." rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); LBW_NostrBridge.publishCommunityPost();}"></textarea>
-                                    <button class="chat-send-btn" id="publishPostBtn" title="Publicar" onclick="LBW_NostrBridge.publishCommunityPost()">➤</button>
+                                    <button class="chat-compose-action" title="Emoji">😊</button>
+                                    <button class="chat-compose-action" title="Adjuntar">📎</button>
+                                    <textarea 
+                                        id="newPostContent" 
+                                        placeholder="Escribe a la comunidad..." 
+                                        rows="1" 
+                                        onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); LBW_NostrBridge.publishCommunityPost();}">
+                                    </textarea>
+                                    <button class="chat-send-btn" id="publishPostBtn" title="Publicar" onclick="LBW_NostrBridge.publishCommunityPost()">
+                                        ➤
+                                    </button>
                                 </div>
-                                <div class="flex items-center gap-2 px-2 py-1">
+                                
+                                <div class="chat-compose-info">
                                     <span class="badge badge-info badge-xs gap-1">📡 Nostr E2E</span>
-                                    <div id="chatRelayDot" class="badge badge-success badge-xs p-0 w-2 h-2"></div>
+                                    <div id="chatRelayDot" class="chat-encrypt-dot"></div>
+                                    <span style="font-size: 0.62rem; color: var(--color-text-secondary);">Conectado</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Private chat view (hidden by default) -->
+                        <!-- ─── Private Chat View (hidden) ─── -->
                         <div id="privateView" style="display: none; flex-direction: column; height: 100%;">
+                            
                             <!-- No conversation selected -->
                             <div id="privatePlaceholder" style="display: flex; flex-direction: column; height: 100%;">
                                 <div class="chat-empty-state">
                                     <div class="emoji">💬</div>
                                     <p>Selecciona una conversación<br>o contacta a alguien desde Networking</p>
+                                    <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.75rem;">
+                                        🔐 Mensajes cifrados end-to-end via Nostr
+                                    </p>
                                 </div>
                             </div>
-                            <!-- Active private conversation -->
+                            
+                            <!-- Active conversation -->
                             <div id="privateActiveChat" style="display: none; flex-direction: column; height: 100%;">
+                                <!-- Header -->
                                 <div class="chat-main-header">
-                                    <div>
-                                        <h3 id="privateChatName">Usuario</h3>
-                                        <div class="chat-main-header-sub" id="privateChatId">npub1...</div>
+                                    <div class="chat-header-left">
+                                        <div class="chat-header-avatar" style="background: linear-gradient(135deg, var(--color-teal-light), var(--color-teal-dark));">
+                                            🔒
+                                        </div>
+                                        <div class="chat-header-info">
+                                            <h3 id="privateChatName">Usuario</h3>
+                                            <div class="chat-main-header-sub" id="privateChatId">npub1...</div>
+                                        </div>
+                                    </div>
+                                    <div class="chat-header-actions">
+                                        <button class="chat-header-action-btn" title="Buscar en chat">🔍</button>
+                                        <button class="chat-header-action-btn" title="Info de usuario">👤</button>
+                                        <button class="chat-header-action-btn" title="Opciones">⋮</button>
                                     </div>
                                 </div>
+                                
+                                <!-- Messages -->
                                 <div class="chat-main-messages" id="privateChatMessages">
                                 </div>
+                                
+                                <!-- Compose -->
                                 <div class="chat-main-compose">
                                     <div class="chat-main-compose-inner">
-                                        <textarea id="dmContent" placeholder="Mensaje cifrado (NIP-44 / NIP-04)..." rows="1" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); LBW_NostrBridge.sendDM();}"></textarea>
-                                        <button class="chat-send-btn" onclick="LBW_NostrBridge.sendDM()" title="Enviar">➤</button>
+                                        <button class="chat-compose-action" title="Emoji">😊</button>
+                                        <button class="chat-compose-action" title="Adjuntar archivo">📎</button>
+                                        <textarea 
+                                            id="dmContent" 
+                                            placeholder="Mensaje cifrado E2E..." 
+                                            rows="1" 
+                                            onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); LBW_NostrBridge.sendDM();}">
+                                        </textarea>
+                                        <button class="chat-send-btn" onclick="LBW_NostrBridge.sendDM()" title="Enviar">
+                                            ➤
+                                        </button>
                                     </div>
-                                    <div class="flex items-center gap-2 px-2 py-1">
+                                    <div class="chat-compose-info">
                                         <span id="dmEncryptionBadge" class="badge badge-secondary badge-xs gap-1">🔐 NIP-44 / NIP-04</span>
+                                        <div class="chat-encrypt-dot"></div>
+                                        <span style="font-size: 0.62rem; color: var(--color-text-secondary);">Cifrado activo</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
             </div>
