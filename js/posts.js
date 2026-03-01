@@ -143,60 +143,10 @@ async function loadPosts() {
             });
         }
 
-        const container = document.getElementById('postsList');
-        
-        if (allPosts.length === 0) {
-            container.innerHTML = '<div class="placeholder"><h3>🌟 Sé el primero</h3><p>Inicia la conversación</p></div>';
-            return;
-        }
+        // NOTE: Community chat is now rendered by LBW_NostrBridge._renderCommunityMessage()
+        // loadPosts() only populates allPosts data (used by profile for post count)
+        // It no longer renders to the DOM to avoid overwriting Nostr chat messages
 
-        container.innerHTML = allPosts.map(post => {
-            const avatarHtml = post.avatar_url 
-                ? `<img src="${post.avatar_url}" class="post-avatar" alt="${post.author}">`
-                : `<div class="post-avatar-placeholder">👤</div>`;
-            
-            const likeButtonClass = post.likes.likedByCurrentUser ? 'liked' : '';
-            const likeIcon = post.likes.likedByCurrentUser ? '❤️' : '🤍';
-            const likesText = post.likes.count > 0 ? post.likes.count : '';
-            
-            // Reply context
-            let replyContextHtml = '';
-            if (post.reply_to_id && post.reply_to_author) {
-                const replyText = post.reply_to_content ? post.reply_to_content.substring(0, 80) + (post.reply_to_content.length > 80 ? '...' : '') : '';
-                replyContextHtml = `
-                    <div class="post-reply-context" onclick="scrollToPost('${post.reply_to_id}')">
-                        <span class="reply-context-author">↩️ ${escapeHtml(post.reply_to_author)}</span> ${escapeHtml(replyText)}
-                    </div>
-                `;
-            }
-            
-            const safeContent = escapeHtml(post.content);
-            const safeAuthor = escapeHtml(post.author);
-            
-            return `
-                <div class="post" id="post-${post.id}">
-                    <div class="post-header">
-                        <div class="post-author-info">
-                            ${avatarHtml}
-                            <span class="post-author">${safeAuthor}</span>
-                        </div>
-                        <span class="post-time">${timeAgo(post.created_at)}</span>
-                    </div>
-                    ${replyContextHtml}
-                    <div class="post-content">${safeContent}</div>
-                    <div class="post-footer">
-                        <button class="like-btn ${likeButtonClass}" onclick="toggleLike('${post.id}')" title="${post.likes.users.join(', ') || 'Sé el primero en dar like'}">
-                            <span class="like-icon">${likeIcon}</span>
-                            <span class="like-count">${likesText}</span>
-                        </button>
-                        <button class="reply-btn" onclick="replyToPost('${post.id}', '${safeAuthor}', '${safeContent.substring(0, 60).replace(/'/g, "\\'")}')">
-                            <span>💬</span>
-                            <span>Responder</span>
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
     } catch (err) {
         if (!(err.message && err.message.includes('DataCloneError'))) {
             console.error('Error loading posts:', err.message);
