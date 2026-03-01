@@ -787,8 +787,8 @@ const LBW_NostrBridge = (() => {
             el.dataset.createdAt = msg.created_at;
             el.dataset.dateKey = dateKey;
 
-            // Insert date separator if needed
-            _insertDateSeparator(container, el, dateStr, dateKey);
+            // Rebuild date separators after each insert
+            _rebuildDateSeparators(container);
 
             // Auto-scroll to top for new relay messages (newest are at top)
             if (msg._source !== 'cache') {
@@ -798,15 +798,30 @@ const LBW_NostrBridge = (() => {
         });
     }
 
-    function _insertDateSeparator(container, msgEl, dateStr, dateKey) {
-        if (container.querySelector(`[data-date-sep="${dateKey}"]`)) return;
-        const firstOfDate = container.querySelector(`[data-date-key="${dateKey}"]`);
-        if (!firstOfDate) return;
-        const sep = document.createElement('div');
-        sep.className = 'chat-date-separator';
-        sep.dataset.dateSep = dateKey;
-        sep.innerHTML = `<span>${dateStr}</span>`;
-        container.insertBefore(sep, firstOfDate);
+    function _rebuildDateSeparators(container) {
+        // Remove all existing separators
+        container.querySelectorAll('.chat-date-separator').forEach(s => s.remove());
+        // Scan messages in DOM order and insert separator where date changes
+        let lastDateKey = null;
+        const messages = container.querySelectorAll('.chat-message');
+        messages.forEach(msg => {
+            const dateKey = msg.dataset.dateKey;
+            if (dateKey && dateKey !== lastDateKey) {
+                const ts = parseInt(msg.dataset.createdAt || '0', 10);
+                if (ts > 0) {
+                    const d = new Date(ts * 1000);
+                    const dateStr = d.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+                    const sep = document.createElement('div');
+                    sep.className = 'chat-date-separator';
+                    sep.dataset.dateSep = dateKey;
+                    sep.innerHTML = `<span>${dateStr}</span>`;
+                    container.insertBefore(sep, msg);
+                }
+                lastDateKey = dateKey;
+            } else {
+                lastDateKey = dateKey;
+            }
+        });
     }
 
     function replyToMessage(eventId, authorName) {
