@@ -5,6 +5,9 @@ export default async function handler(req, res) {
     );
     const data = await response.json();
     
+    // Usar nuestro propio callback
+    data.callback = 'https://liberbitworld.org/api/lnurlp/callback';
+    
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(200).json(data);
