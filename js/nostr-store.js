@@ -494,7 +494,7 @@ const LBW_Store = (() => {
 
     // ── Cursors (sync position) ──────────────────────────────
 
-    // key format: "feedId:relayUrl" e.g. "community-chat:wss://relay.liberbit.world"
+    // key format: "feedId:relayUrl" e.g. "community-chat:wss://relay.liberbitworld.org"
     function getCursor(key) {
         return new Promise((resolve, reject) => {
             try {
