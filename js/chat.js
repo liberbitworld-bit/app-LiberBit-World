@@ -415,6 +415,6 @@ function clearChatSearch() {
 }
 
 // ========== LIGHTNING APORTACIÓN ECONÓMICA ==========
-const LN_ADDRESS = 'liberbitworld@blink.sv';
+const LN_ADDRESS = 'aportaciones@liberbitworld.org';
 // Lightning functions (copyLnAddress, selectSatsAmount, openLightningPayment, generateLnQR)
 // are defined in lightning.js to avoid duplication.
