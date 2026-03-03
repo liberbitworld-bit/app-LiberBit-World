@@ -30,72 +30,35 @@ function openLightningPayment() {
     showNotification('⚡ Abriendo wallet Lightning...', 'info');
 }
 
-// Simple QR code generator for Lightning address
+// Generate real QR code for Lightning address
+let lnQrCodeInstance = null;
+
 function generateLnQR() {
-    const canvas = document.getElementById('lnQrCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const size = 180;
+    const container = document.getElementById('lnQrCode');
+    if (!container) return;
     
-    // Simple visual QR-like pattern (not a real QR - for display purposes)
-    // Generate a deterministic pattern from the address
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, size, size);
+    // Clear previous QR
+    container.innerHTML = '';
     
-    const text = LN_ADDRESS;
-    const cellSize = 6;
-    const cols = Math.floor(size / cellSize);
+    // Create LNURL-pay URI (standard format for Lightning addresses)
+    const lnurlPay = `lightning:${LN_ADDRESS}`;
     
-    ctx.fillStyle = '#1a1a2e';
-    
-    // Generate pattern from address hash
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-        hash = ((hash << 5) - hash) + text.charCodeAt(i);
-        hash = hash & hash;
+    // Generate QR code using QRCode.js library
+    try {
+        lnQrCodeInstance = new QRCode(container, {
+            text: lnurlPay,
+            width: 180,
+            height: 180,
+            colorDark: '#1a1a2e',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+        console.log('⚡ QR Lightning generado:', lnurlPay);
+    } catch (err) {
+        console.error('Error generando QR:', err);
+        // Fallback: mostrar la dirección
+        container.innerHTML = `<div style="padding: 2rem; text-align: center; color: #1a1a2e; font-size: 0.8rem;">${LN_ADDRESS}</div>`;
     }
-    
-    // Draw position markers (corners)
-    function drawMarker(x, y, s) {
-        ctx.fillRect(x, y, s * 7, s);
-        ctx.fillRect(x, y, s, s * 7);
-        ctx.fillRect(x + s * 6, y, s, s * 7);
-        ctx.fillRect(x, y + s * 6, s * 7, s);
-        ctx.fillRect(x + s * 2, y + s * 2, s * 3, s * 3);
-    }
-    
-    drawMarker(2, 2, cellSize);
-    drawMarker(size - 2 - cellSize * 7, 2, cellSize);
-    drawMarker(2, size - 2 - cellSize * 7, cellSize);
-    
-    // Fill data area with deterministic pattern
-    let seed = Math.abs(hash);
-    for (let y = 0; y < cols; y++) {
-        for (let x = 0; x < cols; x++) {
-            // Skip marker areas
-            if ((x < 9 && y < 9) || (x > cols - 10 && y < 9) || (x < 9 && y > cols - 10)) continue;
-            
-            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-            if (seed % 3 !== 0) {
-                ctx.fillRect(x * cellSize, y * cellSize, cellSize - 1, cellSize - 1);
-            }
-        }
-    }
-    
-    // Draw lightning bolt in center
-    ctx.fillStyle = '#FF9800';
-    const cx = size / 2;
-    const cy = size / 2;
-    ctx.beginPath();
-    ctx.moveTo(cx - 4, cy - 12);
-    ctx.lineTo(cx + 6, cy - 12);
-    ctx.lineTo(cx + 1, cy - 2);
-    ctx.lineTo(cx + 8, cy - 2);
-    ctx.lineTo(cx - 6, cy + 14);
-    ctx.lineTo(cx - 1, cy + 2);
-    ctx.lineTo(cx - 8, cy + 2);
-    ctx.closePath();
-    ctx.fill();
 }
 
 // Generate QR when section is shown
@@ -268,4 +231,3 @@ async function sendDirectMessage() {
         showNotification('Error al enviar mensaje', 'error');
     }
 }
-
