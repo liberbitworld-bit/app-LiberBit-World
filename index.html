@@ -728,17 +728,17 @@
                             <label style="display: block; font-size: 0.8rem; color: var(--color-text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px;">Dirección Lightning de LiberBit World</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--color-bg-dark); border: 2px solid #FF9800; border-radius: 12px; padding: 1rem;">
                                 <span style="font-size: 1.2rem; flex-shrink: 0;">⚡</span>
-                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;">liberbitworld@blink.sv</code>
+                                <code id="lnAddress" style="flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: #FFB74D; word-break: break-all;"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="47263728353326242e28292234072b2e252235252e333028352b2369283520">[email&#160;protected]</a></code>
                                 <button onclick="copyLnAddress()" style="background: rgba(255, 152, 0, 0.2); border: 1px solid #FF9800; border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; color: #FFB74D; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,152,0,0.4)'" onmouseout="this.style.background='rgba(255,152,0,0.2)'">
                                     📋 Copiar
                                 </button>
                             </div>
                         </div>
 
-                        <!-- QR placeholder -->
+                        <!-- QR Code -->
                         <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <div id="lnQrCode" style="display: inline-flex; align-items: center; justify-content: center; width: 200px; height: 200px; background: white; border-radius: 16px; padding: 0.5rem; margin-bottom: 0.75rem;">
-                                <canvas id="lnQrCanvas" width="180" height="180"></canvas>
+                            <div id="lnQrCode" style="display: inline-flex; align-items: center; justify-content: center; background: white; border-radius: 16px; padding: 1rem; margin-bottom: 0.75rem;">
+                                <!-- QR se genera aquí por JS -->
                             </div>
                             <p style="font-size: 0.75rem; color: var(--color-text-secondary);">Escanea con tu wallet Lightning</p>
                         </div>
@@ -2212,7 +2212,7 @@
 
 
     <!-- JavaScript Modules -->
-    <script src="js/config.js?v=phase1"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=phase1"></script>
     <script src="js/auth.js?v=phase1"></script>
     <script src="js/ui.js?v=phase1"></script>
     <!-- SOS Functions -->
@@ -2230,7 +2230,8 @@
     <script src="js/marketplace.js?v=phase1"></script>
     <script src="js/notifications.js?v=phase1"></script>
     <script src="js/chat.js?v=phase2f"></script>
-    <script src="js/lightning.js?v=phase1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="js/lightning.js?v=phase2"></script>
     <script src="js/governance.js?v=phase1"></script>
     <script src="js/merits.js?v=phase1"></script>
     <script src="js/profile.js?v=phase1"></script>
@@ -2968,10 +2969,4 @@
                 </div>
                 <div class="notification-tab" onclick="filterNotifications('merits')" data-filter="merits">
                     <span>🏅 Méritos</span>
-                    <span class="notification-tab-badge" id="tabBadgeMerits">0</span>
-                </div>
-            </div>
-
-            <div class="notification-list" id="notificationList">
-                <div class="notification-empty">
-                    <div class="notification-empty-ic
+                    <span class="notification-tab-badge"
