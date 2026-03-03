@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/.well-known/lnurlp/aportaciones",
-      "destination": "/api/well-known/lnurlp/aportaciones"
+      "destination": "https://getalby.com/.well-known/lnurlp/gleamingfriendship873712"
     }
   ]
 }
