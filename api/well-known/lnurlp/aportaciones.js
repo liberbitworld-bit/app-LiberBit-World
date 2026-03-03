@@ -8,6 +8,11 @@ export default async function handler(req, res) {
     // Usar nuestro propio callback
     data.callback = 'https://liberbitworld.org/api/lnurlp/callback';
     
+    // Forzar maxSendable (Alby devuelve 0 pero sí acepta pagos)
+    if (data.maxSendable === 0) {
+      data.maxSendable = 100000000000; // 1 BTC en millisats
+    }
+    
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(200).json(data);
