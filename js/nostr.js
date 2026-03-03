@@ -1,13 +1,18 @@
 // ============================================================
-// LiberBit World — Nostr Integration Layer v2.0 (nostr.js)
+// LiberBit World — Nostr Integration Layer v2.1 (nostr.js)
 // 
+// CHANGES v2.1:
+//   ✅ Private relay relay.liberbitworld.org activated
+//   ✅ Event routing by kind (private vs public relays)
+//   ✅ Private relay health monitoring + auto-reconnect
+//   ✅ NIP-65 auto-publish for new identities
+//
 // CHANGES v2.0:
 //   ✅ SimplePool (nostr-tools) replaces manual WebSocket pool
 //   ✅ Relay separation by event kind (privacy by design)
 //   ✅ validateEvent() + verifyEvent() double validation
 //   ✅ Rate limiting per relay + per pubkey
 //   ✅ Max content size enforcement
-//   ✅ ~150 lines removed vs v1, robustness improved
 //
 // Provides: Relay Pool, Event Publishing, NIP-04 DMs,
 //           NIP-07 Extension Login, Marketplace (NIP-99),
@@ -22,10 +27,10 @@ const LBW_Nostr = (() => {
     // System relays: defaults when user has no NIP-65 relay list.
     // PRIVATE: LiberBit infrastructure only (governance, DMs, merits)
     const SYSTEM_PRIVATE_RELAYS = [
-        // TODO: Reactivar cuando los relays estén operativos
-        // 'wss://relay.liberbit.world',
-        // 'wss://relay2.liberbit.world',
-        // 'wss://relay3.liberbit.world'
+        'wss://relay.liberbitworld.org'
+        // Futuros relays de redundancia:
+        // 'wss://relay2.liberbitworld.org',
+        // 'wss://relay3.liberbitworld.org'
     ];
 
     // PUBLIC: Community content + profile discovery fallback
@@ -103,13 +108,54 @@ const LBW_Nostr = (() => {
         return [...SYSTEM_ALL_RELAYS];
     }
 
+    // ── Private Event Kinds ────────────────────────────────────
+    // These kinds are internal to LiberBit and should ONLY go to private relays.
+    const PRIVATE_KINDS = new Set([
+        EVENT_KINDS.ENCRYPTED_DM,       // 4 — DMs cifrados
+        EVENT_KINDS.LBW_PROPOSAL,       // 31000 — Propuestas de gobernanza
+        EVENT_KINDS.LBW_VOTE,           // 31001 — Votos
+        EVENT_KINDS.LBW_MERIT,          // 31002 — Méritos
+        EVENT_KINDS.LBW_CONTRIB,        // 31003 — Contribuciones
+        EVENT_KINDS.LBW_DELEGATE,       // 31004 — Delegaciones
+        EVENT_KINDS.LBW_SNAPSHOT,       // 31005 — Snapshots
+        EVENT_KINDS.LBW_CONFIG,         // 31006 — Configuración
+        EVENT_KINDS.APP_STATE           // 30078 — Estado de la app
+    ]);
+
+    // These kinds should go to BOTH private + public relays for discoverability.
+    const PUBLIC_KINDS = new Set([
+        EVENT_KINDS.METADATA,           // 0 — Perfiles (descubribles)
+        EVENT_KINDS.TEXT_NOTE,          // 1 — Posts de comunidad
+        EVENT_KINDS.RELAY_LIST,         // 10002 — NIP-65 relay list
+        EVENT_KINDS.MARKETPLACE         // 30402 — Marketplace (visibilidad)
+    ]);
+
     function _getRelaysForKind(kind) {
-        // SIMPLE MODE: all events go to all connected relays
-        // TODO: Re-enable private routing when relay.liberbit.world is operational
-        const connected = Object.keys(_relayStatusMap).filter(u => _relayStatusMap[u] === 'connected');
-        if (connected.length > 0) return connected;
-        // Nothing connected yet — return all system relays
-        return [...SYSTEM_ALL_RELAYS];
+        const connectedAll = Object.keys(_relayStatusMap).filter(u => _relayStatusMap[u] === 'connected');
+        const connectedPrivate = connectedAll.filter(u => SYSTEM_PRIVATE_RELAYS.includes(u));
+        const connectedPublic = connectedAll.filter(u => !SYSTEM_PRIVATE_RELAYS.includes(u));
+
+        // Privacy Strict: everything to private relays only
+        if (_privacyStrict) {
+            return connectedPrivate.length > 0 ? connectedPrivate : [...SYSTEM_PRIVATE_RELAYS];
+        }
+
+        // Private kinds → only private relay(s)
+        if (PRIVATE_KINDS.has(kind)) {
+            if (connectedPrivate.length > 0) return connectedPrivate;
+            // Fallback: if private relay is down, use all connected (data is encrypted/signed anyway)
+            console.warn(`[Nostr] ⚠️ Relay privado no disponible para kind=${kind}, usando fallback`);
+            return connectedAll.length > 0 ? connectedAll : [...SYSTEM_ALL_RELAYS];
+        }
+
+        // Public kinds → private + public relays (maximum reach)
+        if (PUBLIC_KINDS.has(kind)) {
+            if (connectedAll.length > 0) return connectedAll;
+            return [...SYSTEM_ALL_RELAYS];
+        }
+
+        // Unknown kinds → all connected relays
+        return connectedAll.length > 0 ? connectedAll : [...SYSTEM_ALL_RELAYS];
     }
 
     function getRelaysForKind(kind) {
@@ -498,6 +544,67 @@ const LBW_Nostr = (() => {
         console.log(`[Nostr] 🔗 SimplePool → ${targets.length} relays`);
     }
 
+    // ── Private Relay Health Monitor ─────────────────────────
+    // Periodically checks if private relay is connected and reconnects if needed.
+    let _healthCheckInterval = null;
+
+    function _startRelayHealthCheck() {
+        if (_healthCheckInterval) return; // already running
+        _healthCheckInterval = setInterval(() => {
+            const privateConnected = SYSTEM_PRIVATE_RELAYS.some(
+                url => _relayStatusMap[url] === 'connected'
+            );
+            if (!privateConnected && _pubkey) {
+                console.log('[Nostr] 🔄 Relay privado desconectado — reconectando...');
+                // Reconnect only the private relay(s)
+                const pool = _getPool();
+                const dummyAuthor = _pubkey || '0'.repeat(64);
+                const probeFilter = { kinds: [0], limit: 1, authors: [dummyAuthor] };
+                SYSTEM_PRIVATE_RELAYS.forEach(url => {
+                    if (_relayStatusMap[url] === 'connected') return;
+                    _relayStatusMap[url] = 'connecting';
+                    try {
+                        const sub = pool.subscribeMany(
+                            [url], [probeFilter],
+                            {
+                                onevent: () => {},
+                                oneose: () => {
+                                    _relayStatusMap[url] = 'connected';
+                                    _emitRelayStatus();
+                                    console.log(`[Nostr] ✅ Relay privado reconectado: ${url}`);
+                                    sub.close();
+                                },
+                                onclose: () => {
+                                    if (_relayStatusMap[url] !== 'connected') {
+                                        _relayStatusMap[url] = 'disconnected';
+                                        _emitRelayStatus();
+                                    }
+                                }
+                            }
+                        );
+                        setTimeout(() => {
+                            if (_relayStatusMap[url] === 'connecting') {
+                                _relayStatusMap[url] = 'timeout';
+                                _emitRelayStatus();
+                                try { sub.close(); } catch (e) {}
+                            }
+                        }, 8000);
+                    } catch (e) {
+                        _relayStatusMap[url] = 'error';
+                        _emitRelayStatus();
+                    }
+                });
+            }
+        }, 30000); // Check every 30 seconds
+    }
+
+    function _stopRelayHealthCheck() {
+        if (_healthCheckInterval) {
+            clearInterval(_healthCheckInterval);
+            _healthCheckInterval = null;
+        }
+    }
+
     function disconnectAll() {
         _activeSubs.forEach(sub => { try { sub.close(); } catch (e) {} });
         _activeSubs = [];
@@ -507,6 +614,7 @@ const LBW_Nostr = (() => {
         }
         _relayStatusMap = {};
         _rateLimiter.stopCleanup();
+        _stopRelayHealthCheck();
         _emitRelayStatus();
     }
 
@@ -710,6 +818,7 @@ const LBW_Nostr = (() => {
         await loadCachedRelayList(pubkey);
         // 2. Connect to relays (using cached or system defaults)
         connectToRelays();
+        _startRelayHealthCheck();
         // 3. Fetch profile
         await _fetchProfile(pubkey);
         // 4. Fetch network relay list (may trigger reconnect)
@@ -734,12 +843,14 @@ const LBW_Nostr = (() => {
         // Load cached relay list synchronously-ish
         loadCachedRelayList(keys.pubkeyHex).then(() => {
             connectToRelays();
+            _startRelayHealthCheck();
             _fetchProfile(keys.pubkeyHex);
             fetchRelayList(keys.pubkeyHex).then(relays => {
                 if (relays && relays.length > 0) connectToRelays();
             }).catch(() => {});
         }).catch(() => {
             connectToRelays();
+            _startRelayHealthCheck();
             _fetchProfile(keys.pubkeyHex);
         });
 
@@ -755,6 +866,7 @@ const LBW_Nostr = (() => {
         _useExtension = false;
 
         connectToRelays();
+        _startRelayHealthCheck();
 
         const metadata = {
             name: displayName || 'Anon',
@@ -774,12 +886,18 @@ const LBW_Nostr = (() => {
         }
         _profile = metadata;
 
-        // Publish default relay list for new identity
+        // Publish default NIP-65 relay list for new identity
+        // Private relay: read+write. Public relays: read only (discovery).
         try {
-            await publishRelayList(
-                SYSTEM_PRIVATE_RELAYS.map(url => ({ url, mode: 'both' }))
-            );
-        } catch (e) {}
+            const defaultRelayList = [
+                ...SYSTEM_PRIVATE_RELAYS.map(url => ({ url, mode: 'both' })),
+                ...SYSTEM_PUBLIC_RELAYS.slice(0, 2).map(url => ({ url, mode: 'read' }))
+            ];
+            await publishRelayList(defaultRelayList);
+            console.log('[Nostr] 📡 NIP-65 relay list publicada para nueva identidad');
+        } catch (e) {
+            console.warn('[Nostr] NIP-65 relay list no publicada:', e.message);
+        }
 
         return {
             privkeyHex: keys.privkeyHex, pubkeyHex: keys.pubkeyHex,
