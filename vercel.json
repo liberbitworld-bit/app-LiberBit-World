@@ -7,7 +7,3 @@
   ]
 }
 ```
-
-Cuando Vercel redespliegue (1-2 minutos), prueba abrir:
-```
-https://liberbitworld.org/.well-known/lnurlp/aportaciones
