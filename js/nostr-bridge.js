@@ -1302,17 +1302,16 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
-    let _profileCache = {};   // pubkey -> { name, picture }  (solo resultados reales)
-    let _profilePending = {}; // pubkey -> Promise            (evita requests paralelos)
+    let _profileCache = {};   // hex pubkey -> { name, picture }
+    let _profilePending = {}; // hex pubkey -> Promise (evita requests paralelos)
 
     async function _resolveProfileData(pubkey) {
         // 1. Caché real ya disponible
         if (_profileCache[pubkey]) return _profileCache[pubkey];
 
-        // 2. Mismo pubkey ya en vuelo — reutilizar promesa
+        // 2. Request en vuelo — reutilizar promesa
         if (_profilePending[pubkey]) return _profilePending[pubkey];
 
-        // 3. Lanzar resolución asíncrona
         _profilePending[pubkey] = (async () => {
             let name = null, picture = null;
 
@@ -1323,7 +1322,7 @@ const LBW_NostrBridge = (() => {
                 picture = p.picture || null;
             }
 
-            // — Capa 2: IndexedDB cache (Nostr kind-0 guardado previamente) —
+            // — Capa 2: IndexedDB (kind-0 guardado previamente) —
             if (!name) {
                 try {
                     const cached = await LBW_Store.getProfile(pubkey);
@@ -1334,13 +1333,14 @@ const LBW_NostrBridge = (() => {
                 } catch (e) {}
             }
 
-            // — Capa 3: Supabase users table (todos los miembros LBW) —
+            // — Capa 3: Supabase users (buscar por npub, que es el formato almacenado) —
             if (!name && typeof supabaseClient !== 'undefined') {
                 try {
+                    const npub = LBW_Nostr.pubkeyToNpub(pubkey);
                     const { data } = await supabaseClient
                         .from('users')
                         .select('name, avatar_url')
-                        .eq('public_key', pubkey)
+                        .eq('public_key', npub)
                         .maybeSingle();
                     if (data) {
                         name = data.name || null;
@@ -1349,15 +1349,14 @@ const LBW_NostrBridge = (() => {
                 } catch (e) {}
             }
 
-            // — Capa 4: relay Nostr (fetchUserProfile) — solo si las capas anteriores fallaron —
+            // — Capa 4: relay Nostr — solo si todo lo anterior falló —
             if (!name) {
                 try {
                     const profile = await LBW_Nostr.fetchUserProfile(pubkey);
                     if (profile) {
                         name = profile.name || profile.display_name || null;
                         picture = profile.picture || profile.image || null;
-                        // Guardar en IndexedDB para futuras cargas
-                        if (name) await LBW_Store.putProfile(pubkey, profile).catch(() => {});
+                        if (name) LBW_Store.putProfile(pubkey, profile).catch(() => {});
                     }
                 } catch (e) {}
             }
@@ -1365,16 +1364,14 @@ const LBW_NostrBridge = (() => {
             delete _profilePending[pubkey];
 
             if (name) {
-                // Resultado real → cachear permanentemente
                 const result = { name, picture: picture || null };
                 _profileCache[pubkey] = result;
                 _nameCache[pubkey] = name;
-                // Actualizar elementos ya renderizados con fallback
                 _updateRenderedProfiles(pubkey, result);
                 return result;
             }
 
-            // Sin datos → devolver fallback SIN cachear (reintento en próximo mensaje)
+            // Sin datos → fallback sin cachear (se reintenta en el próximo render)
             const npubShort = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
             return { name: npubShort, picture: null };
         })();
@@ -1382,11 +1379,10 @@ const LBW_NostrBridge = (() => {
         return _profilePending[pubkey];
     }
 
-    // Actualiza en el DOM los mensajes/avatares ya renderizados con fallback
+    // Actualiza en el DOM los elementos ya renderizados con fallback
     function _updateRenderedProfiles(pubkey, profile) {
         try {
-            document.querySelectorAll('.chat-message[data-pubkey]').forEach(el => {
-                if (el.dataset.pubkey !== pubkey) return;
+            document.querySelectorAll(`.chat-message[data-pubkey="${pubkey}"]`).forEach(el => {
                 const nameEl = el.querySelector('.chat-msg-name');
                 if (nameEl) nameEl.textContent = profile.name;
                 const avatarWrap = el.querySelector('.chat-msg-author-row');
@@ -1395,8 +1391,7 @@ const LBW_NostrBridge = (() => {
                     if (old) old.outerHTML = _avatarHtml('chat-msg-avatar', profile.name, profile.picture);
                 }
             });
-            document.querySelectorAll('.sidebar-conversation[data-pubkey]').forEach(el => {
-                if (el.dataset.pubkey !== pubkey) return;
+            document.querySelectorAll(`.sidebar-conversation[data-pubkey="${pubkey}"]`).forEach(el => {
                 const nameEl = el.querySelector('.sidebar-conv-name');
                 if (nameEl) nameEl.textContent = profile.name;
                 const old = el.querySelector('.sidebar-conv-avatar, img.sidebar-conv-avatar');
