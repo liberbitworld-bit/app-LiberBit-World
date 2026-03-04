@@ -741,58 +741,64 @@ const LBW_NostrBridge = (() => {
         const isMine = msg.pubkey === LBW_Nostr.getPubkey();
         if (isMine) _myChatCount++;
 
-        _resolveProfileData(msg.pubkey).then(profile => {
-            const name = profile.name;
-            const el = document.createElement('div');
-            el.className = `chat-message ${isMine ? 'chat-message-mine' : 'chat-message-other'}`;
-            el.id = `msg-${msg.id}`;
+        const time = new Date(msg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        const msgDate = new Date(msg.created_at * 1000);
+        const dateKey = msgDate.toDateString();
+        const src = msg._source === 'cache' ? '💾' : '📡';
+        let replyHtml = '';
+        if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
 
-            const time = new Date(msg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-            const msgDate = new Date(msg.created_at * 1000);
-            const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
-            const dateKey = msgDate.toDateString();
-            const src = msg._source === 'cache' ? '💾' : '📡';
-
-            let replyHtml = '';
-            if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
-
-            el.innerHTML = `
-                <div class="chat-msg-header">
-                    <div class="chat-msg-author-row">
-                        ${_avatarHtml('chat-msg-avatar', name, profile.picture)}
-                        <span class="chat-msg-name" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
-                    </div>
-                    <span class="chat-msg-time">${src} ${time}</span>
+        // Render immediately with placeholder so messages appear without waiting
+        const npubShort = LBW_Nostr.pubkeyToNpub(msg.pubkey).substring(0, 12) + '...';
+        const el = document.createElement('div');
+        el.className = `chat-message ${isMine ? 'chat-message-mine' : 'chat-message-other'}`;
+        el.id = `msg-${msg.id}`;
+        el.innerHTML = `
+            <div class="chat-msg-header">
+                <div class="chat-msg-author-row">
+                    <div class="chat-msg-avatar" id="av-${msg.id}" style="font-size:0.7rem;opacity:0.5;">…</div>
+                    <span class="chat-msg-name" id="nm-${msg.id}" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(npubShort)}</span>
                 </div>
-                ${replyHtml}
-                <div class="chat-msg-body">${_esc(msg.content)}</div>
-                <div class="chat-msg-actions">
-                    <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
-                    <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" class="chat-msg-action-btn">🤙 Zap</button>
-                </div>`;
+                <span class="chat-msg-time">${src} ${time}</span>
+            </div>
+            ${replyHtml}
+            <div class="chat-msg-body">${_esc(msg.content)}</div>
+            <div class="chat-msg-actions">
+                <button data-reply-id="${msg.id}" data-reply-name="${_esc(npubShort).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
+                <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" class="chat-msg-action-btn">🤙 Zap</button>
+            </div>`;
 
-            // Insert sorted DESCENDING (newest first)
-            const existing = container.querySelectorAll('.chat-message');
-            let inserted = false;
-            for (const child of existing) {
-                const childTime = parseInt(child.dataset.createdAt || '0', 10);
-                if (msg.created_at > childTime) {
-                    container.insertBefore(el, child);
-                    inserted = true;
-                    break;
-                }
+        // Insert sorted DESCENDING (newest first)
+        const existing = container.querySelectorAll('.chat-message');
+        let inserted = false;
+        for (const child of existing) {
+            const childTime = parseInt(child.dataset.createdAt || '0', 10);
+            if (msg.created_at > childTime) {
+                container.insertBefore(el, child);
+                inserted = true;
+                break;
             }
-            if (!inserted) container.appendChild(el);
-            el.dataset.createdAt = msg.created_at;
-            el.dataset.dateKey = dateKey;
+        }
+        if (!inserted) container.appendChild(el);
+        el.dataset.createdAt = msg.created_at;
+        el.dataset.dateKey = dateKey;
 
-            // Rebuild date separators after each insert
-            _rebuildDateSeparators(container);
+        _rebuildDateSeparators(container);
 
-            // Auto-scroll to top for new relay messages (newest are at top)
-            if (msg._source !== 'cache') {
-                const mc = document.getElementById('communityMessages');
-                if (mc) mc.scrollTop = 0;
+        if (msg._source !== 'cache') {
+            const mc = document.getElementById('communityMessages');
+            if (mc) mc.scrollTop = 0;
+        }
+
+        // Resolve profile async — update avatar + name in DOM once ready
+        _resolveProfileData(msg.pubkey).then(profile => {
+            const avEl = document.getElementById(`av-${msg.id}`);
+            const nmEl = document.getElementById(`nm-${msg.id}`);
+            if (avEl) avEl.outerHTML = _avatarHtml('chat-msg-avatar', profile.name, profile.picture);
+            if (nmEl) {
+                nmEl.textContent = profile.name;
+                const replyBtn = el.querySelector('[data-reply-name]');
+                if (replyBtn) replyBtn.dataset.replyName = profile.name;
             }
         });
     }
@@ -1307,6 +1313,8 @@ const LBW_NostrBridge = (() => {
         if (_profileCache[pubkey]) return _profileCache[pubkey];
 
         let name = null, picture = null;
+
+        // 1. Try Nostr relay (kind:0)
         try {
             const profile = await LBW_Sync.resolveProfile(pubkey);
             if (profile) {
@@ -1315,10 +1323,26 @@ const LBW_NostrBridge = (() => {
             }
         } catch (e) {}
 
+        // 2. Fallback: own session profile
         if (pubkey === LBW_Nostr.getPubkey()) {
             const p = LBW_Nostr.getProfile();
             if (!name) name = p.name || p.display_name || null;
             if (!picture) picture = p.picture || null;
+        }
+
+        // 3. Fallback: Supabase users table (has name + avatar_url)
+        if (!name || !picture) {
+            try {
+                const { data } = await supabaseClient
+                    .from('users')
+                    .select('name, avatar_url')
+                    .eq('public_key', pubkey)
+                    .single();
+                if (data) {
+                    if (!name && data.name) name = data.name;
+                    if (!picture && data.avatar_url) picture = data.avatar_url;
+                }
+            } catch (e) {}
         }
 
         const result = {
@@ -1339,7 +1363,7 @@ const LBW_NostrBridge = (() => {
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
         const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
         if (picture) {
-            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.outerHTML='<div class=${cssClass}>${initial}</div>'">`;
+            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;${cssClass}&quot;>${initial}</div>')">`;
         }
         return `<div class="${cssClass}">${initial}</div>`;
     }
