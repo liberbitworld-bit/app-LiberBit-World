@@ -1414,6 +1414,8 @@
         img.sidebar-conv-avatar,
         img.chat-msg-avatar {
             background: none;
+            object-fit: cover;
+            display: block;
         }
 
         .sidebar-conv-info {
@@ -1597,6 +1599,14 @@
         .chat-main-messages::-webkit-scrollbar-thumb {
             background: var(--color-border);
             border-radius: 3px;
+        }
+
+        /* postsList: contenedor de mensajes comunitarios */
+        #postsList {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            min-height: 100%;
         }
 
         /* Mensajes de comunidad — Phase 2 */
