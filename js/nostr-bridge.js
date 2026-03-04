@@ -787,7 +787,7 @@ const LBW_NostrBridge = (() => {
             el.dataset.dateKey = dateKey;
             el.dataset.pubkey = msg.pubkey;
 
-            // Aplicar avatar real via DOM (evita problemas con base64 en innerHTML)
+            // Apply avatar via DOM property (supports base64)
             _applyAvatar(el, 'chat-msg-avatar', name, profile.picture);
 
             // Rebuild date separators after each insert
@@ -1306,8 +1306,8 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
-    let _profileCache = {};   // hex pubkey -> { name, picture }
-    let _profilePending = {}; // hex pubkey -> Promise (evita requests paralelos)
+    let _profileCache = {};
+    let _profilePending = {};
 
     async function _resolveProfileData(pubkey) {
         if (_profileCache[pubkey]) return _profileCache[pubkey];
@@ -1323,7 +1323,7 @@ const LBW_NostrBridge = (() => {
                 picture = p.picture || null;
             }
 
-            // Capa 2: IndexedDB (kind-0 guardado)
+            // Capa 2: IndexedDB
             if (!name) {
                 try {
                     const cached = await LBW_Store.getProfile(pubkey);
@@ -1331,10 +1331,10 @@ const LBW_NostrBridge = (() => {
                         name = cached.name || cached.display_name || null;
                         picture = cached.picture || cached.image || null;
                     }
-                } catch (e) {}
+                } catch(e) {}
             }
 
-            // Capa 3: Supabase users — buscar por npub (formato almacenado)
+            // Capa 3: Supabase users (busca por npub, formato almacenado en la tabla)
             if (!name && typeof supabaseClient !== 'undefined') {
                 try {
                     const npub = LBW_Nostr.pubkeyToNpub(pubkey);
@@ -1347,7 +1347,7 @@ const LBW_NostrBridge = (() => {
                         name = data.name || null;
                         picture = data.avatar_url || null;
                     }
-                } catch (e) {}
+                } catch(e) {}
             }
 
             // Capa 4: relay Nostr
@@ -1359,7 +1359,7 @@ const LBW_NostrBridge = (() => {
                         picture = profile.picture || profile.image || null;
                         if (name) LBW_Store.putProfile(pubkey, profile).catch(() => {});
                     }
-                } catch (e) {}
+                } catch(e) {}
             }
 
             delete _profilePending[pubkey];
@@ -1371,56 +1371,48 @@ const LBW_NostrBridge = (() => {
                 _updateRenderedProfiles(pubkey, result);
                 return result;
             }
-
-            const npubShort = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
-            return { name: npubShort, picture: null };
+            return { name: LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...', picture: null };
         })();
 
         return _profilePending[pubkey];
     }
 
-    // Actualiza nombre y avatar en los elementos ya renderizados con fallback
     function _updateRenderedProfiles(pubkey, profile) {
         try {
-            document.querySelectorAll(`.chat-message[data-pubkey="${pubkey}"]`).forEach(el => {
+            document.querySelectorAll('.chat-message[data-pubkey="' + pubkey + '"]').forEach(el => {
                 const nameEl = el.querySelector('.chat-msg-name');
                 if (nameEl) nameEl.textContent = profile.name;
-                // Resetear avatar a pending y reaplicar
-                const avatarEl = el.querySelector('.chat-msg-avatar');
-                if (avatarEl) {
-                    avatarEl.setAttribute('data-avatar-pending', '1');
-                    avatarEl.textContent = (profile.name.replace(/[^\p{L}\p{N}]/gu, '')[0] || '👤').toUpperCase();
+                const av = el.querySelector('.chat-msg-avatar');
+                if (av && av.tagName !== 'IMG') {
+                    av.setAttribute('data-avatar-pending', '1');
                 }
                 _applyAvatar(el, 'chat-msg-avatar', profile.name, profile.picture);
             });
-            document.querySelectorAll(`.sidebar-conversation[data-pubkey="${pubkey}"]`).forEach(el => {
+            document.querySelectorAll('.sidebar-conversation[data-pubkey="' + pubkey + '"]').forEach(el => {
                 const nameEl = el.querySelector('.sidebar-conv-name');
                 if (nameEl) nameEl.textContent = profile.name;
-                const avatarEl = el.querySelector('.sidebar-conv-avatar');
-                if (avatarEl) {
-                    avatarEl.setAttribute('data-avatar-pending', '1');
-                    avatarEl.textContent = (profile.name.replace(/[^\p{L}\p{N}]/gu, '')[0] || '👤').toUpperCase();
+                const av = el.querySelector('.sidebar-conv-avatar');
+                if (av && av.tagName !== 'IMG') {
+                    av.setAttribute('data-avatar-pending', '1');
                 }
                 _applyAvatar(el, 'sidebar-conv-avatar', profile.name, profile.picture);
             });
-        } catch (e) {}
+        } catch(e) {}
     }
-
     async function _resolveName(pubkey) {
         const data = await _resolveProfileData(pubkey);
         return data.name;
     }
 
-    // Devuelve siempre un <div> con la inicial — seguro para innerHTML.
-    // Llama _applyAvatar() tras insertar en el DOM para poner la foto real.
     function _avatarHtml(cssClass, name, picture) {
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
         const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
+        // Siempre devuelve div con inicial — seguro para innerHTML.
+        // data-avatar-pending indica que hay foto; _applyAvatar la aplica tras inserción en DOM.
         const pending = picture ? ' data-avatar-pending="1"' : '';
         return `<div class="${cssClass}"${pending}>${initial}</div>`;
     }
 
-    // Aplica el avatar real vía propiedad DOM (evita problemas con base64 en innerHTML)
     function _applyAvatar(parentEl, cssClass, name, picture) {
         if (!picture) return;
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
@@ -1437,7 +1429,7 @@ const LBW_NostrBridge = (() => {
             if (this.parentNode) this.parentNode.replaceChild(div, this);
         };
         placeholder.parentNode.replaceChild(img, placeholder);
-        img.src = picture; // src como propiedad DOM, nunca via innerHTML
+        img.src = picture; // propiedad DOM, nunca innerHTML — soporta base64 de cualquier tamaño
     }
 
     function _esc(s) {
@@ -1523,7 +1515,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, _resolveProfileData, _avatarHtml, getDebugStats, getMyOffersCount, getMyChatCount,
+        _resolveName, _resolveProfileData, _avatarHtml, _applyAvatar, getDebugStats, getMyOffersCount, getMyChatCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
