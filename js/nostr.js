@@ -779,15 +779,48 @@ const LBW_Nostr = (() => {
             const promises = pool.publish(targetRelays, signed);
             const settled = await Promise.allSettled(promises);
             settled.forEach((r, i) => {
-                results.push({ relay: targetRelays[i], success: r.status === 'fulfilled' });
+                const success = r.status === 'fulfilled';
+                results.push({ relay: targetRelays[i], success });
+                // Update relay status map based on actual publish result
+                if (!success && _relayStatusMap[targetRelays[i]] === 'connected') {
+                    console.warn(`[Nostr] ⚠️ Relay marcado offline tras fallo de publish: ${targetRelays[i]}`);
+                    _relayStatusMap[targetRelays[i]] = 'disconnected';
+                }
             });
         } catch (e) {
             console.warn('[Nostr] Error publicando:', e);
-            targetRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
+            targetRelays.forEach(url => {
+                results.push({ relay: url, success: false, error: e.message });
+                if (_relayStatusMap[url] === 'connected') _relayStatusMap[url] = 'disconnected';
+            });
         }
 
-        const successCount = results.filter(r => r.success).length;
-        console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${targetRelays.length} relays OK`);
+        let successCount = results.filter(r => r.success).length;
+
+        // FALLBACK: Si todos los relays del intento inicial fallaron y no hay override explícito,
+        // intentar con los relays públicos como último recurso.
+        // Aplica especialmente a PRIVATE_KINDS cuando el relay privado está caído.
+        if (successCount === 0 && !relayUrlsOverride) {
+            const alreadyTried = new Set(targetRelays);
+            const fallbackRelays = SYSTEM_PUBLIC_RELAYS.filter(url => !alreadyTried.has(url));
+
+            if (fallbackRelays.length > 0) {
+                console.warn(`[Nostr] ⚠️ 0/${targetRelays.length} relays OK. Reintentando en ${fallbackRelays.length} relay(s) públicos...`);
+                try {
+                    const fbPromises = pool.publish(fallbackRelays, signed);
+                    const fbSettled = await Promise.allSettled(fbPromises);
+                    fbSettled.forEach((r, i) => {
+                        results.push({ relay: fallbackRelays[i], success: r.status === 'fulfilled' });
+                    });
+                    successCount = results.filter(r => r.success).length;
+                } catch (e) {
+                    console.warn('[Nostr] Error en fallback público:', e);
+                    fallbackRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
+                }
+            }
+        }
+
+        console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${results.length} relays OK`);
         return { event: signed, results };
     }
 
