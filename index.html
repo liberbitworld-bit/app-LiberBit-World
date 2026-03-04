@@ -22,7 +22,7 @@
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
-    <link rel="stylesheet" href="css/main.css?v=phase2f">
+    <link rel="stylesheet" href="css/main.css?v=hero1">
 </head>
 <body>
     <div class="bg-animated">
@@ -91,35 +91,48 @@
 
             <!-- Hero Content -->
             <div class="hero-content">
-                <!-- Background Image -->
-                <div class="hero-background" id="heroBackground"></div>
-                
-                <!-- Welcome Box -->
-                <div class="hero-welcome-box">
-                    <h1 class="hero-title">Bienvenido a LiberBit World</h1>
-                    <p class="hero-subtitle">La libertad no se pide, se construye</p>
-                    <p class="hero-description">
+                <!-- Atmospheric orbs -->
+                <div class="hero-orb hero-orb-1"></div>
+                <div class="hero-orb hero-orb-2"></div>
+                <div class="hero-orb hero-orb-3"></div>
+                <!-- Subtle grid overlay -->
+                <div class="hero-grid-overlay"></div>
+
+                <!-- Main hero body -->
+                <div class="hero-body">
+                    <div class="hero-eyebrow">
+                        <span class="hero-eyebrow-dot"></span>
                         Decentralized Network State
+                    </div>
+
+                    <h1 class="hero-title">
+                        La libertad<br>
+                        no se pide,<br>
+                        <em>se construye.</em>
+                    </h1>
+
+                    <p class="hero-sub">
+                        Únete al primer estado-red soberano. Identidad propia, gobernanza real, comunidad libre.
                     </p>
-                    <div class="hero-features">
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🔐</span>
-                            <span class="hero-feature-text">Identidad Nostr Soberana</span>
-                        </div>
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🤝</span>
-                            <span class="hero-feature-text">Red P2P via Relays</span>
-                        </div>
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🏛️</span>
-                            <span class="hero-feature-text">Gobernanza On-Chain</span>
-                        </div>
-                        <div class="hero-feature">
-                            <span class="hero-feature-icon">🔒</span>
-                            <span class="hero-feature-text">Chat Cifrado NIP-44</span>
-                        </div>
+
+                    <div class="hero-pills">
+                        <span class="hero-pill">🔐 Identidad Nostr</span>
+                        <span class="hero-pill">🤝 Red P2P</span>
+                        <span class="hero-pill">🏛️ Gobernanza</span>
+                        <span class="hero-pill">🔒 Chat Cifrado</span>
+                    </div>
+
+                    <div class="hero-cta-row">
+                        <button class="hero-cta-primary" onclick="showRegisterForm()">
+                            Crear mi identidad
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
+                        <button class="hero-cta-ghost" onclick="showLoginForm()">Ya tengo cuenta</button>
                     </div>
                 </div>
+
+                <!-- Decorative ring -->
+                <div class="hero-ring"></div>
             </div>
 
             <!-- Registration/Login Forms (Hidden by default) -->
