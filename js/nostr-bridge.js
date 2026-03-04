@@ -787,6 +787,9 @@ const LBW_NostrBridge = (() => {
             el.dataset.dateKey = dateKey;
             el.dataset.pubkey = msg.pubkey;
 
+            // Aplicar avatar real via DOM (evita problemas con base64 en innerHTML)
+            _applyAvatar(el, 'chat-msg-avatar', name, profile.picture);
+
             // Rebuild date separators after each insert
             _rebuildDateSeparators(container);
 
@@ -928,6 +931,7 @@ const LBW_NostrBridge = (() => {
                     </div>
                     <span class="sidebar-conv-time">${t}</span>`;
                 sidebar.appendChild(item);
+                _applyAvatar(item, 'sidebar-conv-avatar', name, profile.picture);
             });
         });
     }
@@ -1306,23 +1310,20 @@ const LBW_NostrBridge = (() => {
     let _profilePending = {}; // hex pubkey -> Promise (evita requests paralelos)
 
     async function _resolveProfileData(pubkey) {
-        // 1. Caché real ya disponible
         if (_profileCache[pubkey]) return _profileCache[pubkey];
-
-        // 2. Request en vuelo — reutilizar promesa
         if (_profilePending[pubkey]) return _profilePending[pubkey];
 
         _profilePending[pubkey] = (async () => {
             let name = null, picture = null;
 
-            // — Capa 1: propio usuario (instantáneo) —
+            // Capa 1: propio usuario
             if (pubkey === LBW_Nostr.getPubkey()) {
                 const p = LBW_Nostr.getProfile();
                 name = p.name || p.display_name || null;
                 picture = p.picture || null;
             }
 
-            // — Capa 2: IndexedDB (kind-0 guardado previamente) —
+            // Capa 2: IndexedDB (kind-0 guardado)
             if (!name) {
                 try {
                     const cached = await LBW_Store.getProfile(pubkey);
@@ -1333,7 +1334,7 @@ const LBW_NostrBridge = (() => {
                 } catch (e) {}
             }
 
-            // — Capa 3: Supabase users (buscar por npub, que es el formato almacenado) —
+            // Capa 3: Supabase users — buscar por npub (formato almacenado)
             if (!name && typeof supabaseClient !== 'undefined') {
                 try {
                     const npub = LBW_Nostr.pubkeyToNpub(pubkey);
@@ -1349,7 +1350,7 @@ const LBW_NostrBridge = (() => {
                 } catch (e) {}
             }
 
-            // — Capa 4: relay Nostr — solo si todo lo anterior falló —
+            // Capa 4: relay Nostr
             if (!name) {
                 try {
                     const profile = await LBW_Nostr.fetchUserProfile(pubkey);
@@ -1371,7 +1372,6 @@ const LBW_NostrBridge = (() => {
                 return result;
             }
 
-            // Sin datos → fallback sin cachear (se reintenta en el próximo render)
             const npubShort = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
             return { name: npubShort, picture: null };
         })();
@@ -1379,23 +1379,29 @@ const LBW_NostrBridge = (() => {
         return _profilePending[pubkey];
     }
 
-    // Actualiza en el DOM los elementos ya renderizados con fallback
+    // Actualiza nombre y avatar en los elementos ya renderizados con fallback
     function _updateRenderedProfiles(pubkey, profile) {
         try {
             document.querySelectorAll(`.chat-message[data-pubkey="${pubkey}"]`).forEach(el => {
                 const nameEl = el.querySelector('.chat-msg-name');
                 if (nameEl) nameEl.textContent = profile.name;
-                const avatarWrap = el.querySelector('.chat-msg-author-row');
-                if (avatarWrap) {
-                    const old = avatarWrap.querySelector('.chat-msg-avatar, img.chat-msg-avatar');
-                    if (old) old.outerHTML = _avatarHtml('chat-msg-avatar', profile.name, profile.picture);
+                // Resetear avatar a pending y reaplicar
+                const avatarEl = el.querySelector('.chat-msg-avatar');
+                if (avatarEl) {
+                    avatarEl.setAttribute('data-avatar-pending', '1');
+                    avatarEl.textContent = (profile.name.replace(/[^\p{L}\p{N}]/gu, '')[0] || '👤').toUpperCase();
                 }
+                _applyAvatar(el, 'chat-msg-avatar', profile.name, profile.picture);
             });
             document.querySelectorAll(`.sidebar-conversation[data-pubkey="${pubkey}"]`).forEach(el => {
                 const nameEl = el.querySelector('.sidebar-conv-name');
                 if (nameEl) nameEl.textContent = profile.name;
-                const old = el.querySelector('.sidebar-conv-avatar, img.sidebar-conv-avatar');
-                if (old) old.outerHTML = _avatarHtml('sidebar-conv-avatar', profile.name, profile.picture);
+                const avatarEl = el.querySelector('.sidebar-conv-avatar');
+                if (avatarEl) {
+                    avatarEl.setAttribute('data-avatar-pending', '1');
+                    avatarEl.textContent = (profile.name.replace(/[^\p{L}\p{N}]/gu, '')[0] || '👤').toUpperCase();
+                }
+                _applyAvatar(el, 'sidebar-conv-avatar', profile.name, profile.picture);
             });
         } catch (e) {}
     }
@@ -1405,13 +1411,33 @@ const LBW_NostrBridge = (() => {
         return data.name;
     }
 
+    // Devuelve siempre un <div> con la inicial — seguro para innerHTML.
+    // Llama _applyAvatar() tras insertar en el DOM para poner la foto real.
     function _avatarHtml(cssClass, name, picture) {
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
         const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
-        if (picture) {
-            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.outerHTML='<div class=${cssClass}>${initial}</div>'">`;
-        }
-        return `<div class="${cssClass}">${initial}</div>`;
+        const pending = picture ? ' data-avatar-pending="1"' : '';
+        return `<div class="${cssClass}"${pending}>${initial}</div>`;
+    }
+
+    // Aplica el avatar real vía propiedad DOM (evita problemas con base64 en innerHTML)
+    function _applyAvatar(parentEl, cssClass, name, picture) {
+        if (!picture) return;
+        const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
+        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
+        const placeholder = parentEl.querySelector('.' + cssClass + '[data-avatar-pending]');
+        if (!placeholder) return;
+        const img = document.createElement('img');
+        img.className = cssClass;
+        img.alt = initial;
+        img.onerror = function() {
+            const div = document.createElement('div');
+            div.className = cssClass;
+            div.textContent = initial;
+            if (this.parentNode) this.parentNode.replaceChild(div, this);
+        };
+        placeholder.parentNode.replaceChild(img, placeholder);
+        img.src = picture; // src como propiedad DOM, nunca via innerHTML
     }
 
     function _esc(s) {
