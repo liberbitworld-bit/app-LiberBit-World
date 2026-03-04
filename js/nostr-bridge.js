@@ -785,6 +785,10 @@ const LBW_NostrBridge = (() => {
             if (!inserted) container.appendChild(el);
             el.dataset.createdAt = msg.created_at;
             el.dataset.dateKey = dateKey;
+            el.dataset.pubkey = msg.pubkey;
+
+            // Inyectar avatar real via DOM (soporta base64)
+            _injectAvatarImg(el, 'chat-msg-avatar', name, profile.picture);
 
             // Rebuild date separators after each insert
             _rebuildDateSeparators(container);
@@ -927,6 +931,7 @@ const LBW_NostrBridge = (() => {
                     </div>
                     <span class="sidebar-conv-time">${t}</span>`;
                 sidebar.appendChild(item);
+                _injectAvatarImg(item, 'sidebar-conv-avatar', name, profile.picture);
             });
         });
     }
@@ -1301,33 +1306,103 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
-    let _profileCache = {};  // pubkey -> { name, picture }
+    let _profileCache = {};
+    let _profilePending = {};
 
     async function _resolveProfileData(pubkey) {
         if (_profileCache[pubkey]) return _profileCache[pubkey];
+        if (_profilePending[pubkey]) return _profilePending[pubkey];
 
-        let name = null, picture = null;
-        try {
-            const profile = await LBW_Sync.resolveProfile(pubkey);
-            if (profile) {
-                name = profile.name || profile.display_name || null;
-                picture = profile.picture || profile.image || null;
+        _profilePending[pubkey] = (async () => {
+            let name = null, picture = null;
+
+            // Capa 1: propio usuario
+            if (pubkey === LBW_Nostr.getPubkey()) {
+                const p = LBW_Nostr.getProfile();
+                name = p.name || p.display_name || null;
+                picture = p.picture || null;
             }
-        } catch (e) {}
+            // Capa 2: IndexedDB
+            if (!name) {
+                try {
+                    const cached = await LBW_Store.getProfile(pubkey);
+                    if (cached) {
+                        name = cached.name || cached.display_name || null;
+                        picture = cached.picture || cached.image || null;
+                    }
+                } catch(e) {}
+            }
+            // Capa 3: Supabase users — buscar por npub (formato almacenado)
+            if (!name && typeof supabaseClient !== 'undefined') {
+                try {
+                    const npub = LBW_Nostr.pubkeyToNpub(pubkey);
+                    const { data } = await supabaseClient
+                        .from('users').select('name, avatar_url')
+                        .eq('public_key', npub).maybeSingle();
+                    if (data) { name = data.name || null; picture = data.avatar_url || null; }
+                } catch(e) {}
+            }
+            // Capa 4: relay Nostr
+            if (!name) {
+                try {
+                    const profile = await LBW_Nostr.fetchUserProfile(pubkey);
+                    if (profile) {
+                        name = profile.name || profile.display_name || null;
+                        picture = profile.picture || profile.image || null;
+                        if (name) LBW_Store.putProfile(pubkey, profile).catch(() => {});
+                    }
+                } catch(e) {}
+            }
 
-        if (pubkey === LBW_Nostr.getPubkey()) {
-            const p = LBW_Nostr.getProfile();
-            if (!name) name = p.name || p.display_name || null;
-            if (!picture) picture = p.picture || null;
-        }
+            delete _profilePending[pubkey];
 
-        const result = {
-            name: name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...',
-            picture: picture || null
+            if (name) {
+                const result = { name, picture: picture || null };
+                _profileCache[pubkey] = result;
+                _nameCache[pubkey] = name;
+                _updateRenderedProfiles(pubkey, result);
+                return result;
+            }
+            return { name: LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...', picture: null };
+        })();
+
+        return _profilePending[pubkey];
+    }
+
+    // Actualiza nombre y avatar en elementos ya en DOM
+    function _updateRenderedProfiles(pubkey, profile) {
+        try {
+            document.querySelectorAll('.chat-message[data-pubkey="' + pubkey + '"]').forEach(el => {
+                const nameEl = el.querySelector('.chat-msg-name');
+                if (nameEl) nameEl.textContent = profile.name;
+                if (profile.picture) _injectAvatarImg(el, 'chat-msg-avatar', profile.name, profile.picture);
+            });
+            document.querySelectorAll('.sidebar-conversation[data-pubkey="' + pubkey + '"]').forEach(el => {
+                const nameEl = el.querySelector('.sidebar-conv-name');
+                if (nameEl) nameEl.textContent = profile.name;
+                if (profile.picture) _injectAvatarImg(el, 'sidebar-conv-avatar', profile.name, profile.picture);
+            });
+        } catch(e) {}
+    }
+
+    // Inyecta <img> via propiedad DOM — soporta base64 de cualquier tamaño
+    function _injectAvatarImg(parentEl, cssClass, name, picture) {
+        if (!picture) return;
+        const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
+        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '?';
+        const existing = parentEl.querySelector('.' + cssClass);
+        if (!existing || existing.tagName === 'IMG') return;
+        const img = document.createElement('img');
+        img.className = cssClass;
+        img.alt = initial;
+        img.onerror = function() {
+            const div = document.createElement('div');
+            div.className = cssClass;
+            div.textContent = initial;
+            if (this.parentNode) this.parentNode.replaceChild(div, this);
         };
-        _profileCache[pubkey] = result;
-        _nameCache[pubkey] = result.name;
-        return result;
+        existing.parentNode.replaceChild(img, existing);
+        img.src = picture;
     }
 
     async function _resolveName(pubkey) {
@@ -1427,7 +1502,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, _resolveProfileData, _avatarHtml, getDebugStats, getMyOffersCount, getMyChatCount,
+        _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
