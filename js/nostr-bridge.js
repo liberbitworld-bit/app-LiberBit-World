@@ -1303,43 +1303,78 @@ const LBW_NostrBridge = (() => {
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
     let _profileCache = {};   // pubkey -> { name, picture }  (solo resultados reales)
-    let _profilePending = {}; // pubkey -> Promise             (evita requests paralelos)
+    let _profilePending = {}; // pubkey -> Promise            (evita requests paralelos)
 
     async function _resolveProfileData(pubkey) {
-        // 1. Resultado real ya cacheado
+        // 1. Caché real ya disponible
         if (_profileCache[pubkey]) return _profileCache[pubkey];
-        // 2. Request en vuelo — reutilizar la misma promesa
+
+        // 2. Mismo pubkey ya en vuelo — reutilizar promesa
         if (_profilePending[pubkey]) return _profilePending[pubkey];
-        // 3. Lanzar fetch
+
+        // 3. Lanzar resolución asíncrona
         _profilePending[pubkey] = (async () => {
             let name = null, picture = null;
-            try {
-                const profile = await LBW_Sync.resolveProfile(pubkey);
-                if (profile) {
-                    name = profile.name || profile.display_name || null;
-                    picture = profile.picture || profile.image || null;
-                }
-            } catch (e) {}
 
+            // — Capa 1: propio usuario (instantáneo) —
             if (pubkey === LBW_Nostr.getPubkey()) {
                 const p = LBW_Nostr.getProfile();
-                if (!name) name = p.name || p.display_name || null;
-                if (!picture) picture = p.picture || null;
+                name = p.name || p.display_name || null;
+                picture = p.picture || null;
             }
 
-            if (name || picture) {
+            // — Capa 2: IndexedDB cache (Nostr kind-0 guardado previamente) —
+            if (!name) {
+                try {
+                    const cached = await LBW_Store.getProfile(pubkey);
+                    if (cached) {
+                        name = cached.name || cached.display_name || null;
+                        picture = cached.picture || cached.image || null;
+                    }
+                } catch (e) {}
+            }
+
+            // — Capa 3: Supabase users table (todos los miembros LBW) —
+            if (!name && typeof supabaseClient !== 'undefined') {
+                try {
+                    const { data } = await supabaseClient
+                        .from('users')
+                        .select('name, avatar_url')
+                        .eq('public_key', pubkey)
+                        .maybeSingle();
+                    if (data) {
+                        name = data.name || null;
+                        picture = data.avatar_url || null;
+                    }
+                } catch (e) {}
+            }
+
+            // — Capa 4: relay Nostr (fetchUserProfile) — solo si las capas anteriores fallaron —
+            if (!name) {
+                try {
+                    const profile = await LBW_Nostr.fetchUserProfile(pubkey);
+                    if (profile) {
+                        name = profile.name || profile.display_name || null;
+                        picture = profile.picture || profile.image || null;
+                        // Guardar en IndexedDB para futuras cargas
+                        if (name) await LBW_Store.putProfile(pubkey, profile).catch(() => {});
+                    }
+                } catch (e) {}
+            }
+
+            delete _profilePending[pubkey];
+
+            if (name) {
                 // Resultado real → cachear permanentemente
-                const result = { name: name, picture: picture || null };
+                const result = { name, picture: picture || null };
                 _profileCache[pubkey] = result;
                 _nameCache[pubkey] = name;
-                delete _profilePending[pubkey];
-                // Actualizar DOM donde ya se renderizó con el fallback
+                // Actualizar elementos ya renderizados con fallback
                 _updateRenderedProfiles(pubkey, result);
                 return result;
             }
 
-            // No encontrado → devolver fallback SIN cachear para reintentar después
-            delete _profilePending[pubkey];
+            // Sin datos → devolver fallback SIN cachear (reintento en próximo mensaje)
             const npubShort = LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...';
             return { name: npubShort, picture: null };
         })();
@@ -1347,10 +1382,10 @@ const LBW_NostrBridge = (() => {
         return _profilePending[pubkey];
     }
 
-    // Actualiza elementos ya en el DOM cuando un perfil llega tarde
+    // Actualiza en el DOM los mensajes/avatares ya renderizados con fallback
     function _updateRenderedProfiles(pubkey, profile) {
         try {
-            document.querySelectorAll('.chat-message').forEach(el => {
+            document.querySelectorAll('.chat-message[data-pubkey]').forEach(el => {
                 if (el.dataset.pubkey !== pubkey) return;
                 const nameEl = el.querySelector('.chat-msg-name');
                 if (nameEl) nameEl.textContent = profile.name;
@@ -1360,7 +1395,7 @@ const LBW_NostrBridge = (() => {
                     if (old) old.outerHTML = _avatarHtml('chat-msg-avatar', profile.name, profile.picture);
                 }
             });
-            document.querySelectorAll('.sidebar-conversation').forEach(el => {
+            document.querySelectorAll('.sidebar-conversation[data-pubkey]').forEach(el => {
                 if (el.dataset.pubkey !== pubkey) return;
                 const nameEl = el.querySelector('.sidebar-conv-name');
                 if (nameEl) nameEl.textContent = profile.name;
