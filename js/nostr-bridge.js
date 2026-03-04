@@ -1331,12 +1331,14 @@ const LBW_NostrBridge = (() => {
         }
 
         // 3. Fallback: Supabase users table (has name + avatar_url)
+        // NOTE: public_key in Supabase is stored as npub1 format (after migration)
         if (!name || !picture) {
             try {
+                const npubKey = pubkey.startsWith('npub1') ? pubkey : LBW_Nostr.pubkeyToNpub(pubkey);
                 const { data } = await supabaseClient
                     .from('users')
                     .select('name, avatar_url')
-                    .eq('public_key', pubkey)
+                    .eq('public_key', npubKey)
                     .single();
                 if (data) {
                     if (!name && data.name) name = data.name;
