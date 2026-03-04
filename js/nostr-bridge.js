@@ -1339,7 +1339,7 @@ const LBW_NostrBridge = (() => {
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
         const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
         if (picture) {
-            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;${cssClass}&quot;>${initial}</div>')">`;
+            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.outerHTML='<div class=${cssClass}>${initial}</div>'">`;
         }
         return `<div class="${cssClass}">${initial}</div>`;
     }
