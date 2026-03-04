@@ -751,7 +751,7 @@ const LBW_NostrBridge = (() => {
             const msgDate = new Date(msg.created_at * 1000);
             const dateStr = msgDate.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
             const dateKey = msgDate.toDateString();
-            const src = msg._source === 'cache' ? '💾' : '📡';
+            const src = '';
 
             let replyHtml = '';
             if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
@@ -762,7 +762,7 @@ const LBW_NostrBridge = (() => {
                         ${_avatarHtml('chat-msg-avatar', name, profile.picture)}
                         <span class="chat-msg-name" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
                     </div>
-                    <span class="chat-msg-time">${src} ${time}</span>
+                    <span class="chat-msg-time">${time}</span>
                 </div>
                 ${replyHtml}
                 <div class="chat-msg-body">${_esc(msg.content)}</div>
@@ -785,9 +785,6 @@ const LBW_NostrBridge = (() => {
             if (!inserted) container.appendChild(el);
             el.dataset.createdAt = msg.created_at;
             el.dataset.dateKey = dateKey;
-            el.dataset.pubkey = msg.pubkey;
-            // Inyectar avatar real via DOM (soporta base64 de cualquier tamaño)
-            _injectAvatarImg(el, 'chat-msg-avatar', name, profile.picture);
 
             // Rebuild date separators after each insert
             _rebuildDateSeparators(container);
@@ -930,7 +927,6 @@ const LBW_NostrBridge = (() => {
                     </div>
                     <span class="sidebar-conv-time">${t}</span>`;
                 sidebar.appendChild(item);
-                _injectAvatarImg(item, 'sidebar-conv-avatar', name, profile.picture);
             });
         });
     }
@@ -1305,103 +1301,33 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
-    let _profileCache = {};
-    let _profilePending = {};
+    let _profileCache = {};  // pubkey -> { name, picture }
 
     async function _resolveProfileData(pubkey) {
         if (_profileCache[pubkey]) return _profileCache[pubkey];
-        if (_profilePending[pubkey]) return _profilePending[pubkey];
 
-        _profilePending[pubkey] = (async () => {
-            let name = null, picture = null;
-
-            // Capa 1: propio usuario (instantáneo)
-            if (pubkey === LBW_Nostr.getPubkey()) {
-                const p = LBW_Nostr.getProfile();
-                name = p.name || p.display_name || null;
-                picture = p.picture || null;
-            }
-            // Capa 2: IndexedDB
-            if (!name) {
-                try {
-                    const cached = await LBW_Store.getProfile(pubkey);
-                    if (cached) {
-                        name = cached.name || cached.display_name || null;
-                        picture = cached.picture || cached.image || null;
-                    }
-                } catch(e) {}
-            }
-            // Capa 3: Supabase users (busca por npub)
-            if (!name && typeof supabaseClient !== 'undefined') {
-                try {
-                    const npub = LBW_Nostr.pubkeyToNpub(pubkey);
-                    const { data } = await supabaseClient
-                        .from('users').select('name, avatar_url')
-                        .eq('public_key', npub).maybeSingle();
-                    if (data) { name = data.name || null; picture = data.avatar_url || null; }
-                } catch(e) {}
-            }
-            // Capa 4: relay Nostr
-            if (!name) {
-                try {
-                    const profile = await LBW_Nostr.fetchUserProfile(pubkey);
-                    if (profile) {
-                        name = profile.name || profile.display_name || null;
-                        picture = profile.picture || profile.image || null;
-                        if (name) LBW_Store.putProfile(pubkey, profile).catch(() => {});
-                    }
-                } catch(e) {}
-            }
-
-            delete _profilePending[pubkey];
-
-            if (name) {
-                const result = { name, picture: picture || null };
-                _profileCache[pubkey] = result;
-                _nameCache[pubkey] = name;
-                _updateRenderedProfiles(pubkey, result);
-                return result;
-            }
-            return { name: LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...', picture: null };
-        })();
-
-        return _profilePending[pubkey];
-    }
-
-    // Inyecta <img> directamente en el DOM — sin depender de data-avatar-pending
-    function _injectAvatarImg(el, cssClass, name, picture) {
-        if (!picture) return;
-        const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
-        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '?';
-        const existing = el.querySelector('.' + cssClass);
-        if (!existing || existing.tagName === 'IMG') return; // ya es img, no reemplazar
-        const img = document.createElement('img');
-        img.className = cssClass;
-        img.alt = initial;
-        img.onerror = function() {
-            const div = document.createElement('div');
-            div.className = cssClass;
-            div.textContent = initial;
-            if (this.parentNode) this.parentNode.replaceChild(div, this);
-        };
-        existing.parentNode.replaceChild(img, existing);
-        img.src = picture; // asignar DESPUÉS de insertar en DOM
-    }
-
-    // Actualiza nombre y avatar en elementos ya renderizados
-    function _updateRenderedProfiles(pubkey, profile) {
+        let name = null, picture = null;
         try {
-            document.querySelectorAll('.chat-message[data-pubkey="' + pubkey + '"]').forEach(el => {
-                const nameEl = el.querySelector('.chat-msg-name');
-                if (nameEl) nameEl.textContent = profile.name;
-                _injectAvatarImg(el, 'chat-msg-avatar', profile.name, profile.picture);
-            });
-            document.querySelectorAll('.sidebar-conversation[data-pubkey="' + pubkey + '"]').forEach(el => {
-                const nameEl = el.querySelector('.sidebar-conv-name');
-                if (nameEl) nameEl.textContent = profile.name;
-                _injectAvatarImg(el, 'sidebar-conv-avatar', profile.name, profile.picture);
-            });
-        } catch(e) {}
+            const profile = await LBW_Sync.resolveProfile(pubkey);
+            if (profile) {
+                name = profile.name || profile.display_name || null;
+                picture = profile.picture || profile.image || null;
+            }
+        } catch (e) {}
+
+        if (pubkey === LBW_Nostr.getPubkey()) {
+            const p = LBW_Nostr.getProfile();
+            if (!name) name = p.name || p.display_name || null;
+            if (!picture) picture = p.picture || null;
+        }
+
+        const result = {
+            name: name || LBW_Nostr.pubkeyToNpub(pubkey).substring(0, 12) + '...',
+            picture: picture || null
+        };
+        _profileCache[pubkey] = result;
+        _nameCache[pubkey] = result.name;
+        return result;
     }
 
     async function _resolveName(pubkey) {
@@ -1410,10 +1336,11 @@ const LBW_NostrBridge = (() => {
     }
 
     function _avatarHtml(cssClass, name, picture) {
-        // Siempre devuelve div con inicial — seguro para innerHTML.
-        // _injectAvatarImg() aplica la foto real después de insertar en DOM.
         const clean = (name || '').replace(/[^\p{L}\p{N}]/gu, '');
-        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '?';
+        const initial = clean.length > 0 ? clean.charAt(0).toUpperCase() : '👤';
+        if (picture) {
+            return `<img class="${cssClass}" src="${_esc(picture)}" alt="${initial}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<div class=&quot;${cssClass}&quot;>${initial}</div>')">`;
+        }
         return `<div class="${cssClass}">${initial}</div>`;
     }
 
@@ -1500,7 +1427,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
-        _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
+        _resolveName, _resolveProfileData, _avatarHtml, getDebugStats, getMyOffersCount, getMyChatCount,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
