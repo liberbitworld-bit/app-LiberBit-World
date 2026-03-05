@@ -90,6 +90,12 @@ const LBW_Merits = (() => {
     // Governor voting cap: merit_voto = min(total, 3000)
     const GOVERNOR_MERIT_CAP = 3000;
 
+    // ── Founder Identity ─────────────────────────────────────
+    // The platform founder's npub. Used to auto-bootstrap foundational merits
+    // on first login if no merit record exists yet on the relay.
+    const FOUNDER_NPUB = 'npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5';
+    const FOUNDER_BOOTSTRAP_AMOUNT = 3000; // Minimum for Governor status
+
     // ── Internal State ───────────────────────────────────────
     let _merits = new Map();
     let _contributions = [];
@@ -317,12 +323,55 @@ const LBW_Merits = (() => {
     }
 
     // ── Subscribe Merits ─────────────────────────────────────
+    // ── Auto-Bootstrap Founder ──────────────────────────────
+    // Called once per session when the founder logs in.
+    // Checks relay first; only publishes if no merit record exists.
+    async function _autoBootstrapIfFounder() {
+        try {
+            if (!LBW_Nostr.isLoggedIn()) return;
+
+            // Resolve founder hex pubkey from npub
+            let founderHex;
+            try {
+                founderHex = LBW_Nostr.npubToHex(FOUNDER_NPUB);
+            } catch(e) {
+                console.warn('[Merits] Could not decode FOUNDER_NPUB:', e);
+                return;
+            }
+
+            const myPubkey = LBW_Nostr.getPubkey();
+            if (myPubkey !== founderHex) return; // Not the founder
+
+            // Wait a moment for relay data to arrive
+            await new Promise(r => setTimeout(r, 2500));
+
+            const existing = _merits.get(founderHex);
+            if (existing && existing.total >= 3000) {
+                console.log('[Merits] 🏗️ Founder already has merits:', existing.total);
+                return;
+            }
+
+            console.log('[Merits] 🏗️ Auto-bootstrapping founder merits...');
+            await bootstrapFounder(
+                founderHex,
+                FOUNDER_BOOTSTRAP_AMOUNT,
+                'Méritos fundacionales — desarrollo app, infraestructura, diseño sistema LBWM, documentación pre-lanzamiento'
+            );
+            console.log('[Merits] 🏗️ ✅ Founder bootstrap completado');
+        } catch (e) {
+            console.warn('[Merits] Auto-bootstrap error (non-fatal):', e.message);
+        }
+    }
+
     function subscribeMerits(onMerit) {
         if (onMerit) _onMeritCallbacks.push(onMerit);
         if (_subMerits) return _subMerits;
 
         // Load from cache first (instant availability)
         if (_merits.size === 0) _loadMeritsFromStorage();
+
+        // Auto-bootstrap founder if needed (async, non-blocking)
+        _autoBootstrapIfFounder();
 
         _subMerits = LBW_Nostr.subscribe(
             {
