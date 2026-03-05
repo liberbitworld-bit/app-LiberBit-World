@@ -1418,6 +1418,20 @@
                         🛠️⏳🔐 Resto → propuesta → votación → méritos si aprobada · 
                         🏃 Actividad +300 máx
                     </div>
+
+                    <!-- Leaderboard -->
+                    <div class="lbwm-card" style="margin-top:1rem;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+                            <h3 style="color:var(--color-gold);font-size:1.1rem;">🏆 Clasificación</h3>
+                            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Tu posición: <strong id="userRanking" style="color:var(--color-gold);">#1</strong></div>
+                        </div>
+                        <div id="leaderboardList">
+                            <div style="text-align:center;padding:2rem;color:var(--color-text-secondary);">
+                                <div style="font-size:2rem;margin-bottom:0.5rem;">🏆</div>
+                                <p>Cargando clasificación...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ═══════════════════════════════════════════════ -->
@@ -2070,6 +2084,30 @@
                             <span id="gaugeLevelTitle">AMIGO</span>
                         </div>
                         <div id="gaugeLevelBloc" style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.3rem;">Bloque: Comunidad</div>
+
+                        <!-- Progress bar to next level -->
+                        <div style="width:100%;max-width:360px;margin-top:1rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                                <span id="gaugeProgressLabel" style="font-size:0.75rem;color:var(--color-text-secondary);">Progreso</span>
+                                <span id="gaugeProgressPct" style="font-size:0.75rem;font-weight:700;color:var(--color-gold);">0%</span>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.08);border-radius:8px;height:8px;overflow:hidden;">
+                                <div id="gaugeProgressBar" style="height:100%;width:0%;border-radius:8px;transition:width 0.5s ease;background:var(--color-gold);"></div>
+                            </div>
+                        </div>
+
+                        <!-- Next level card -->
+                        <div id="gaugeNextWrap" style="margin-top:0.75rem;width:100%;max-width:360px;padding:0.6rem 1rem;border-radius:12px;border:1px solid rgba(229,185,92,0.3);background:rgba(229,185,92,0.08);display:flex;align-items:center;gap:0.75rem;">
+                            <span id="gaugeNextIcon" style="font-size:1.4rem;">🪪</span>
+                            <div style="flex:1;">
+                                <div id="gaugeNextTitle" style="font-size:0.8rem;font-weight:700;color:var(--color-gold);">E-RESIDENCY</div>
+                                <div id="gaugeNextRemaining" style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.1rem;">Faltan <strong>100</strong> méritos</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div id="gaugeNextNumber" style="font-family:var(--font-mono);font-size:1.1rem;font-weight:800;color:var(--color-gold);">100</div>
+                                <div id="gaugeNextRemainText" style="font-size:0.65rem;color:var(--color-text-secondary);">LBWM</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2246,7 +2284,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/lightning.js?v=phase2"></script>
     <script src="js/governance.js?v=phase1"></script>
-    <script src="js/merits.js?v=phase1"></script>
     <script src="js/profile.js?v=phase1"></script>
     <script src="js/wallet.js?v=phase1"></script>
     <script src="js/verification.js?v=phase1"></script>
@@ -2259,6 +2296,8 @@
     <script src="js/nostr-sync.js?v=phase1"></script>
     <script src="js/nostr-governance.js?v=phase1"></script>
     <script src="js/nostr-merits.js?v=phase1"></script>
+    <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
+    <script src="js/merits.js?v=phase1"></script>
     <script src="js/nostr-bridge.js?v=phase2f"></script>
     <script src="js/avatar-fix.js?v=2"></script>
 
@@ -2597,10 +2636,10 @@
                     const keysDiv = document.getElementById('keysDisplay');
                     if (keysDiv) {
                         keysDiv.classList.remove('hidden');
-                        const npubEl = document.getElementById('npubDisplay');
-                        const nsecEl = document.getElementById('nsecDisplay');
+                        const npubEl = document.getElementById('pubkeyText');
+                        const nsecEl = document.getElementById('privkeyText');
                         if (npubEl) npubEl.textContent = result.npub;
-                        if (nsecEl) nsecEl.textContent = result.nsec;
+                        if (nsecEl) { nsecEl.textContent = result.nsec; nsecEl.style.filter = 'blur(4px)'; }
                     }
                 } catch (e) {
                     console.error('[Auth] Create error:', e);
