@@ -2251,7 +2251,7 @@
     <script src="js/wallet.js?v=phase1"></script>
     <script src="js/verification.js?v=phase1"></script>
 
-    <!-- Nostr Integration Layer (load order matters) -->
+    <!-- Nostr Integration Layer: debe cargarse ANTES que los modulos UI que dependen de el -->
     <script src="js/nostr-store.js?v=phase1"></script>
     <script src="js/nostr-media.js?v=phase1"></script>
     <script src="js/nostr.js?v=phase1"></script>
@@ -2260,7 +2260,7 @@
     <script src="js/nostr-governance.js?v=phase1"></script>
     <script src="js/nostr-merits.js?v=phase1"></script>
     <script src="js/nostr-bridge.js?v=phase2f"></script>
-    <script src="js/avatar-fix.js?v=1"></script>
+    <script src="js/avatar-fix.js?v=2"></script>
 
     <!-- Emoji Picker -->
     <style>
