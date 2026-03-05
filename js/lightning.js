@@ -110,6 +110,7 @@ async function loadConversationsList() {
         });
 
         const container = document.getElementById('conversationsList');
+        if (!container) return; // Elemento legacy — no presente en la vista actual
         
         if (conversations.size === 0) {
             container.innerHTML = `
@@ -157,6 +158,7 @@ async function loadDirectMessages(userId) {
 
         const conversation = data || [];
         const container = document.getElementById('chatMessages');
+        if (!container) return; // Elemento legacy — no presente en la vista actual
         
         if (conversation.length === 0) {
             container.innerHTML = `
