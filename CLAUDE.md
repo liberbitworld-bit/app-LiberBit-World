@@ -32,9 +32,9 @@ wallet.js         → Lightning wallet WebLN + Blink (depends on bridge)
 verification.js   → Identity verification (depends on bridge)
 ```
 
-### Module Pattern
+### Two JS Layers
 
-All feature modules use the revealing module pattern (IIFE returning public API), exposed as `window.LBW_*`:
+**Nostr modules** (`LBW_*`) use the revealing module pattern (IIFE returning public API), exposed on `window`:
 
 - `LBW_Nostr` — core relay pool, event publish/subscribe, NIP crypto
 - `LBW_Store` — IndexedDB with stores: events, profiles, cursors, replaceables, relayLists
@@ -43,6 +43,8 @@ All feature modules use the revealing module pattern (IIFE returning public API)
 - `LBW_Governance` — proposals (kind 31000) and votes (kind 31001)
 - `LBW_Merits` — LBWM merit tracking (kinds 31002-31005)
 - `LBW_DM` — encrypted direct messages (NIP-04/44)
+
+**UI scripts** are plain functions on `window` (no module wrapper): `auth.js`, `chat.js`, `posts.js`, `lightning.js`, `notifications.js`, `marketplace.js`, `merits.js`, `governance.js`. These handle DOM rendering and user interactions, calling into `LBW_*` modules for data.
 
 ### Relay Routing
 
@@ -57,6 +59,8 @@ Events route to different relays by `kind` for privacy:
 - **config.js** is actually a Supabase proxy client — rewrites `supabaseClient.from()` calls as POST requests to the Vercel API proxy so credentials never reach the browser
 - **index.html** is a monolithic SPA (~2600+ lines) containing all HTML sections
 - Custom Nostr event kinds 31000-31006 are LiberBit-specific (governance, merits, config)
+- **auth.js** is very large (~300 lines of code + embedded base64 logo image); expect token-limit issues when reading it — use offset/limit
+- **avatar-fix.js** is a monkey-patch loaded after `nostr-bridge.js` that injects avatar images into the UI
 
 ### Vercel Serverless Functions
 
