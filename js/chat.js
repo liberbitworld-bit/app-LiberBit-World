@@ -18,19 +18,28 @@ function startDirectMessage(recipientId, recipientName) {
 function openChatWith(userId, userName) {
     currentChatWith = { id: userId, name: userName };
     
-    document.getElementById('conversationsList').style.display = 'none';
-    document.getElementById('activeChat').style.display = 'block';
-    document.getElementById('chatWithName').textContent = userName;
-    document.getElementById('chatWithId').textContent = userId.substring(0, 16) + '...';
+    const convList = document.getElementById('conversationsList');
+    const activeChat = document.getElementById('activeChat');
+    const chatWithName = document.getElementById('chatWithName');
+    const chatWithId = document.getElementById('chatWithId');
+    
+    if (convList) convList.style.display = 'none';
+    if (activeChat) activeChat.style.display = 'block';
+    if (chatWithName) chatWithName.textContent = userName;
+    if (chatWithId) chatWithId.textContent = userId.substring(0, 16) + '...';
     
     loadDirectMessages(userId);
 }
 
 function closeActiveChat() {
     currentChatWith = null;
-    document.getElementById('conversationsList').style.display = 'block';
-    document.getElementById('activeChat').style.display = 'none';
-    document.getElementById('dmContent').value = '';
+    const convList = document.getElementById('conversationsList');
+    const activeChat = document.getElementById('activeChat');
+    const dmContent = document.getElementById('dmContent');
+    
+    if (convList) convList.style.display = 'block';
+    if (activeChat) activeChat.style.display = 'none';
+    if (dmContent) dmContent.value = '';
     loadConversationsList();
 }
 
