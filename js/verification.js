@@ -83,19 +83,23 @@ async function loadVerificationStatus() {
 
 // Update verification UI
 function updateVerificationUI() {
-    // Hide all status cards
-    document.getElementById('statusNoVerificado').style.display = 'none';
-    document.getElementById('statusVerificadoBasico').style.display = 'none';
-    document.getElementById('statusIdentidadReal').style.display = 'none';
+    // Hide all status cards (with null guards — these elements may not exist in all views)
+    const elNoVerif = document.getElementById('statusNoVerificado');
+    const elVerifBasico = document.getElementById('statusVerificadoBasico');
+    const elIdentidadReal = document.getElementById('statusIdentidadReal');
+    
+    if (elNoVerif) elNoVerif.style.display = 'none';
+    if (elVerifBasico) elVerifBasico.style.display = 'none';
+    if (elIdentidadReal) elIdentidadReal.style.display = 'none';
     
     // Show appropriate status card
     if (userVerification.level === VERIFICATION_LEVELS.NO_VERIFICADO) {
-        document.getElementById('statusNoVerificado').style.display = 'block';
+        if (elNoVerif) elNoVerif.style.display = 'block';
     } else if (userVerification.level === VERIFICATION_LEVELS.VERIFICADO_BASICO) {
-        document.getElementById('statusVerificadoBasico').style.display = 'block';
+        if (elVerifBasico) elVerifBasico.style.display = 'block';
         updateLimitsDisplay();
     } else if (userVerification.level === VERIFICATION_LEVELS.IDENTIDAD_REAL) {
-        document.getElementById('statusIdentidadReal').style.display = 'block';
+        if (elIdentidadReal) elIdentidadReal.style.display = 'block';
         updateRealIdentityDisplay();
     }
 }
@@ -105,10 +109,15 @@ function updateLimitsDisplay() {
     const limits = MERIT_LIMITS[userVerification.level];
     const current = userVerification.limits;
     
-    document.getElementById('limitPosts').textContent = limits.posts.max - current.posts_count;
-    document.getElementById('limitOffers').textContent = limits.offers.max - current.offers_count;
-    document.getElementById('limitVotes').textContent = limits.votes.max - current.votes_count;
-    document.getElementById('limitProposals').textContent = limits.proposals.max - current.proposals_count;
+    const elPosts = document.getElementById('limitPosts');
+    const elOffers = document.getElementById('limitOffers');
+    const elVotes = document.getElementById('limitVotes');
+    const elProposals = document.getElementById('limitProposals');
+    
+    if (elPosts) elPosts.textContent = limits.posts.max - current.posts_count;
+    if (elOffers) elOffers.textContent = limits.offers.max - current.offers_count;
+    if (elVotes) elVotes.textContent = limits.votes.max - current.votes_count;
+    if (elProposals) elProposals.textContent = limits.proposals.max - current.proposals_count;
 }
 
 // Update real identity display
@@ -119,14 +128,18 @@ function updateRealIdentityDisplay() {
         'stake': 'Stake de LBWM'
     };
     
-    document.getElementById('verifiedMethod').textContent = methodNames[userVerification.method] || userVerification.method || '-';
+    const elMethod = document.getElementById('verifiedMethod');
+    const elDate = document.getElementById('verifiedDate');
+    const elInvitations = document.getElementById('invitationsLeft');
     
-    if (userVerification.verifiedAt) {
+    if (elMethod) elMethod.textContent = methodNames[userVerification.method] || userVerification.method || '-';
+    
+    if (userVerification.verifiedAt && elDate) {
         const date = new Date(userVerification.verifiedAt);
-        document.getElementById('verifiedDate').textContent = date.toLocaleDateString('es-ES');
+        elDate.textContent = date.toLocaleDateString('es-ES');
     }
     
-    document.getElementById('invitationsLeft').textContent = userVerification.invitationsLeft;
+    if (elInvitations) elInvitations.textContent = userVerification.invitationsLeft;
     updateLimitsDisplay();
 }
 
