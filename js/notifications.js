@@ -75,7 +75,8 @@ async function loadAllNotifications() {
                                 unread: true,
                                 action: () => {
                                     closeNotificationCenter();
-                                    openApp('gobernanza');
+                                    // Navigate directly to proposals list, not the intermediate submenu
+                                    setTimeout(() => openSubApp('gobernanza-proposals'), 50);
                                 }
                             });
                         }
@@ -183,7 +184,7 @@ function filterNotifications(filter) {
 
 function displayNotifications() {
     const container = document.getElementById('notificationList');
-    
+
     let filteredNotifications = allNotifications;
     if (currentNotificationFilter !== 'all') {
         filteredNotifications = allNotifications.filter(n => n.type === currentNotificationFilter);
@@ -200,22 +201,23 @@ function displayNotifications() {
         return;
     }
 
-    container.innerHTML = filteredNotifications.map((notif, index) => {
-        const icon = notif.type === 'messages' ? '💬' : 
-                    notif.type === 'governance' ? '🏛️' : '🏅';
-        
+    // Use notif.id (not positional index) so buttons work regardless of filter state
+    container.innerHTML = filteredNotifications.map(notif => {
+        const icon = notif.type === 'messages' ? '💬' :
+                     notif.type === 'governance' ? '🏛️' : '🏅';
+        const safeId = CSS.escape(String(notif.id));
         return `
-            <div class="notification-item ${notif.unread ? 'unread' : ''}" onclick="handleNotificationClick(${index})">
+            <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escapeHtml(String(notif.id))}" onclick="handleNotificationById('${safeId}')">
                 <div class="notification-item-header">
                     <div class="notification-item-title">${icon} ${escapeHtml(notif.title)}</div>
                     <div class="notification-item-time">${timeAgo(notif.timestamp)}</div>
                 </div>
                 <div class="notification-item-content">${escapeHtml(notif.content)}</div>
                 <div class="notification-item-footer">
-                    <button class="notification-item-action primary" onclick="event.stopPropagation(); handleNotificationAction(${index})">
+                    <button class="notification-item-action primary" onclick="event.stopPropagation(); handleNotificationById('${safeId}', true)">
                         Ver
                     </button>
-                    <button class="notification-item-action secondary" onclick="event.stopPropagation(); dismissNotification(${index})">
+                    <button class="notification-item-action secondary" onclick="event.stopPropagation(); dismissNotificationById('${safeId}')">
                         Descartar
                     </button>
                 </div>
@@ -224,49 +226,51 @@ function displayNotifications() {
     }).join('');
 }
 
+// ── Helpers: look up notification by id (robust, filter-independent) ──
+
+function _findNotifById(escapedId) {
+    // CSS.escape may add backslashes; we need the raw id
+    // We store raw ids in data-notif-id and pass CSS.escape for the onclick attr,
+    // so we unescape by querying the DOM or just search allNotifications by stringified id
+    return allNotifications.find(n => CSS.escape(String(n.id)) === escapedId);
+}
+
+function _dismissById(escapedId) {
+    const notif = _findNotifById(escapedId);
+    if (!notif) return null;
+    const dismissed = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
+    dismissed.push(String(notif.id));
+    if (dismissed.length > 500) dismissed.splice(0, dismissed.length - 500);
+    localStorage.setItem('dismissed_notifications', JSON.stringify(dismissed));
+    allNotifications = allNotifications.filter(n => n !== notif);
+    return notif;
+}
+
+function handleNotificationById(escapedId, triggerAction = false) {
+    const notif = _dismissById(escapedId);
+    if (!notif) return;
+    updateNotificationBadges();
+    if (notif.action) notif.action();
+}
+
+function dismissNotificationById(escapedId) {
+    _dismissById(escapedId);
+    updateNotificationBadges();
+    displayNotifications();
+}
+
+// ── Legacy index-based handlers (kept for backward compat) ──
 function handleNotificationClick(index) {
     const notif = getFilteredNotifications()[index];
-    if (notif) {
-        const dismissed = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
-        dismissed.push(String(notif.id));
-        if (dismissed.length > 500) dismissed.splice(0, dismissed.length - 500);
-        localStorage.setItem('dismissed_notifications', JSON.stringify(dismissed));
-        allNotifications = allNotifications.filter(n => n !== notif);
-        updateNotificationBadges();
-        
-        if (notif.action) notif.action();
-    }
+    if (notif) handleNotificationById(CSS.escape(String(notif.id)));
 }
-
 function handleNotificationAction(index) {
     const notif = getFilteredNotifications()[index];
-    if (notif) {
-        // Dismiss it so it doesn't reappear
-        const dismissed = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
-        dismissed.push(String(notif.id));
-        if (dismissed.length > 500) dismissed.splice(0, dismissed.length - 500);
-        localStorage.setItem('dismissed_notifications', JSON.stringify(dismissed));
-        allNotifications = allNotifications.filter(n => n !== notif);
-        updateNotificationBadges();
-        
-        if (notif.action) notif.action();
-    }
+    if (notif) handleNotificationById(CSS.escape(String(notif.id)), true);
 }
-
 function dismissNotification(index) {
     const notif = getFilteredNotifications()[index];
-    if (notif) {
-        // Save to dismissed list in localStorage
-        const dismissed = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
-        dismissed.push(String(notif.id));
-        // Keep only last 500 to avoid bloat
-        if (dismissed.length > 500) dismissed.splice(0, dismissed.length - 500);
-        localStorage.setItem('dismissed_notifications', JSON.stringify(dismissed));
-        
-        allNotifications = allNotifications.filter(n => n !== notif);
-        updateNotificationBadges();
-        displayNotifications();
-    }
+    if (notif) dismissNotificationById(CSS.escape(String(notif.id)));
 }
 
 function getDismissedNotifications() {
