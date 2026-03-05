@@ -679,10 +679,22 @@ async function verifyDeposit(contribId) {
 
     try {
         // Award merit to the contributor
-        // In production: fetch contrib details from Nostr, then awardMerit
-        const contrib = LBW_Merits.getMyContributions().find(c => c.id === contribId);
+        // getAllContributions() returns contributions from ALL users (visible on relay)
+        const contrib = (typeof LBW_Merits.getAllContributions === 'function')
+            ? LBW_Merits.getAllContributions().find(c => c.id === contribId)
+            : null;
         if (!contrib) {
-            showNotification('Aportación no encontrada', 'error');
+            showNotification('Aportación no encontrada. Asegúrate de estar suscrito al relay.', 'error');
+            return;
+        }
+        if (!contrib.pubkey) {
+            showNotification('No se pudo determinar el autor de la aportación.', 'error');
+            return;
+        }
+
+        const governorPubkey = LBW_Nostr.getPubkey();
+        if (contrib.pubkey === governorPubkey) {
+            showNotification('Un Gobernador no puede verificar sus propias aportaciones.', 'error');
             return;
         }
 
@@ -710,8 +722,58 @@ async function rejectDeposit(contribId) {
         showNotification('Solo los Gobernadores pueden rechazar aportaciones.', 'error');
         return;
     }
-    // In production: publish rejection event
-    showNotification('❌ Aportación rechazada.', 'error');
+
+    if (!confirm('¿Confirmar rechazo de esta aportación? El usuario será notificado.')) return;
+
+    try {
+        const contrib = (typeof LBW_Merits.getAllContributions === 'function')
+            ? LBW_Merits.getAllContributions().find(c => c.id === contribId)
+            : null;
+
+        if (!contrib) {
+            showNotification('Aportación no encontrada.', 'error');
+            return;
+        }
+
+        const governorPubkey = LBW_Nostr.getPubkey();
+        if (contrib.pubkey === governorPubkey) {
+            showNotification('Un Gobernador no puede rechazar sus propias aportaciones.', 'error');
+            return;
+        }
+
+        // Publish rejection as a kind 31003 status-update event on Nostr
+        // so it's verifiable, auditable, and notifies the contributor via relay
+        await LBW_Nostr.publishEvent({
+            kind: 31003,
+            content: JSON.stringify({
+                action: 'reject',
+                reason: 'No verificado por Gobernador',
+                contribId,
+                governor: governorPubkey,
+                timestamp: Math.floor(Date.now() / 1000)
+            }),
+            tags: [
+                ['d', `reject-${contribId}`],
+                ['e', contribId],
+                ['p', contrib.pubkey],
+                ['status', 'rejected'],
+                ['t', 'lbw-merits'],
+                ['t', 'lbw-reject'],
+                ['client', 'LiberBit World']
+            ]
+        });
+
+        showNotification('❌ Aportación rechazada y publicada en Nostr.', 'error');
+
+        setTimeout(async () => {
+            await loadMeritsData();
+            loadMyContributions();
+        }, 500);
+
+    } catch (err) {
+        console.error('Error rejecting deposit:', err);
+        showNotification('Error al rechazar: ' + err.message, 'error');
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
