@@ -1308,8 +1308,14 @@ function loadPendingVerifications() {
     }
     if (statEl) statEl.textContent = pending.length;
 
+    // Show founder bootstrap panel if needed (founder only, no merits yet)
+    renderFounderBootstrapPanel();
+
     if (pending.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-secondary);"><div style="font-size:2rem;margin-bottom:0.5rem;">✅</div><p>No hay aportaciones pendientes de verificación</p></div>';
+        // If bootstrap banner already added, don't overwrite it
+        if (!document.getElementById('founderBootstrapBanner')) {
+            container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--color-text-secondary);"><div style="font-size:2rem;margin-bottom:0.5rem;">✅</div><p>No hay aportaciones pendientes de verificación</p></div>';
+        }
         return;
     }
 
@@ -1334,6 +1340,79 @@ function loadPendingVerifications() {
             '</div>' : '') +
         '</div>';
     }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// [v2.0] FOUNDER BOOTSTRAP MANUAL TRIGGER
+// Solo visible para el fundador si no tiene méritos aún
+// ═══════════════════════════════════════════════════════════════
+async function manualFounderBootstrap() {
+    if (typeof LBW_Merits === 'undefined' || !LBW_Nostr.isLoggedIn()) {
+        showNotification('Necesitas estar conectado con Nostr.', 'error');
+        return;
+    }
+
+    const FOUNDER_NPUB = 'npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5';
+    let founderHex;
+    try {
+        founderHex = LBW_Nostr.npubToHex(FOUNDER_NPUB);
+    } catch(e) {
+        showNotification('Error decodificando npub del fundador.', 'error');
+        return;
+    }
+
+    if (LBW_Nostr.getPubkey() !== founderHex) {
+        showNotification('Esta acción solo está disponible para el fundador.', 'error');
+        return;
+    }
+
+    if (!confirm('¿Ejecutar bootstrap fundacional de 3.000 LBWM? Esta acción se publicará en Nostr y es irreversible.')) return;
+
+    try {
+        showNotification('⏳ Ejecutando bootstrap fundacional...', 'success');
+        const result = await LBW_Merits.bootstrapFounder(
+            founderHex,
+            3000,
+            'Méritos fundacionales — desarrollo app, infraestructura, diseño sistema LBWM, documentación pre-lanzamiento'
+        );
+        if (result.alreadyBootstrapped) {
+            showNotification('ℹ️ Ya tienes méritos fundacionales registrados (' + result.total + ' LBWM).', 'success');
+        } else {
+            showNotification('✅ Bootstrap fundacional completado. 3.000 LBWM publicados en Nostr.', 'success');
+        }
+        setTimeout(() => { loadMeritsData(); loadPendingVerifications(); }, 1500);
+    } catch (err) {
+        console.error('[Bootstrap] Error:', err);
+        showNotification('Error: ' + err.message, 'error');
+    }
+}
+
+function renderFounderBootstrapPanel() {
+    const container = document.getElementById('pendingVerificationsList');
+    if (!container || typeof LBW_Nostr === 'undefined' || !LBW_Nostr.isLoggedIn()) return;
+
+    const FOUNDER_NPUB = 'npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5';
+    let founderHex;
+    try { founderHex = LBW_Nostr.npubToHex(FOUNDER_NPUB); } catch(e) { return; }
+
+    if (LBW_Nostr.getPubkey() !== founderHex) return;
+
+    const myData = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyMerits() : null;
+    if (myData && myData.total >= 3000) return; // Already bootstrapped
+
+    // Prepend bootstrap banner to the verifications panel
+    const banner = document.createElement('div');
+    banner.id = 'founderBootstrapBanner';
+    banner.style.cssText = 'background:linear-gradient(135deg,rgba(229,185,92,0.12),rgba(229,185,92,0.04));border:1px solid var(--color-gold);border-radius:12px;padding:1.25rem;margin-bottom:1rem;';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">' +
+        '<span style="font-size:1.5rem;">🏗️</span>' +
+        '<div>' +
+            '<div style="font-weight:700;color:var(--color-gold);">Bootstrap Fundacional Pendiente</div>' +
+            '<div style="font-size:0.8rem;color:var(--color-text-secondary);">No se han detectado méritos fundacionales en el relay. Activa tu estado de Gobernador.</div>' +
+        '</div>' +
+    '</div>' +
+    '<button onclick="manualFounderBootstrap()" style="background:var(--color-gold);color:#0d171e;font-weight:700;border:none;border-radius:8px;padding:0.6rem 1.25rem;cursor:pointer;font-size:0.9rem;">🚀 Ejecutar Bootstrap (3.000 LBWM)</button>';
+    container.prepend(banner);
 }
 
 // ═══════════════════════════════════════════════════════════════
