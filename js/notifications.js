@@ -14,72 +14,106 @@ function closeNotificationCenter() {
 
 async function loadAllNotifications() {
     allNotifications = [];
-    const pubKey = currentUser.pubkey || currentUser.publicKey;
+    const dismissed = getDismissedNotifications();
+    const lastVisitDM = parseInt(localStorage.getItem('lastVisit_dm') || '0');
+    const lastVisitGov = parseInt(localStorage.getItem('lastVisit_governance') || '0');
 
     try {
-        // 1. Load unread messages (usando recipient_id y sender_id)
-        const { data: messages, error: msgError } = await supabaseClient
-            .from('direct_messages')
-            .select('*')
-            .eq('recipient_id', pubKey)
-            .order('created_at', { ascending: false })
-            .limit(50);
-
-        if (messages) {
-            const lastVisitDM = parseInt(localStorage.getItem('lastVisit_dm') || '0');
-            messages.forEach(msg => {
-                const msgTime = new Date(msg.created_at).getTime();
+        // ── 1. Mensajes directos no leidos (via LBW_NostrBridge) ─────────────
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getConversations) {
+            const conversations = LBW_NostrBridge.getConversations();
+            for (const conv of conversations) {
+                if (!conv.lastMessage || !conv.lastMessage.created_at) continue;
+                const msgTime = conv.lastMessage.created_at * 1000;
                 if (msgTime > lastVisitDM) {
-                    allNotifications.push({
-                        id: 'msg_' + msg.id,
-                        type: 'messages',
-                        title: `Mensaje de ${msg.sender_name || 'Usuario'}`,
-                        content: msg.content,
-                        timestamp: msgTime,
-                        unread: true,
-                        action: () => {
-                            closeNotificationCenter();
-                            startDirectMessage(msg.sender_id, msg.sender_name);
-                        }
-                    });
+                    const senderId = conv.pubkey;
+                    let senderName = senderId.substring(0, 12) + '...';
+                    if (LBW_NostrBridge._resolveProfileData) {
+                        try {
+                            const profile = await LBW_NostrBridge._resolveProfileData(senderId);
+                            if (profile && profile.name) senderName = profile.name;
+                        } catch(e) {}
+                    }
+                    const notifId = 'msg_' + senderId + '_' + msgTime;
+                    if (!dismissed.has(notifId)) {
+                        allNotifications.push({
+                            id: notifId,
+                            type: 'messages',
+                            title: 'Mensaje de ' + senderName,
+                            content: (conv.lastMessage.content || '(mensaje cifrado)').substring(0, 100),
+                            timestamp: msgTime,
+                            unread: true,
+                            action: () => {
+                                closeNotificationCenter();
+                                if (LBW_NostrBridge.openDMConversation) LBW_NostrBridge.openDMConversation(senderId);
+                            }
+                        });
+                    }
                 }
-            });
+            }
         }
 
-        // 2. Load new governance proposals
-        const { data: proposals, error: propError } = await supabaseClient
-            .from('proposals')
-            .select('*')
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .limit(20);
+        // ── 2. Propuestas de gobernanza nuevas (via LBW_Governance) ──────────
+        if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getAllProposals) {
+            const proposals = LBW_Governance.getAllProposals();
+            const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
+                ? LBW_Nostr.getPubkey() : null;
 
-        if (proposals) {
-            const lastVisitGov = parseInt(localStorage.getItem('lastVisit_governance') || '0');
-            proposals.forEach(prop => {
-                const propTime = new Date(prop.created_at).getTime();
-                if (propTime > lastVisitGov) {
-                    allNotifications.push({
-                        id: 'gov_' + prop.id,
-                        type: 'governance',
-                        title: `Nueva propuesta: ${prop.title}`,
-                        content: prop.description.substring(0, 100) + '...',
-                        timestamp: propTime,
-                        unread: true,
-                        action: () => {
-                            closeNotificationCenter();
-                            openApp('gobernanza');
+            proposals
+                .filter(p => p.status === 'active' || p.status === 'open')
+                .forEach(prop => {
+                    const propTime = (prop.created_at || 0) * 1000;
+                    if (propTime > lastVisitGov && prop.pubkey !== myPubkey) {
+                        const notifId = 'gov_' + (prop.id || prop.dTag);
+                        if (!dismissed.has(notifId)) {
+                            allNotifications.push({
+                                id: notifId,
+                                type: 'governance',
+                                title: 'Nueva propuesta: ' + (prop.title || 'Sin titulo'),
+                                content: (prop.description || '').substring(0, 100) + '...',
+                                timestamp: propTime,
+                                unread: true,
+                                action: () => {
+                                    closeNotificationCenter();
+                                    openApp('gobernanza');
+                                }
+                            });
                         }
-                    });
-                }
-            });
+                    }
+                });
         }
 
-        // 3. Load merit notifications (placeholder - adapt to your merit system)
-        // This is a placeholder - you'll need to implement based on your merit tracking
+        // ── 3. Meritos recibidos (via LBW_Merits) ───────────────────────────
+        if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getMyMerits) {
+            const myData = LBW_Merits.getMyMerits();
+            const lastMeritCheck = parseInt(localStorage.getItem('lastMeritCheck') || '0');
+            if (myData && myData.recentAwards) {
+                myData.recentAwards
+                    .filter(a => (a.timestamp * 1000) > lastMeritCheck)
+                    .forEach(award => {
+                        const notifId = 'merit_' + award.id;
+                        if (!dismissed.has(notifId)) {
+                            allNotifications.push({
+                                id: notifId,
+                                type: 'merits',
+                                title: '+' + award.amount + ' meritos recibidos',
+                                content: award.reason || ('Categoria: ' + award.category),
+                                timestamp: award.timestamp * 1000,
+                                unread: true,
+                                action: () => {
+                                    closeNotificationCenter();
+                                    openSubApp('merits');
+                                }
+                            });
+                        }
+                    });
+            }
+        }
+
+        // ── 4. Notificaciones de meritos desde localStorage (legado) ─────────
         const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
         meritNotifs.forEach(notif => {
-            if (!notif.read) {
+            if (!notif.read && !dismissed.has('merit_' + notif.id)) {
                 allNotifications.push({
                     id: 'merit_' + notif.id,
                     type: 'merits',
@@ -95,18 +129,16 @@ async function loadAllNotifications() {
             }
         });
 
-        // Sort by timestamp
+        // Sort newest first
         allNotifications.sort((a, b) => b.timestamp - a.timestamp);
-        
-        // Filter out previously dismissed notifications
-        const dismissed = getDismissedNotifications();
-        allNotifications = allNotifications.filter(n => !dismissed.has(String(n.id)));
 
         updateNotificationBadges();
         displayNotifications();
 
     } catch (err) {
         console.error('Error loading notifications:', err);
+        updateNotificationBadges();
+        displayNotifications();
     }
 }
 
@@ -254,4 +286,3 @@ backToMenu = function() {
     originalBackToMenu();
     loadAllNotifications();
 };
-
