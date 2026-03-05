@@ -151,42 +151,95 @@ function closeReceiveModal() {
     document.getElementById('invoiceDisplay').style.display = 'none';
 }
 
-// Generate Lightning invoice
+// Generate Lightning invoice via LNURLP (Alby) + WebLN fallback
 async function generateInvoice() {
     try {
         const amount = parseFloat(document.getElementById('receiveAmount').value);
         const currency = document.getElementById('receiveCurrency').value;
         const memo = document.getElementById('receiveMemo').value || 'Pago LiberBit World';
-        
+
         if (!amount || amount <= 0) {
             showNotification('Por favor ingresa una cantidad válida', 'error');
             return;
         }
-        
+
         showNotification('Generando invoice...');
-        
-        // For demo purposes, generate a fake invoice
-        // In production, this would call Blink API or WebLN
-        const fakeInvoice = 'lnbc' + Math.floor(amount * 100000000) + 'n1p' + Math.random().toString(36).substring(2, 15);
-        
-        document.getElementById('invoiceText').textContent = fakeInvoice;
+
+        let invoiceStr = null;
+
+        // ── Vía 1: WebLN (Alby, Zeus, etc. instalado en navegador) ─────────
+        if (window.webln) {
+            try {
+                await window.webln.enable();
+                const amountSats = currency === 'BTC'
+                    ? Math.round(amount * 100000000)
+                    : Math.round(amount * 10000); // EUR ≈ sats rough estimate
+                const inv = await window.webln.makeInvoice({ amount: amountSats, defaultMemo: memo });
+                invoiceStr = inv.paymentRequest;
+            } catch (weblnErr) {
+                console.warn('[Wallet] WebLN fallback:', weblnErr.message);
+            }
+        }
+
+        // ── Vía 2: LNURLP endpoint propio (Alby address) ───────────────────
+        if (!invoiceStr) {
+            // Convertir importe a millisats
+            const amountMsats = currency === 'BTC'
+                ? Math.round(amount * 100000000 * 1000)  // BTC -> msats
+                : Math.round(amount * 10000 * 1000);     // EUR -> msats (1 EUR ≈ 10k sats aprox)
+
+            // 1) Obtener metadata LNURLP
+            const metaRes = await fetch('/.well-known/lnurlp/aportaciones');
+            if (!metaRes.ok) throw new Error('LNURLP metadata no disponible (' + metaRes.status + ')');
+            const meta = await metaRes.json();
+
+            if (amountMsats < (meta.minSendable || 1000)) {
+                showNotification('Importe mínimo: ' + ((meta.minSendable || 1000) / 1000) + ' sats', 'error');
+                return;
+            }
+            if (meta.maxSendable && amountMsats > meta.maxSendable) {
+                showNotification('Importe máximo superado.', 'error');
+                return;
+            }
+
+            // 2) Pedir invoice al callback
+            const callbackUrl = meta.callback + '?amount=' + amountMsats +
+                '&comment=' + encodeURIComponent(memo.substring(0, 144));
+            const cbRes = await fetch(callbackUrl);
+            if (!cbRes.ok) throw new Error('Error del callback LNURLP (' + cbRes.status + ')');
+            const cbData = await cbRes.json();
+
+            if (cbData.status === 'ERROR') throw new Error(cbData.reason || 'Error LNURLP');
+            invoiceStr = cbData.pr;
+        }
+
+        if (!invoiceStr) throw new Error('No se pudo generar invoice.');
+
+        // ── Mostrar invoice y QR ────────────────────────────────────────────
+        document.getElementById('invoiceText').textContent = invoiceStr;
         document.getElementById('invoiceDisplay').style.display = 'block';
-        
-        // Generate QR code (you'd need a QR library in production)
-        document.getElementById('qrCode').innerHTML = `
-            <div style="width: 200px; height: 200px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                <div style="color: #333; text-align: center; padding: 1rem;">
-                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">📱</div>
-                    <div style="font-size: 0.9rem;">Escanea con tu<br>wallet Lightning</div>
-                </div>
-            </div>
-        `;
-        
+
+        // QR real usando qrcodejs (ya cargado en index.html)
+        const qrContainer = document.getElementById('qrCode');
+        qrContainer.innerHTML = '';
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(qrContainer, {
+                text: 'lightning:' + invoiceStr.toLowerCase(),
+                width: 200,
+                height: 200,
+                colorDark: '#0d171e',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } else {
+            qrContainer.innerHTML = '<p style="color:#aaa;font-size:0.85rem;text-align:center">Copia el invoice y pégalo en tu wallet Lightning</p>';
+        }
+
         showNotification('✅ Invoice generado', 'success');
-        
+
     } catch (err) {
         console.error('Error generating invoice:', err);
-        showNotification('Error al generar invoice', 'error');
+        showNotification('Error al generar invoice: ' + err.message, 'error');
     }
 }
 
@@ -334,4 +387,3 @@ openApp = async function(appName) {
         initializeWallet();
     }
 };
-
