@@ -865,14 +865,17 @@ function loadMyContributions() {
 // [v2.0-NEW] DASHBOARD GAUGE
 // ═══════════════════════════════════════════════════════════════
 
-const GAUGE_LEVELS = [
-    { name: "Amigo",            shortLabel: "Amigo",   min: 0,    emoji: "👋", color: "#4CAF50", bloc: "Comunidad" },
-    { name: "E-Residency",      shortLabel: "E-Res.",  min: 100,  emoji: "🪪", color: "#8BC34A", bloc: "Comunidad" },
-    { name: "Colaborador",      shortLabel: "Colabor.", min: 500,  emoji: "🤝", color: "#CDDC39", bloc: "Comunidad" },
-    { name: "Ciudadano Senior", shortLabel: "C.Senior", min: 1000, emoji: "🛂", color: "#FF9800", bloc: "Ciudadanía" },
-    { name: "Embajador",        shortLabel: "Embajad.", min: 2000, emoji: "🌍", color: "#FF5722", bloc: "Ciudadanía" },
-    { name: "Gobernador",       shortLabel: "Gobern.", min: 3000, emoji: "👑", color: "#9C27B0", bloc: "Gobernanza" },
-];
+// GAUGE_LEVELS derivado de LBW_Merits.CITIZENSHIP_LEVELS (fuente única de verdad)
+// shortLabel: etiqueta corta para el canvas del gauge
+const GAUGE_SHORT_LABELS = ['Amigo', 'E-Res.', 'Colabor.', 'C.Senior', 'Embajad.', 'Gobern.'];
+const GAUGE_LEVELS = (typeof LBW_Merits !== 'undefined' ? LBW_Merits.CITIZENSHIP_LEVELS : []).map((l, i) => ({
+    name: l.name,
+    shortLabel: GAUGE_SHORT_LABELS[i] || l.name,
+    min: l.minMerits,
+    emoji: l.emoji,
+    color: l.color,
+    bloc: l.bloc
+}));
 const GAUGE_THRESH = GAUGE_LEVELS.map(s => s.min);
 const GAUGE_RANGES = [100, 400, 500, 1000, 1000, 500];
 const GAUGE_N = GAUGE_LEVELS.length;
