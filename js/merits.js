@@ -3,12 +3,99 @@
 // Zero Supabase dependencies
 // [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, governor verification
 
+// ═══════════════════════════════════════════════════════════════
+// LEGACY MIGRATION — liberbit_contributions localStorage → Nostr
+// Ejecuta una sola vez por usuario. Elimina el localStorage tras migrar.
+// Se puede eliminar este bloque cuando confirmemos que ningún usuario
+// activo tiene datos legacy (aprox. 2-3 semanas tras el deploy).
+// ═══════════════════════════════════════════════════════════════
+async function _migrateLegacyContributions() {
+    const LEGACY_KEY = 'liberbit_contributions';
+    const MIGRATED_KEY = 'lbw_legacy_migrated';
+
+    // Ya migrado anteriormente — salir inmediatamente
+    if (localStorage.getItem(MIGRATED_KEY) === '1') return;
+
+    let legacyContribs;
+    try {
+        legacyContribs = JSON.parse(localStorage.getItem(LEGACY_KEY) || '[]');
+    } catch (e) {
+        console.warn('[Migration] No se pudo parsear legacy contributions:', e.message);
+        localStorage.setItem(MIGRATED_KEY, '1');
+        return;
+    }
+
+    if (!legacyContribs.length) {
+        // No hay datos legacy — marcar como migrado y salir
+        localStorage.setItem(MIGRATED_KEY, '1');
+        return;
+    }
+
+    if (typeof LBW_Merits === 'undefined' || !LBW_Nostr.isLoggedIn()) {
+        console.warn('[Migration] LBW_Merits o login no disponibles, reintentando en próximo ciclo.');
+        return;
+    }
+
+    // Mapa de categorías v1.0 → v2.0 (espejo de _normalizeCategory en nostr-merits.js)
+    const CAT_MAP = {
+        'economica': 'economica', 'productiva': 'productiva',
+        'responsabilidad': 'responsabilidad', 'financiada': 'financiada',
+        'participation': 'productiva', 'professional': 'productiva',
+        'governance': 'responsabilidad', 'infrastructure': 'productiva',
+        'community': 'productiva', 'financial': 'financiada'
+    };
+
+    console.log(`[Migration] Migrando ${legacyContribs.length} aportaciones legacy a Nostr...`);
+    let migrated = 0;
+    let failed = 0;
+
+    for (const c of legacyContribs) {
+        try {
+            const category = CAT_MAP[c.contribution_type] || CAT_MAP[c.category] || 'productiva';
+            const amount = parseFloat(c.reference_value || c.amount || 0);
+            const description = (c.description || 'Aportación migrada desde registro legacy').substring(0, 200);
+            const currency = c.currency || 'EUR';
+
+            await LBW_Merits.submitContribution({
+                description,
+                category,
+                amount,
+                currency,
+                evidence: ['legacy-migration'],
+                status: c.status || 'approved'
+            });
+
+            migrated++;
+            console.log(`[Migration] ✅ Migrada: "${description.substring(0, 40)}" → ${category}`);
+
+            // Pequeña pausa para no saturar el relay
+            await new Promise(r => setTimeout(r, 300));
+
+        } catch (err) {
+            failed++;
+            console.warn(`[Migration] ⚠️ Error migrando contribución: ${err.message}`);
+        }
+    }
+
+    // Marcar como migrado y limpiar localStorage independientemente del resultado
+    localStorage.setItem(MIGRATED_KEY, '1');
+    localStorage.removeItem(LEGACY_KEY);
+
+    console.log(`[Migration] ✅ Migración completada: ${migrated} OK, ${failed} errores. localStorage limpiado.`);
+    if (migrated > 0) {
+        showNotification(`✅ ${migrated} aportaciones antiguas migradas al sistema Nostr.`, 'success');
+    }
+}
+
 async function loadMeritsData() {
     try {
         if (typeof LBW_Merits === 'undefined' || !LBW_Nostr.isLoggedIn()) {
             console.warn('[Merits] LBW_Merits not available or not logged in');
             return;
         }
+
+        // Migrar aportaciones legacy de localStorage → Nostr (una sola vez por usuario)
+        await _migrateLegacyContributions();
 
         // Start subscriptions if not already running
         LBW_Merits.subscribeMerits();
@@ -326,7 +413,10 @@ async function loadLeaderboard() {
 function loadLedgerData() {
     const myContribs = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyContributions() : [];
 
-    const legacyContribs = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+    // Legacy fallback: solo lectura, sin escritura. Se eliminará tras confirmar migración completa.
+    const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
+        ? []
+        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
     const allContribs = [...myContribs.map(c => ({
         id: c.id,
         applicant_name: c.npub ? c.npub.substring(0, 12) + '...' : 'Tú',
@@ -784,8 +874,10 @@ function loadMyContributions() {
     const myContribs = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyContributions() : [];
 
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : (currentUser?.pubkey || '');
-    const legacyContribs = JSON.parse(localStorage.getItem('liberbit_contributions') || '[]')
-        .filter(c => c.applicant_public_key === pubKey);
+    // Legacy fallback: solo lectura. Se eliminará tras confirmar migración completa.
+    const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
+        ? []
+        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]').filter(c => c.applicant_public_key === pubKey);
 
     const allMyContribs = [
         ...myContribs.map(c => ({
