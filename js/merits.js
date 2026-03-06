@@ -109,36 +109,9 @@ async function loadMeritsData() {
         let totalMerits = 0;
         let breakdown = {};
 
-        if (typeof getUnifiedMerits === 'function') {
-            const meritData = getUnifiedMerits();
-            totalMerits = meritData.total;
-            breakdown = meritData.byCategory;
-        } else {
-            // Fallback: replicate v2.0 sum+cap logic
-            const myData = LBW_Merits.getMyMerits();
-            var nostrMerits = myData ? myData.total : 0;
-            breakdown = myData ? myData.byCategory : {};
-
-            var activityContribs = 0;
-            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount) {
-                activityContribs += LBW_NostrBridge.getMyChatCount();
-            }
-            if (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser) {
-                activityContribs += allPosts.filter(function(p) { return p.author === currentUser.name; }).length;
-            }
-            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount) {
-                activityContribs += LBW_NostrBridge.getMyOffersCount();
-            }
-            if (typeof LBW_Governance !== 'undefined' && LBW_Governance.getStats) {
-                const govStats = LBW_Governance.getStats();
-                activityContribs += govStats.myVotes || 0;
-                activityContribs += govStats.myProposals || 0;
-            }
-            // [v2.0] Sum + cap, NOT max
-            var ACTIVITY_CAP = 300;
-            var activityMerits = Math.min(activityContribs * 10, ACTIVITY_CAP);
-            totalMerits = nostrMerits + activityMerits;
-        }
+        const meritData = getUnifiedMerits();
+        totalMerits = meritData.total;
+        breakdown = meritData.byCategory;
 
         // Update user merits display
         const el = id => document.getElementById(id);
@@ -147,10 +120,7 @@ async function loadMeritsData() {
 
         // Count contributions
         const myContribs = LBW_Merits.getMyContributions();
-        var activityCount = 0;
-        if (typeof getUnifiedMerits === 'function') {
-            activityCount = getUnifiedMerits().activityCount;
-        }
+        const activityCount = getUnifiedMerits().activityCount;
         var totalContribs = myContribs.length + activityCount;
         if (el('user_lbwm_aportaciones')) el('user_lbwm_aportaciones').textContent = totalContribs;
 
@@ -232,10 +202,8 @@ function updateCategoryBreakdown(breakdown, totalMerits) {
     // Update merit source indicator
     const sourceEl = document.getElementById('meritSource');
     if (sourceEl) {
-        if (typeof getUnifiedMerits === 'function') {
-            const data = getUnifiedMerits();
-            sourceEl.textContent = data.source === 'nostr+activity' ? '⚡ Nostr + 📊 Actividad' : '📊 Solo Actividad';
-        }
+        const data = getUnifiedMerits();
+        sourceEl.textContent = data.source === 'nostr+activity' ? '⚡ Nostr + 📊 Actividad' : '📊 Solo Actividad';
     }
 
     // Update bloc indicator
@@ -762,7 +730,7 @@ async function submitContribution(event) {
 // ═══════════════════════════════════════════════════════════════
 
 async function verifyDeposit(contribId) {
-    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
+    if (!getUnifiedMerits().isGovernor) {
         showNotification('Solo los Gobernadores (≥3.000 méritos) pueden verificar aportaciones.', 'error');
         return;
     }
@@ -808,7 +776,7 @@ async function verifyDeposit(contribId) {
 }
 
 async function rejectDeposit(contribId) {
-    if (typeof getUnifiedMerits !== 'function' || !getUnifiedMerits().isGovernor) {
+    if (!getUnifiedMerits().isGovernor) {
         showNotification('Solo los Gobernadores pueden rechazar aportaciones.', 'error');
         return;
     }
@@ -1194,14 +1162,12 @@ function updateDashboardDisplay(merits) {
     }
 
     // Activity row
-    if (typeof getUnifiedMerits === 'function') {
-        var data = getUnifiedMerits();
-        var actRow = document.getElementById('activityLegacyRow');
-        var actVal = document.getElementById('activityMeritsValue');
-        if (actRow && data.activityMerits > 0) {
-            actRow.style.display = 'block';
-            if (actVal) actVal.textContent = data.activityMerits + ' pts';
-        }
+    const actData = getUnifiedMerits();
+    const actRow = document.getElementById('activityLegacyRow');
+    const actVal = document.getElementById('activityMeritsValue');
+    if (actRow && actData.activityMerits > 0) {
+        actRow.style.display = 'block';
+        if (actVal) actVal.textContent = actData.activityMerits + ' pts';
     }
 
     // Draw gauge
@@ -1374,13 +1340,7 @@ function loadPendingVerifications() {
     var gateMsg = document.getElementById('governorGateMsg');
     if (!container) return;
 
-    var isGovernor = false;
-    if (typeof getUnifiedMerits === 'function') {
-        isGovernor = getUnifiedMerits().isGovernor;
-    } else if (typeof LBW_Merits !== 'undefined') {
-        var myData = LBW_Merits.getMyMerits();
-        isGovernor = myData && myData.total >= 3000;
-    }
+    const isGovernor = getUnifiedMerits().isGovernor;
 
     // Show/hide governor gate
     if (gateMsg) gateMsg.style.display = isGovernor ? 'none' : 'block';
