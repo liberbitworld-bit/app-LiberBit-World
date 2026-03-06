@@ -2,6 +2,13 @@
 // All data flows through LBW_Governance → Nostr relays
 // Zero Supabase dependencies
 
+// Tipos de propuesta disponibles en la UI (3 tipos activos)
+const PROPOSAL_TYPE_LABELS = {
+    'referendum': '📋 Referéndum',
+    'budget':     '💰 Presupuesto',
+    'election':   '👥 Elección'
+};
+
 function showNewProposalForm() {
     document.getElementById('newProposalForm').style.display = 'block';
     document.getElementById('newProposalForm').scrollIntoView({ behavior: 'smooth' });
@@ -175,11 +182,7 @@ function displayProposals() {
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
 
     container.innerHTML = proposalsToShow.map(proposal => {
-        const typeLabels = {
-            'referendum': '🗳️ Referéndum', 'budget': '💰 Presupuesto',
-            'election': '👥 Elección', 'amendment': '📜 Enmienda',
-            'general': '📋 General', 'emergency': '🚨 Emergencia'
-        };
+        const typeLabels = PROPOSAL_TYPE_LABELS;
 
         const nostrP = proposal._nostrOriginal;
         const myVote = nostrP ? LBW_Governance.getMyVote(nostrP.dTag) : null;
@@ -250,11 +253,7 @@ async function showProposalDetail(proposalIdentifier) {
     const voteResults = {};
     proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
 
-    const typeLabels = {
-        'referendum': '🗳️ Referéndum', 'budget': '💰 Presupuesto',
-        'election': '👥 Elección', 'amendment': '📜 Enmienda',
-        'general': '📋 General', 'emergency': '🚨 Emergencia'
-    };
+    const typeLabels = PROPOSAL_TYPE_LABELS;
 
     let authorName = proposal.author_name;
     // Fetch profile in background — don't block the modal
