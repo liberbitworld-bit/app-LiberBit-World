@@ -14,54 +14,7 @@ function getCitizenshipLevel(merits) {
     return { level: 1, title: 'Amigo', icon: '👋', bloc: 'Comunidad' };
 }
 
-// ============================================
-// [v2.0] Unified merit calculation
-// Nostr formal contributions + capped activity
-// ============================================
-function getUnifiedMerits() {
-    // Source 1: Nostr kind 31002/31003 events
-    let nostrMerits = 0;
-    let nostrBreakdown = {};
-    if (typeof LBW_Merits !== 'undefined' && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
-        const myData = LBW_Merits.getMyMerits();
-        if (myData) {
-            nostrMerits = myData.total || 0;
-            nostrBreakdown = myData.byCategory || {};
-        }
-    }
-
-    // Source 2: Activity — Nostr chat + legacy Supabase posts + marketplace + governance
-    const chatMessages = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyChatCount)
-        ? LBW_NostrBridge.getMyChatCount() : 0;
-    const legacyPosts = (typeof allPosts !== 'undefined' && Array.isArray(allPosts) && currentUser)
-        ? allPosts.filter(p => p.author === currentUser.name).length : 0;
-    const userPosts = chatMessages + legacyPosts;
-    const userOffers = (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getMyOffersCount)
-        ? LBW_NostrBridge.getMyOffersCount() : 0;
-    const govStats = (typeof LBW_Governance !== 'undefined') ? LBW_Governance.getStats() : { myVotes: 0, myProposals: 0 };
-    const userVotes = govStats.myVotes || 0;
-    const userProposals = govStats.myProposals || 0;
-    const activityCount = userPosts + userOffers + userVotes + userProposals;
-
-    // [v2.0] Sum + cap (NOT max)
-    const ACTIVITY_MERIT_CAP = 300;
-    const activityMeritsRaw = activityCount * 10;
-    const activityMerits = Math.min(activityMeritsRaw, ACTIVITY_MERIT_CAP);
-    const totalMerits = nostrMerits + activityMerits;
-
-    return {
-        total: totalMerits,
-        nostrMerits,
-        activityMerits,
-        activityMeritsRaw,
-        activityCap: ACTIVITY_MERIT_CAP,
-        byCategory: nostrBreakdown,
-        activity: { posts: userPosts, offers: userOffers, votes: userVotes, proposals: userProposals },
-        activityCount,
-        source: nostrMerits > 0 ? 'nostr+activity' : 'activity',
-        isGovernor: totalMerits >= 3000
-    };
-}
+// getUnifiedMerits movida a nostr-merits.js (Fase 2 limpieza)
 
 // ============================================
 // Citizenship Gauge Visualization (Canvas)
@@ -540,8 +493,7 @@ async function handleAvatarUpload(event) {
                     id: generateUUID(),
                     public_key: pubKey,
                     name: userName,
-                    avatar_url: base64Image,
-                    citizenship_type: 'Amigo'
+                    avatar_url: base64Image
                 }])
                 .select()
                 .single();
@@ -684,7 +636,6 @@ async function saveCitizenship() {
                     id: generateUUID(),
                     public_key: pubKey,
                     name: currentUser.name,
-                    citizenship_type: citizenship.title,
                     city: city
                 }])
                 .select()
@@ -703,7 +654,6 @@ async function saveCitizenship() {
             const { data, error } = await supabaseClient
                 .from('users')
                 .update({
-                    citizenship_type: citizenship.title,
                     city: city
                 })
                 .eq('public_key', pubKey)
@@ -740,7 +690,6 @@ async function saveCitizenship() {
 
 // Expose functions needed globally (called from index.html onclick, merits.js, ui.js, etc.)
 window.getCitizenshipLevel = getCitizenshipLevel;
-window.getUnifiedMerits = getUnifiedMerits;
 window.updateCitizenshipGauge = updateCitizenshipGauge;
 window.initializeUserProfile = initializeUserProfile;
 window.loadUserProfile = loadUserProfile;
