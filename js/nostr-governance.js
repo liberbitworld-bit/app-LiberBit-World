@@ -28,9 +28,7 @@ const LBW_Governance = (() => {
         referendum:  { label: 'Referéndum',        emoji: '🗳️', description: 'Consulta vinculante a toda la comunidad' },
         budget:      { label: 'Presupuesto',       emoji: '💰', description: 'Asignación o modificación presupuestaria' },
         election:    { label: 'Elección',           emoji: '👥', description: 'Elección de representantes o gobernadores' },
-        amendment:   { label: 'Enmienda',           emoji: '📜', description: 'Modificación de reglas o constitución' },
-        general:     { label: 'General',            emoji: '📋', description: 'Propuesta general de la comunidad' },
-        emergency:   { label: 'Emergencia',         emoji: '🚨', description: 'Acción urgente (periodo de voto reducido)' }
+        // amendment, general, emergency eliminados — no expuestos en UI (Fase 1 limpieza)
     };
 
     // Default vote options per category
@@ -38,9 +36,7 @@ const LBW_Governance = (() => {
         referendum:  ['A favor', 'En contra', 'Abstención'],
         budget:      ['Aprobar', 'Rechazar', 'Aplazar'],
         election:    [],  // Dynamic: filled with candidate names
-        amendment:   ['A favor', 'En contra', 'Abstención'],
-        general:     ['A favor', 'En contra', 'Abstención'],
-        emergency:   ['Aprobar acción', 'Rechazar']
+        // amendment, general, emergency eliminados
     };
 
     // Voting duration per category (seconds)
@@ -48,9 +44,7 @@ const LBW_Governance = (() => {
         referendum:  7 * 86400,   // 7 days
         budget:      5 * 86400,   // 5 days
         election:    7 * 86400,   // 7 days
-        amendment:   14 * 86400,  // 14 days
-        general:     7 * 86400,   // 7 days
-        emergency:   24 * 3600    // 24 hours
+        // amendment, general, emergency eliminados
     };
 
     // ── Internal State ───────────────────────────────────────
@@ -210,7 +204,7 @@ const LBW_Governance = (() => {
         if (!data.title?.trim()) throw new Error('Título requerido.');
         if (!data.description?.trim()) throw new Error('Descripción requerida.');
 
-        const category = data.category || 'general';
+        const category = data.category || 'referendum';
         if (!CATEGORIES[category]) throw new Error(`Categoría inválida: ${category}`);
 
         const nowSecs = Math.floor(Date.now() / 1000);
@@ -739,7 +733,7 @@ const LBW_Governance = (() => {
                 dTag,
                 title: g('title') || 'Sin título',
                 description: parsed.description || event.content,
-                category: g('category') || 'general',
+                category: g('category') || 'referendum',
                 status,
                 options: parsed.options || DEFAULT_OPTIONS[g('category')] || ['A favor', 'En contra', 'Abstención'],
                 candidates: parsed.candidates || null,
