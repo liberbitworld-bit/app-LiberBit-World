@@ -1,14 +1,13 @@
 export default async function handler(req, res) {
   try {
     const response = await fetch(
-      'https://getalby.com/.well-known/lnurlp/gleamingfriendship873712'
+      'https://coinos.io/.well-known/lnurlp/germanliberbit'
     );
     const data = await response.json();
     
-    // Siempre usar el dominio sin www para que LNURL no rompa por redirects
+    // Forzar callback por nuestro proxy sin www
     data.callback = 'https://liberbitworld.org/api/lnurlp/callback';
     
-    // Forzar maxSendable
     if (!data.maxSendable || data.maxSendable === 0) {
       data.maxSendable = 100000000000;
     }
