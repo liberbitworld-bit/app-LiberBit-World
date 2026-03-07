@@ -2809,6 +2809,65 @@
             border: 1px solid #64748b;
         }
 
+        .proposal-status.expired {
+            background: rgba(250, 173, 20, 0.15);
+            color: #faad14;
+            border: 1px solid #faad14;
+        }
+
+        .proposal-status.approved {
+            background: rgba(82, 196, 26, 0.2);
+            color: #52c41a;
+            border: 1px solid #52c41a;
+        }
+
+        .proposal-status.rejected {
+            background: rgba(255, 77, 79, 0.15);
+            color: #ff4d4f;
+            border: 1px solid #ff4d4f;
+        }
+
+        .proposal-status.quorum-failed {
+            background: rgba(250, 173, 20, 0.15);
+            color: #faad14;
+            border: 1px solid #faad14;
+        }
+
+        .proposal-status.in-execution {
+            background: rgba(24, 144, 255, 0.15);
+            color: #1890ff;
+            border: 1px solid #1890ff;
+        }
+
+        .proposal-status.executed {
+            background: rgba(156, 39, 176, 0.2);
+            color: #CE93D8;
+            border: 1px solid #9C27B0;
+        }
+
+        .proposal-card.approved {
+            border-color: rgba(82, 196, 26, 0.4);
+        }
+
+        .proposal-card.rejected {
+            border-color: rgba(255, 77, 79, 0.3);
+            opacity: 0.85;
+        }
+
+        .proposal-card.quorum-failed {
+            border-color: rgba(250, 173, 20, 0.3);
+            opacity: 0.85;
+        }
+
+        .proposal-card.in-execution {
+            border-color: rgba(24, 144, 255, 0.4);
+        }
+
+        .proposal-card.executed {
+            border-color: rgba(156, 39, 176, 0.5);
+            background: rgba(156, 39, 176, 0.04);
+        }
+
         .proposal-type-badge {
             position: absolute;
             top: 1rem;
