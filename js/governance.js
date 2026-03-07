@@ -1,12 +1,23 @@
-// ========== GOVERNANCE FUNCTIONS (Nostr-integrated) ==========
+// ========== GOVERNANCE FUNCTIONS (Nostr-integrated) v2.0 ==========
+// Full lifecycle: create → vote → result → execution → verified
 // All data flows through LBW_Governance → Nostr relays
-// Zero Supabase dependencies
 
-// Tipos de propuesta disponibles en la UI (3 tipos activos)
 const PROPOSAL_TYPE_LABELS = {
     'referendum': '📋 Referéndum',
     'budget':     '💰 Presupuesto',
     'election':   '👥 Elección'
+};
+
+// Status display config
+const STATUS_CONFIG = {
+    active:       { label: '✅ Activa',          class: 'active',       badge: '🟢' },
+    expired:      { label: '⏰ Calculando...',    class: 'expired',      badge: '⏳' },
+    approved:     { label: '✅ Aprobada',         class: 'approved',     badge: '✅' },
+    rejected:     { label: '❌ Rechazada',        class: 'rejected',     badge: '❌' },
+    quorum_failed:{ label: '⚠️ Sin quórum',       class: 'quorum-failed',badge: '⚠️' },
+    in_execution: { label: '🔧 En ejecución',     class: 'in-execution', badge: '🔧' },
+    executed:     { label: '🏆 Ejecutada',        class: 'executed',     badge: '🏆' },
+    closed:       { label: '🔒 Cerrada',          class: 'closed',       badge: '🔒' },
 };
 
 function showNewProposalForm() {
@@ -47,14 +58,8 @@ async function submitProposal() {
         return;
     }
 
-    const data = {
-        title,
-        description,
-        category,
-        durationSecs: durationDays * 86400
-    };
+    const data = { title, description, category, durationSecs: durationDays * 86400 };
 
-    // Type-specific fields
     if (category === 'budget') {
         const ba = document.getElementById('budgetAmount');
         if (ba) data.budget = { amount: parseInt(ba.value) || 0, currency: 'sats' };
@@ -62,10 +67,7 @@ async function submitProposal() {
         const ec = document.getElementById('electionCandidates');
         if (ec) {
             const candidates = ec.value.split('\n').map(c => c.trim()).filter(c => c.length > 0);
-            if (candidates.length < 2) {
-                showNotification('Necesitas al menos 2 candidatos', 'error');
-                return;
-            }
+            if (candidates.length < 2) { showNotification('Necesitas al menos 2 candidatos', 'error'); return; }
             data.candidates = candidates;
         }
     }
@@ -84,11 +86,9 @@ async function submitProposal() {
 async function loadProposals() {
     try {
         if (typeof LBW_Governance !== 'undefined') {
-            // Asegurar que los votos estén cargados
             if (typeof LBW_Governance.reloadMyVotes === 'function') {
                 LBW_Governance.reloadMyVotes();
             }
-            
             LBW_Governance.subscribeProposals((proposal, action) => {
                 updateGovStats();
                 displayProposals();
@@ -99,18 +99,11 @@ async function loadProposals() {
             ? LBW_Governance.getAllProposals().map(_nostrProposalToLegacy)
             : [];
 
-        // NO suscribirse a votos aquí - solo cuando se abre una propuesta
-        // Esto evita rate limiting
-
         allVotes = [];
         updateGovStats();
         displayProposals();
 
-        // Re-render diferido para captar datos tardíos de relays
-        setTimeout(() => {
-            updateGovStats();
-            displayProposals();
-        }, 3000);
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 3000);
     } catch (err) {
         console.error('Error loading proposals:', err);
         allProposals = [];
@@ -119,7 +112,7 @@ async function loadProposals() {
     }
 }
 
-// Convert Nostr proposal to format expected by UI
+// Convert Nostr proposal to legacy UI format
 function _nostrProposalToLegacy(p) {
     return {
         id: p.id,
@@ -143,9 +136,11 @@ function updateGovStats() {
     if (typeof LBW_Governance === 'undefined') return;
     const stats = LBW_Governance.getStats();
     const el = id => document.getElementById(id);
-    if (el('activeProposalsCount')) el('activeProposalsCount').textContent = stats.active;
-    if (el('totalProposalsCount')) el('totalProposalsCount').textContent = stats.total;
-    if (el('myVotesCount')) el('myVotesCount').textContent = stats.myVotes;
+    if (el('activeProposalsCount'))   el('activeProposalsCount').textContent   = stats.active;
+    if (el('totalProposalsCount'))    el('totalProposalsCount').textContent    = stats.total;
+    if (el('myVotesCount'))           el('myVotesCount').textContent           = stats.myVotes;
+    if (el('approvedProposalsCount')) el('approvedProposalsCount').textContent = stats.approved || 0;
+    if (el('executedProposalsCount')) el('executedProposalsCount').textContent = stats.executed || 0;
 }
 
 function displayProposals() {
@@ -162,8 +157,9 @@ function displayProposals() {
             proposalsToShow = [];
         } else {
             proposalsToShow = allProposals.filter(p => {
-                if (currentProposalFilter === 'active') return p.status === 'active';
-                if (currentProposalFilter === 'closed') return p.status !== 'active';
+                if (currentProposalFilter === 'active')   return p.status === 'active';
+                if (currentProposalFilter === 'approved') return ['approved', 'in_execution', 'executed'].includes(p.status);
+                if (currentProposalFilter === 'closed')   return !['active'].includes(p.status);
                 return true;
             });
         }
@@ -179,24 +175,23 @@ function displayProposals() {
         return;
     }
 
-    const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
-
     container.innerHTML = proposalsToShow.map(proposal => {
-        const typeLabels = PROPOSAL_TYPE_LABELS;
-
         const nostrP = proposal._nostrOriginal;
         const myVote = nostrP ? LBW_Governance.getMyVote(nostrP.dTag) : null;
-        const votes = nostrP ? LBW_Governance.getVotesForProposal(nostrP.dTag) : [];
+        const votes  = nostrP ? LBW_Governance.getVotesForProposal(nostrP.dTag) : [];
+        const result = nostrP ? LBW_Governance.getResult(nostrP.dTag) : null;
         const timeLeft = proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : '';
+        const statusConf = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.closed;
 
         return `
-            <div class="proposal-card ${proposal.status}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
-                <div class="proposal-type-badge">${typeLabels[proposal.proposal_type] || proposal.proposal_type}</div>
-                <div class="proposal-status ${proposal.status}">
-                    ${proposal.status === 'active' ? '✅ Activa' : proposal.status === 'expired' ? '⏰ Expirada' : '🔒 Cerrada'}
-                </div>
+            <div class="proposal-card ${statusConf.class}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
+                <div class="proposal-type-badge">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
+                <div class="proposal-status ${statusConf.class}">${statusConf.label}</div>
                 <div class="proposal-title">${escapeHtml(proposal.title)}</div>
                 <div class="proposal-description">${escapeHtml(proposal.description)}</div>
+
+                ${result ? _renderResultBadge(result, proposal) : ''}
+
                 ${proposal.status === 'active' ? `
                     <div class="vote-progress">
                         <div class="vote-stats">
@@ -206,6 +201,7 @@ function displayProposals() {
                         ${myVote ? '<div style="margin-top:0.5rem;color:var(--color-accent-green);font-size:0.85rem;">✓ Ya has votado</div>' : ''}
                     </div>
                 ` : ''}
+
                 <div class="proposal-meta">
                     <span>Por ${escapeHtml(proposal.author_name)}</span>
                     <span>${new Date(proposal.created_at).toLocaleDateString('es-ES')}</span>
@@ -213,6 +209,25 @@ function displayProposals() {
             </div>
         `;
     }).join('');
+}
+
+function _renderResultBadge(result, proposal) {
+    if (!result) return '';
+    const winner = result.winner ? `Ganador: <strong>"${escapeHtml(result.winner)}"</strong>` : '';
+    const bgColor = result.approved ? 'rgba(82,196,26,0.12)' :
+                    result.quorum_met === false ? 'rgba(250,173,20,0.12)' : 'rgba(255,77,79,0.12)';
+    const borderColor = result.approved ? '#52c41a' :
+                        result.quorum_met === false ? '#faad14' : '#ff4d4f';
+    const icon = result.approved ? '✅' : result.quorum_met === false ? '⚠️' : '❌';
+
+    if (result.quorum_met === false) {
+        return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:0.5rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
+            ${icon} Sin quórum — ningún Gobernador participó
+        </div>`;
+    }
+    return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:0.5rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
+        ${icon} ${winner} · ${result.total_votes} votos
+    </div>`;
 }
 
 function filterProposals(filter) {
@@ -224,39 +239,35 @@ function filterProposals(filter) {
 }
 
 async function showProposalDetail(proposalIdentifier) {
-    // Buscar por dTag primero, luego por id
     const proposal = allProposals.find(p => p.dTag === proposalIdentifier || p.id === proposalIdentifier);
-    if (!proposal) {
-        console.warn('[Governance] Propuesta no encontrada:', proposalIdentifier);
-        return;
-    }
+    if (!proposal) { console.warn('[Governance] Propuesta no encontrada:', proposalIdentifier); return; }
 
     const nostrP = proposal._nostrOriginal;
     const pubKey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
+    const isAuthor = pubKey === proposal.author_id;
+    const isGovernor = typeof LBW_Merits !== 'undefined' && LBW_Merits.isGovernor();
 
-    // Suscribirse a votos (la actualización es asíncrona)
     if (nostrP) {
-        LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, (vote) => {
-            // Actualizar UI cuando lleguen votos nuevos
+        LBW_Governance.subscribeVotes(nostrP.id, nostrP.dTag, () => {
             updateVoteResultsInModal(nostrP.dTag);
         });
     }
-    
-    // Esperar solo un poco para dar tiempo a cargar desde caché
+
     await new Promise(r => setTimeout(r, 300));
 
     const proposalVotes = nostrP ? LBW_Governance.getVotesForProposal(nostrP.dTag) : [];
     const myVote = nostrP ? LBW_Governance.getMyVote(nostrP.dTag) : null;
     const hasVoted = !!myVote;
     const canVote = proposal.status === 'active' && !hasVoted;
+    const result = nostrP ? LBW_Governance.getResult(nostrP.dTag) : null;
+    const execution = nostrP ? LBW_Governance.getExecution(nostrP.dTag) : null;
+    const statusConf = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.closed;
 
     const voteResults = {};
     proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
 
-    const typeLabels = PROPOSAL_TYPE_LABELS;
-
+    // Fetch author profile in background
     let authorName = proposal.author_name;
-    // Fetch profile in background — don't block the modal
     if (nostrP && typeof LBW_Nostr.fetchUserProfile === 'function') {
         LBW_Nostr.fetchUserProfile(nostrP.pubkey).then(p => {
             if (p?.name) {
@@ -266,23 +277,20 @@ async function showProposalDetail(proposalIdentifier) {
         }).catch(() => {});
     }
 
-    // Cerrar modales anteriores de propuesta (los que no tienen ID)
-    document.querySelectorAll('.modal.active').forEach(m => {
-        if (!m.id) m.remove();
-    });
+    document.querySelectorAll('.modal.active').forEach(m => { if (!m.id) m.remove(); });
 
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.innerHTML = `
         <div class="modal-content" style="position:relative;max-width:700px;">
             <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+
             <div class="modal-header" style="background:linear-gradient(135deg,var(--color-teal),var(--color-teal-dark));padding:2rem;">
-                <div class="proposal-status ${proposal.status}" style="margin-bottom:1rem;">
-                    ${proposal.status === 'active' ? '✅ ACTIVA' : proposal.status === 'expired' ? '⏰ EXPIRADA' : '🔒 CERRADA'}
-                </div>
-                <div style="font-size:0.9rem;color:var(--color-gold);margin-bottom:0.5rem;">${typeLabels[proposal.proposal_type] || proposal.proposal_type}</div>
+                <div class="proposal-status ${statusConf.class}" style="margin-bottom:1rem;">${statusConf.label}</div>
+                <div style="font-size:0.9rem;color:var(--color-gold);margin-bottom:0.5rem;">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
                 <h2 style="color:white;margin:0;">${escapeHtml(proposal.title)}</h2>
             </div>
+
             <div class="modal-body">
                 <p style="color:var(--color-text-secondary);line-height:1.7;margin-bottom:1.5rem;">${escapeHtml(proposal.description)}</p>
 
@@ -298,9 +306,18 @@ async function showProposalDetail(proposalIdentifier) {
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Propuesta por</div><div id="proposal-author-name" style="font-weight:600;">${escapeHtml(authorName)}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Creación</div><div style="font-weight:600;">${new Date(proposal.created_at).toLocaleDateString('es-ES')}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Votos</div><div id="modalVoteCount" style="font-weight:600;color:var(--color-gold);">${proposalVotes.length}</div></div>
-                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">${proposal.status === 'active' ? 'Tiempo restante' : 'Estado'}</div><div style="font-weight:600;">${proposal.status === 'active' && proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : 'Cerrada'}</div></div>
+                        <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">${proposal.status === 'active' ? 'Tiempo restante' : 'Estado final'}</div>
+                        <div style="font-weight:600;">${proposal.status === 'active' && proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : statusConf.label}</div></div>
                     </div>
                 </div>
+
+                ${/* RESULT SECTION */ result ? _renderResultSection(result, proposal) : proposal.status === 'expired' ? `
+                    <div style="background:rgba(250,173,20,0.1);border:1px solid #faad14;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;text-align:center;">
+                        <div style="font-size:1.2rem;margin-bottom:0.5rem;">⏳</div>
+                        <div style="color:#faad14;font-weight:600;">Calculando resultado...</div>
+                        <div style="color:var(--color-text-secondary);font-size:0.85rem;margin-top:0.25rem;">El sistema está procesando los votos ponderados</div>
+                    </div>
+                ` : ''}
 
                 <div id="voteSectionContainer">
                 ${canVote ? `
@@ -318,23 +335,185 @@ async function showProposalDetail(proposalIdentifier) {
 
                 <div id="voteResultsContainer" style="margin-top:1.5rem;">
                 ${proposalVotes.length > 0 ? `
-                    <h3 style="color:var(--color-gold);margin-bottom:1rem;">Resultados ${proposal.status === 'active' ? 'Parciales' : 'Finales'}</h3>
+                    <h3 style="color:var(--color-gold);margin-bottom:1rem;">
+                        ${proposal.status === 'active' ? 'Resultados Parciales' : 'Resultados Finales'}
+                    </h3>
                     ${displayVoteResults(proposalVotes, voteResults)}
                 ` : '<p style="color:var(--color-text-secondary);text-align:center;">Aún no hay votos</p>'}
                 </div>
+
+                ${/* EXECUTION SECTION */ _renderExecutionSection(proposal, execution, isAuthor, isGovernor)}
+
+                ${/* MERIT INFO */ _renderMeritInfo(proposal, result, myVote, isAuthor)}
             </div>
         </div>
     `;
+
     document.body.appendChild(modal);
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
+// ── Render Result Section ──────────────────────────────────
+function _renderResultSection(result, proposal) {
+    const approved = result.approved;
+    const quorumFailed = result.quorum_met === false;
+
+    const bg = approved ? 'rgba(82,196,26,0.1)' : quorumFailed ? 'rgba(250,173,20,0.1)' : 'rgba(255,77,79,0.1)';
+    const border = approved ? '#52c41a' : quorumFailed ? '#faad14' : '#ff4d4f';
+    const icon = approved ? '✅' : quorumFailed ? '⚠️' : '❌';
+    const label = approved ? 'APROBADA' : quorumFailed ? 'SIN QUÓRUM' : 'RECHAZADA';
+    const detail = quorumFailed
+        ? 'No hubo participación de Gobernadores. La propuesta no puede aprobarse sin quórum de Gobernanza.'
+        : approved
+            ? `La opción <strong>"${escapeHtml(result.winner)}"</strong> ganó con ${result.total_votes} votos ponderados.`
+            : `La opción <strong>"${escapeHtml(result.winner)}"</strong> fue la más votada (propuesta rechazada).`;
+
+    const weightedBreakdown = result.weighted_votes && Object.keys(result.weighted_votes).length > 0
+        ? `<div style="margin-top:1rem;">
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">Votación ponderada por méritos:</div>
+            ${Object.entries(result.weighted_votes)
+                .sort((a, b) => b[1] - a[1])
+                .map(([opt, weight]) => {
+                    const total = Object.values(result.weighted_votes).reduce((s, v) => s + v, 0);
+                    const pct = total > 0 ? ((weight / total) * 100).toFixed(1) : '0.0';
+                    return `<div style="margin-bottom:0.5rem;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.25rem;">
+                            <span>${escapeHtml(opt)}</span>
+                            <span style="color:var(--color-gold);">${pct}%</span>
+                        </div>
+                        <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;">
+                            <div style="height:100%;width:${pct}%;background:var(--color-gold);border-radius:2px;"></div>
+                        </div>
+                    </div>`;
+                }).join('')}
+          </div>`
+        : '';
+
+    return `
+        <div style="background:${bg};border:2px solid ${border};border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+                <span style="font-size:1.5rem;">${icon}</span>
+                <span style="font-size:1.1rem;font-weight:700;color:${border};">${label}</span>
+            </div>
+            <div style="color:var(--color-text-secondary);font-size:0.9rem;">${detail}</div>
+            ${weightedBreakdown}
+        </div>
+    `;
+}
+
+// ── Render Execution Section ───────────────────────────────
+function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
+    let html = '';
+
+    // Author can report execution if proposal is approved
+    if (proposal.status === 'approved' && isAuthor && !execution) {
+        html += `
+            <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);margin-top:1.5rem;" id="executionReportSection">
+                <h3 style="color:var(--color-gold);margin-bottom:1rem;">📋 Reportar Ejecución</h3>
+                <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:1rem;">
+                    Tu propuesta fue aprobada. Una vez implementada, reporta la ejecución para que los Gobernadores puedan verificarla.
+                </p>
+                <textarea id="executionDescription" placeholder="Describe cómo se implementó la propuesta, qué se logró..." 
+                    style="width:100%;min-height:100px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;resize:vertical;"></textarea>
+                <input type="text" id="executionLinks" placeholder="Links de evidencia (opcional, separados por coma)" 
+                    style="width:100%;margin-top:0.75rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;">
+                <button class="btn btn-primary" onclick="submitExecutionReport('${proposal.dTag}')" style="width:100%;margin-top:1rem;">
+                    📤 Publicar Reporte de Ejecución
+                </button>
+            </div>
+        `;
+    }
+
+    // Show existing execution report
+    if (execution) {
+        html += `
+            <div style="background:rgba(82,196,26,0.08);border:1px solid rgba(82,196,26,0.3);border-radius:12px;padding:1.25rem;margin-top:1.5rem;">
+                <div style="font-weight:600;color:#52c41a;margin-bottom:0.5rem;">🔧 Reporte de Ejecución</div>
+                <p style="color:var(--color-text-secondary);font-size:0.9rem;line-height:1.6;">${escapeHtml(execution.description)}</p>
+                ${execution.links?.length > 0 ? `
+                    <div style="margin-top:0.75rem;">
+                        ${execution.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" style="color:var(--color-gold);font-size:0.85rem;display:block;">${escapeHtml(l)}</a>`).join('')}
+                    </div>
+                ` : ''}
+                <div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.5rem;">
+                    Reportado el ${new Date(execution.created_at * 1000).toLocaleDateString('es-ES')}
+                </div>
+            </div>
+        `;
+
+        // Governor can verify if not yet executed and not the author
+        if (proposal.status === 'in_execution' && isGovernor && proposal.author_id !== LBW_Nostr.getPubkey()) {
+            html += `
+                <div style="margin-top:1rem;">
+                    <button class="btn btn-primary" onclick="submitExecVerification('${proposal.dTag}')" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);">
+                        👑 Verificar Ejecución (+50 méritos al autor)
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // Executed state
+    if (proposal.status === 'executed') {
+        html += `
+            <div style="background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.4);border-radius:12px;padding:1.25rem;margin-top:1.5rem;text-align:center;">
+                <div style="font-size:1.5rem;margin-bottom:0.5rem;">🏆</div>
+                <div style="font-weight:700;color:#CE93D8;">Ejecución Verificada</div>
+                <div style="color:var(--color-text-secondary);font-size:0.85rem;margin-top:0.25rem;">Un Gobernador ha confirmado la correcta implementación de esta propuesta</div>
+            </div>
+        `;
+    }
+
+    return html;
+}
+
+// ── Render Merit Info ──────────────────────────────────────
+function _renderMeritInfo(proposal, result, myVote, isAuthor) {
+    if (!result) return '';
+
+    const lines = [];
+    const mc = LBW_Governance.MERIT_CONFIG;
+
+    if (myVote) {
+        // Determine what merits they'd get/got
+        let meritLabel = `+${mc.VOTE_COMMUNITY.amount} Productiva`;
+        if (typeof LBW_Merits !== 'undefined') {
+            const pubkey = LBW_Nostr.getPubkey();
+            const userData = LBW_Merits.getUserMerits(pubkey);
+            const bloc = userData?.level?.bloc || 'Comunidad';
+            if (bloc === 'Ciudadanía' || bloc === 'Gobernanza') {
+                meritLabel = `+${mc.VOTE_SENIOR.amount} Responsabilidad (1.2×)`;
+            }
+        }
+        lines.push(`🗳️ Méritos por votar: ${meritLabel}`);
+    }
+
+    if (isAuthor && result.quorum_met !== false) {
+        const authorMerit = result.approved ? mc.AUTHOR_APPROVED : mc.AUTHOR_REJECTED;
+        lines.push(`✍️ Méritos como autor: +${authorMerit.amount} Productiva (${result.approved ? 'aprobada' : 'rechazada'})`);
+    }
+
+    if (isAuthor && ['approved', 'in_execution'].includes(proposal.status)) {
+        lines.push(`🏆 Méritos por ejecución verificada: +${mc.EXEC_VERIFIED.amount} Productiva (pendiente verificación de Gobernador)`);
+    }
+
+    if (lines.length === 0) return '';
+
+    return `
+        <div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.25);border-radius:12px;padding:1.25rem;margin-top:1.5rem;">
+            <div style="font-size:0.8rem;color:var(--color-gold);font-weight:600;margin-bottom:0.75rem;letter-spacing:0.05em;">MÉRITOS LBWM</div>
+            ${lines.map(l => `<div style="color:var(--color-text-secondary);font-size:0.88rem;margin-bottom:0.4rem;">${l}</div>`).join('')}
+            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-top:0.5rem;opacity:0.7;">Los méritos requieren verificación de un Gobernador para acreditarse.</div>
+        </div>
+    `;
+}
+
+// ── Vote Options ───────────────────────────────────────────
 function getVoteOptions(proposal) {
     const options = proposal.options || proposal._nostrOriginal?.options || [];
     if (options.length > 0) {
         return options.map(opt => `<button class="vote-option-btn" onclick="selectVoteOption(this, '${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`).join('');
     }
-    // Fallback
     if (proposal.proposal_type === 'election') {
         return (proposal.candidates || []).map(c => `<button class="vote-option-btn" onclick="selectVoteOption(this, '${escapeHtml(c)}')" style="display:block;width:100%;">${escapeHtml(c)}</button>`).join('');
     }
@@ -359,41 +538,64 @@ async function submitVote(proposalDTag) {
     const proposal = allProposals.find(p => p.dTag === proposalDTag);
     if (!proposal || !proposal._nostrOriginal) { showNotification('Propuesta no encontrada', 'error'); return; }
 
-    const nostrP = proposal._nostrOriginal;
-    
-    // Deshabilitar botón mientras se procesa
     const voteBtn = document.querySelector('.modal .btn-primary');
-    if (voteBtn) {
-        voteBtn.disabled = true;
-        voteBtn.innerHTML = '⏳ Enviando voto...';
-    }
+    if (voteBtn) { voteBtn.disabled = true; voteBtn.innerHTML = '⏳ Enviando voto...'; }
 
     try {
-        console.log('[Vote] Enviando voto:', { proposalId: nostrP.id, dTag: nostrP.dTag, option });
-        const result = await LBW_Governance.publishVote(nostrP.id, nostrP.dTag, option);
-        console.log('[Vote] Resultado:', result);
-        
-        // Mostrar notificación de éxito
+        const nostrP = proposal._nostrOriginal;
+        await LBW_Governance.publishVote(nostrP.id, nostrP.dTag, option);
         showNotification(`¡Voto "${option}" emitido correctamente! 🗳️`, 'success');
-        
-        // Cerrar modal
         const modal = document.querySelector('.modal.active');
         if (modal) modal.remove();
-        
-        // Actualizar UI después de un breve delay
-        setTimeout(() => { 
-            updateGovStats(); 
-            displayProposals(); 
-        }, 500);
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 500);
     } catch (err) {
-        console.error('[Vote] Error submitting vote:', err);
+        console.error('[Vote] Error:', err);
         showNotification('Error: ' + err.message, 'error');
-        
-        // Rehabilitar botón en caso de error
-        if (voteBtn) {
-            voteBtn.disabled = false;
-            voteBtn.innerHTML = '🗳️ Emitir Voto';
-        }
+        if (voteBtn) { voteBtn.disabled = false; voteBtn.innerHTML = '🗳️ Emitir Voto'; }
+    }
+}
+
+// ── Submit Execution Report ────────────────────────────────
+async function submitExecutionReport(proposalDTag) {
+    const descEl = document.getElementById('executionDescription');
+    const linksEl = document.getElementById('executionLinks');
+    const description = descEl?.value?.trim();
+
+    if (!description) { showNotification('Describe la ejecución de la propuesta', 'error'); return; }
+
+    const links = linksEl?.value
+        ? linksEl.value.split(',').map(l => l.trim()).filter(l => l.length > 0)
+        : [];
+
+    const btn = document.querySelector('#executionReportSection .btn-primary');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Publicando...'; }
+
+    try {
+        await LBW_Governance.publishExecution(proposalDTag, { description, links });
+        showNotification('✅ Reporte de ejecución publicado. Los Gobernadores pueden verificarlo.', 'success');
+        const modal = document.querySelector('.modal.active');
+        if (modal) modal.remove();
+        setTimeout(displayProposals, 500);
+    } catch (err) {
+        showNotification('Error: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '📤 Publicar Reporte de Ejecución'; }
+    }
+}
+
+// ── Submit Exec Verification (Governor) ───────────────────
+async function submitExecVerification(proposalDTag) {
+    const btn = document.querySelector('[onclick*="submitExecVerification"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Verificando...'; }
+
+    try {
+        await LBW_Governance.verifyExecution(proposalDTag);
+        showNotification('🏆 ¡Ejecución verificada! Se han otorgado 50 méritos al autor.', 'success');
+        const modal = document.querySelector('.modal.active');
+        if (modal) modal.remove();
+        setTimeout(displayProposals, 500);
+    } catch (err) {
+        showNotification('Error: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '👑 Verificar Ejecución (+50 méritos al autor)'; }
     }
 }
 
@@ -413,7 +615,15 @@ function displayVoteResults(proposalVotes, results) {
     if (total === 0) return '<p style="color:var(--color-text-secondary);text-align:center;">Aún no hay votos</p>';
     return Object.entries(results).map(([option, count]) => {
         const pct = ((count / total) * 100).toFixed(1);
-        return `<div style="margin-bottom:1rem;"><div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;"><span style="font-weight:600;">${escapeHtml(option)}</span><span style="color:var(--color-gold);font-weight:700;">${count} (${pct}%)</span></div><div class="vote-progress-bar"><div class="vote-progress-fill" style="width:${pct}%"></div></div></div>`;
+        return `<div style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                <span style="font-weight:600;">${escapeHtml(option)}</span>
+                <span style="color:var(--color-gold);font-weight:700;">${count} (${pct}%)</span>
+            </div>
+            <div class="vote-progress-bar">
+                <div class="vote-progress-fill" style="width:${pct}%"></div>
+            </div>
+        </div>`;
     }).join('');
 }
 
@@ -427,30 +637,27 @@ function getTimeLeft(endTime) {
     return 'Menos de 1 hora';
 }
 
-// Actualiza los resultados de votación en el modal abierto
 function updateVoteResultsInModal(proposalDTag) {
     const resultsContainer = document.getElementById('voteResultsContainer');
     if (!resultsContainer) return;
-    
+
     const proposalVotes = LBW_Governance.getVotesForProposal(proposalDTag);
     const myVote = LBW_Governance.getMyVote(proposalDTag);
-    
     const voteResults = {};
     proposalVotes.forEach(v => { voteResults[v.option] = (voteResults[v.option] || 0) + 1; });
-    
-    // Actualizar contador de votos
+
     const voteCountEl = document.getElementById('modalVoteCount');
     if (voteCountEl) voteCountEl.textContent = proposalVotes.length;
-    
-    // Actualizar resultados
+
     if (proposalVotes.length > 0) {
+        const proposal = allProposals.find(p => p.dTag === proposalDTag);
+        const label = proposal && proposal.status !== 'active' ? 'Resultados Finales' : 'Resultados Parciales';
         resultsContainer.innerHTML = `
-            <h3 style="color:var(--color-gold);margin-bottom:1rem;">Resultados Parciales</h3>
+            <h3 style="color:var(--color-gold);margin-bottom:1rem;">${label}</h3>
             ${displayVoteResults(proposalVotes, voteResults)}
         `;
     }
-    
-    // Actualizar estado de "ya has votado" si es necesario
+
     const voteSection = document.getElementById('voteSectionContainer');
     if (voteSection && myVote && voteSection.querySelector('.vote-option-btn')) {
         voteSection.innerHTML = `
