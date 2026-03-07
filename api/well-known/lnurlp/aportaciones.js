@@ -5,8 +5,8 @@ export default async function handler(req, res) {
     );
     const data = await response.json();
     
-    // Forzar callback por nuestro proxy sin www
-    data.callback = 'https://liberbitworld.org/api/lnurlp/callback';
+    // NO sobreescribimos el callback — coinos usa URL propia con UUID
+    // data.callback = ... 
     
     if (!data.maxSendable || data.maxSendable === 0) {
       data.maxSendable = 100000000000;
