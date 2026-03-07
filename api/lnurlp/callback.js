@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const queryString = new URLSearchParams(req.query).toString();
     const response = await fetch(
-      `https://getalby.com/lnurlp/gleamingfriendship873712/callback?${queryString}`
+      `https://coinos.io/lnurlp/germanliberbit/callback?${queryString}`
     );
     const data = await response.json();
     
