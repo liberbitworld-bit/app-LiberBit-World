@@ -1,71 +1,93 @@
 // ============================================================
-// LiberBit World — Governance Module v1.0 (nostr-governance.js)
+// LiberBit World — Governance Module v2.0 (nostr-governance.js)
 //
 // Decentralized governance over Nostr protocol.
 // Proposals (kind 31000) + Votes (kind 31001)
+// Results  (kind 31010) + Executions (kind 31011)
+// Exec Verification (kind 31012)
 //
-// Design:
-//   - Parameterized replaceable events (NIP-33)
-//   - PRIVATE relays only (governance is internal)
-//   - Anti-double-vote via cryptographic check
-//   - 3-block voting: Governors (51% floor), Citizenship, Community
-//   - Status lifecycle: active → closed → executed
+// Lifecycle: active → expired → approved/rejected/quorum_failed
+//            → [approved] in_execution → executed
 //
-// Dependencies: nostr.js (LBW_Nostr), nostr-store.js (LBW_Store)
+// Merit awards (auto):
+//   - Voting Senior+: 5 Responsabilidad (1.2×)
+//   - Voting resto:   3 Productiva (1.0×)
+//   - Author approved: 50 Productiva
+//   - Author rejected: 10 Productiva
+//   - Author execution verified: 50 Productiva (via awardMerit, Governor)
+//
+// Dependencies: nostr.js (LBW_Nostr), nostr-merits.js (LBW_Merits)
 // ============================================================
 
 const LBW_Governance = (() => {
     'use strict';
 
     const KIND = {
-        PROPOSAL: 31000,
-        VOTE:     31001,
-        DELEGATE: 31004
+        PROPOSAL:    31000,
+        VOTE:        31001,
+        DELEGATE:    31004,
+        RESULT:      31010,   // Proposal result tally
+        EXECUTION:   31011,   // Author execution report
+        EXEC_VERIFY: 31012    // Governor execution verification
     };
 
     // ── Proposal Categories ──────────────────────────────────
     const CATEGORIES = {
-        referendum:  { label: 'Referéndum',        emoji: '🗳️', description: 'Consulta vinculante a toda la comunidad' },
-        budget:      { label: 'Presupuesto',       emoji: '💰', description: 'Asignación o modificación presupuestaria' },
-        election:    { label: 'Elección',           emoji: '👥', description: 'Elección de representantes o gobernadores' },
-        // amendment, general, emergency eliminados — no expuestos en UI (Fase 1 limpieza)
+        referendum:  { label: 'Referéndum',  emoji: '🗳️', description: 'Consulta vinculante a toda la comunidad' },
+        budget:      { label: 'Presupuesto', emoji: '💰', description: 'Asignación o modificación presupuestaria' },
+        election:    { label: 'Elección',    emoji: '👥', description: 'Elección de representantes o gobernadores' },
     };
 
-    // Default vote options per category
     const DEFAULT_OPTIONS = {
-        referendum:  ['A favor', 'En contra', 'Abstención'],
-        budget:      ['Aprobar', 'Rechazar', 'Aplazar'],
-        election:    [],  // Dynamic: filled with candidate names
-        // amendment, general, emergency eliminados
+        referendum: ['A favor', 'En contra', 'Abstención'],
+        budget:     ['Aprobar', 'Rechazar', 'Aplazar'],
+        election:   [],
     };
 
-    // Voting duration per category (seconds)
     const DURATIONS = {
-        referendum:  7 * 86400,   // 7 days
-        budget:      5 * 86400,   // 5 days
-        election:    7 * 86400,   // 7 days
-        // amendment, general, emergency eliminados
+        referendum: 7 * 86400,
+        budget:     5 * 86400,
+        election:   7 * 86400,
+    };
+
+    // Options that count as "approved" result
+    const APPROVAL_OPTIONS = ['A favor', 'Aprobar'];
+
+    // ── Merit Config ────────────────────────────────────────
+    const MERIT_CONFIG = {
+        VOTE_SENIOR:    { amount: 5,  category: 'responsabilidad' },
+        VOTE_COMMUNITY: { amount: 3,  category: 'productiva' },
+        AUTHOR_APPROVED:{ amount: 50, category: 'productiva' },
+        AUTHOR_REJECTED:{ amount: 10, category: 'productiva' },
+        EXEC_VERIFIED:  { amount: 50, category: 'productiva' },
     };
 
     // ── Internal State ───────────────────────────────────────
-    let _proposals = new Map();       // proposalDTag → proposal object
-    let _votes = new Map();           // proposalDTag → [vote objects]
-    let _myVotes = new Map();         // proposalDTag → my vote
+    let _proposals   = new Map();   // dTag → proposal
+    let _votes       = new Map();   // dTag → [votes]
+    let _myVotes     = new Map();   // dTag → my vote
+    let _results     = new Map();   // dTag → result object
+    let _executions  = new Map();   // dTag → execution object
     let _onProposalCallbacks = [];
-    let _onVoteCallbacks = [];
-    let _sub = null;
-    let _voteSubs = {};               // proposalDTag → subscription
-    const STORAGE_KEY = 'lbw_governance_proposals';
-    const VOTES_STORAGE_KEY = 'lbw_governance_myvotes';
-    const ALL_VOTES_STORAGE_KEY = 'lbw_governance_allvotes';
+    let _onVoteCallbacks     = [];
+    let _onResultCallbacks   = [];
+    let _sub         = null;
+    let _voteSubs    = {};
+    let _resultSub   = null;
+    let _execSub     = null;
+    let _resultCalcScheduled = new Set();  // dTags with pending calc
+    let _fetchingVotes = false;
 
-    // Per-user vote storage keys
+    // ── Storage Keys ────────────────────────────────────────
+    const STORAGE_KEY           = 'lbw_governance_proposals';
+    const VOTES_STORAGE_KEY     = 'lbw_governance_myvotes';
+    const ALL_VOTES_STORAGE_KEY = 'lbw_governance_allvotes';
+    const RESULTS_STORAGE_KEY   = 'lbw_governance_results';
+    const MERIT_CLAIMED_KEY     = 'lbw_governance_merit_claimed';
+
     function _votesKey() {
         const pk = LBW_Nostr.getPubkey();
         return pk ? VOTES_STORAGE_KEY + '_' + pk.substring(0, 12) : VOTES_STORAGE_KEY;
-    }
-    function _allVotesKey() {
-        return ALL_VOTES_STORAGE_KEY;
     }
 
     // ── LocalStorage Persistence ─────────────────────────────
@@ -83,24 +105,30 @@ const LBW_Governance = (() => {
             _myVotes.forEach((v, k) => { data[k] = v; });
             localStorage.setItem(_votesKey(), JSON.stringify(data));
         } catch (e) {}
-        
-        // También persistir todos los votos
         try {
             const allData = {};
             _votes.forEach((votes, dTag) => { allData[dTag] = votes; });
-            localStorage.setItem(_allVotesKey(), JSON.stringify(allData));
+            localStorage.setItem(ALL_VOTES_STORAGE_KEY, JSON.stringify(allData));
+        } catch (e) {}
+    }
+
+    function _persistResults() {
+        try {
+            const data = {};
+            _results.forEach((v, k) => { data[k] = v; });
+            localStorage.setItem(RESULTS_STORAGE_KEY, JSON.stringify(data));
         } catch (e) {}
     }
 
     function _loadFromStorage() {
-        // Cargar propuestas
+        // Proposals
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const data = JSON.parse(raw);
+                const now = Math.floor(Date.now() / 1000);
                 Object.entries(data).forEach(([dTag, proposal]) => {
                     if (!_proposals.has(dTag)) {
-                        const now = Math.floor(Date.now() / 1000);
                         if (proposal.status === 'active' && proposal.expiresAt && now > proposal.expiresAt) {
                             proposal.status = 'expired';
                         }
@@ -111,9 +139,9 @@ const LBW_Governance = (() => {
             }
         } catch (e) { console.warn('[Governance] Storage load error:', e); }
 
-        // Cargar TODOS los votos primero
+        // All votes
         try {
-            const raw = localStorage.getItem(_allVotesKey());
+            const raw = localStorage.getItem(ALL_VOTES_STORAGE_KEY);
             if (raw) {
                 const data = JSON.parse(raw);
                 Object.entries(data).forEach(([dTag, votes]) => {
@@ -121,36 +149,39 @@ const LBW_Governance = (() => {
                         _votes.set(dTag, votes);
                     }
                 });
-                console.log(`[Governance] 📂 Votos cargados para ${_votes.size} propuestas`);
             }
-        } catch (e) { console.warn('[Governance] All votes load error:', e); }
+        } catch (e) {}
 
-        // Cargar mis votos (sin depender de getPubkey aún)
+        // Results
+        try {
+            const raw = localStorage.getItem(RESULTS_STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                Object.entries(data).forEach(([dTag, result]) => {
+                    _results.set(dTag, result);
+                    // Update proposal status based on cached result
+                    const proposal = _proposals.get(dTag);
+                    if (proposal && proposal.status === 'expired') {
+                        proposal.status = result.approved ? 'approved' : 
+                                         (result.quorum_met === false ? 'quorum_failed' : 'rejected');
+                    }
+                });
+                console.log(`[Governance] 📂 ${_results.size} resultados cargados de caché`);
+            }
+        } catch (e) {}
+
         _loadMyVotes();
     }
-    
-    // Función separada para cargar mis votos - puede llamarse después del login
+
     function _loadMyVotes() {
         try {
             const raw = localStorage.getItem(_votesKey());
-            if (!raw) {
-                console.log('[Governance] No hay votos guardados para este usuario');
-                return;
-            }
-            
+            if (!raw) return;
             const data = JSON.parse(raw);
             const currentPubkey = LBW_Nostr.getPubkey();
-            console.log('[Governance] Cargando votos, pubkey actual:', currentPubkey ? currentPubkey.substring(0,8) + '...' : 'null');
-            
             Object.entries(data).forEach(([dTag, vote]) => {
-                // Usar el pubkey guardado en el voto, o el actual si está disponible
                 const votePubkey = vote.pubkey || currentPubkey;
-                
-                // Siempre actualizar el voto (no solo si no existe)
                 _myVotes.set(dTag, vote);
-                console.log('[Governance] Voto cargado para:', dTag, '- opción:', vote.option);
-                
-                // Asegurar que mi voto esté en _votes si tenemos pubkey
                 if (votePubkey) {
                     if (!_votes.has(dTag)) _votes.set(dTag, []);
                     const votesList = _votes.get(dTag);
@@ -167,38 +198,18 @@ const LBW_Governance = (() => {
                     }
                 }
             });
-            console.log(`[Governance] 📂 ${_myVotes.size} votos propios cargados de caché`);
-        } catch (e) { console.warn('[Governance] Votes storage load error:', e); }
+            console.log(`[Governance] 📂 ${_myVotes.size} votos propios cargados`);
+        } catch (e) {}
     }
-    
-    // Función pública para recargar votos después del login
+
     function reloadMyVotes() {
-        console.log('[Governance] 🔄 Recargando votos...');
         _loadMyVotes();
-        console.log('[Governance] 🔄 Votos recargados desde caché, total:', _myVotes.size);
-        
-        // Siempre buscar en Nostr para sincronizar (votos pueden haber cambiado)
         if (!_fetchingVotes) {
-            setTimeout(() => {
-                _fetchMyVotesFromNostr();
-            }, 500);
+            setTimeout(() => _fetchMyVotesFromNostr(), 500);
         }
     }
 
     // ── Publish Proposal ─────────────────────────────────────
-    // Creates a kind 31000 parameterized replaceable event.
-    //
-    // Required fields:
-    //   title       — Proposal title
-    //   description — Full description text
-    //   category    — One of CATEGORIES keys
-    //
-    // Optional:
-    //   options     — Vote options array (defaults per category)
-    //   durationSecs — Override default voting period
-    //   candidates  — For elections: [{name, pubkey}]
-    //   budget      — For budget proposals: {amount, currency, recipient}
-
     async function publishProposal(data) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         if (!data.title?.trim()) throw new Error('Título requerido.');
@@ -211,7 +222,6 @@ const LBW_Governance = (() => {
         const duration = data.durationSecs || DURATIONS[category];
         const expiresAt = nowSecs + duration;
 
-        // Build options
         let options = data.options;
         if (!options || options.length === 0) {
             if (category === 'election' && data.candidates?.length > 0) {
@@ -221,21 +231,17 @@ const LBW_Governance = (() => {
             }
         }
 
-        // Unique d-tag
         const pubkey = LBW_Nostr.getPubkey();
         const dTag = `proposal-${pubkey.substring(0, 8)}-${nowSecs}`;
 
-        // Content: structured JSON
         const content = JSON.stringify({
             description: data.description.trim(),
             options,
-            // Optional enrichment
             ...(data.candidates ? { candidates: data.candidates } : {}),
             ...(data.budget ? { budget: data.budget } : {}),
             ...(data.quorum ? { quorum: data.quorum } : {})
         });
 
-        // Tags
         const tags = [
             ['d', dTag],
             ['title', data.title.trim()],
@@ -249,207 +255,97 @@ const LBW_Governance = (() => {
             ['client', 'LiberBit World']
         ];
 
-        const result = await LBW_Nostr.publishEvent({
-            kind: KIND.PROPOSAL,
-            content,
-            tags
-        });
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.PROPOSAL, content, tags });
 
-        // === VERIFICACIÓN DE PUBLICACIÓN EXITOSA ===
-        // Verificar que el evento se creó correctamente
-        if (!result.event?.id) {
-            console.error('[Governance] Error: No se generó ID de evento');
-            throw new Error('Error creando propuesta. No se generó ID de evento.');
-        }
+        if (!result.event?.id) throw new Error('Error creando propuesta. No se generó ID de evento.');
 
-        // Verificar que al menos un relay aceptó el evento
         const successfulRelays = (result.results || []).filter(r => r.success === true);
-        const failedRelays = (result.results || []).filter(r => r.success === false);
-        
         if (successfulRelays.length === 0) {
-            console.error('[Governance] ❌ Ningún relay aceptó la propuesta:', {
-                event: result.event?.id,
-                failures: failedRelays.map(r => ({ relay: r.relay, error: r.error }))
-            });
             throw new Error(
                 'No se pudo publicar la propuesta en ningún relay.\n\n' +
-                'Posibles causas:\n' +
-                '• Sin conexión a internet\n' +
-                '• Relays no disponibles\n' +
-                '• Error de autenticación\n\n' +
                 'Verifica tu conexión y vuelve a intentar.'
             );
         }
 
-        console.log(`[Governance] ✅ Propuesta publicada en ${successfulRelays.length}/${result.results?.length || 0} relay(s)`);
-        // === FIN VERIFICACIÓN ===
-
-        // Guardar localmente SOLO si se publicó exitosamente
         const localProposal = {
-            id: result.event.id,
-            pubkey,
-            npub: LBW_Nostr.getNpub(),
-            dTag,
-            title: data.title.trim(),
-            description: data.description.trim(),
-            category,
-            status: 'active',
-            options,
-            candidates: data.candidates || null,
-            budget: data.budget || null,
-            quorum: data.quorum || null,
-            expiresAt,
-            createdAt: nowSecs,
-            created_at: nowSecs,
-            tags,
-            _rawContent: content,
-            _publishedTo: successfulRelays.map(r => r.relay) // Registro de dónde se publicó
+            id: result.event.id, pubkey, npub: LBW_Nostr.getNpub(),
+            dTag, title: data.title.trim(), description: data.description.trim(),
+            category, status: 'active', options,
+            candidates: data.candidates || null, budget: data.budget || null,
+            quorum: data.quorum || null, expiresAt, createdAt: nowSecs,
+            created_at: nowSecs, tags, _rawContent: content
         };
 
         _proposals.set(dTag, localProposal);
         _persistToStorage();
-
-        // Notify callbacks
-        _onProposalCallbacks.forEach(cb => {
-            try { cb(localProposal, 'new'); } catch (e) {}
-        });
+        _onProposalCallbacks.forEach(cb => { try { cb(localProposal, 'new'); } catch (e) {} });
 
         console.log(`[Governance] 📋 Propuesta publicada: "${data.title}" [${category}] d=${dTag}`);
         return { ...result, dTag, category, expiresAt, relaysUsed: successfulRelays.length };
     }
 
     // ── Close Proposal ───────────────────────────────────────
-    // Updates a proposal's status to 'closed' by republishing
-    // with same d-tag (replaceable event pattern).
-
     async function closeProposal(dTag) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
-
         const proposal = _proposals.get(dTag);
         if (!proposal) throw new Error('Propuesta no encontrada.');
-        if (proposal.pubkey !== LBW_Nostr.getPubkey()) {
-            throw new Error('Solo el autor puede cerrar la propuesta.');
-        }
+        if (proposal.pubkey !== LBW_Nostr.getPubkey()) throw new Error('Solo el autor puede cerrar la propuesta.');
 
-        // Republish with status=closed (same d-tag replaces)
-        const tags = proposal.tags.map(t => {
-            if (t[0] === 'status') return ['status', 'closed'];
-            return t;
-        });
-
-        const result = await LBW_Nostr.publishEvent({
-            kind: KIND.PROPOSAL,
-            content: proposal._rawContent,
-            tags
-        });
-
+        const tags = proposal.tags.map(t => t[0] === 'status' ? ['status', 'closed'] : t);
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.PROPOSAL, content: proposal._rawContent, tags });
         console.log(`[Governance] 🔒 Propuesta cerrada: d=${dTag}`);
         return result;
     }
 
     // ── Publish Vote ─────────────────────────────────────────
-    // Creates a kind 31001 event referencing a proposal.
-    // Anti-double-vote: checks if user already voted.
-
     async function publishVote(proposalEventId, proposalDTag, option) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         if (!option?.trim()) throw new Error('Opción de voto requerida.');
 
-        // Check proposal exists and is active
         const proposal = _proposals.get(proposalDTag);
         if (proposal) {
-            if (proposal.status !== 'active') {
-                throw new Error('La propuesta ya no está activa.');
-            }
+            if (proposal.status !== 'active') throw new Error('La propuesta ya no está activa.');
             const nowSecs = Math.floor(Date.now() / 1000);
-            if (proposal.expiresAt && nowSecs > proposal.expiresAt) {
-                throw new Error('El periodo de votación ha expirado.');
-            }
-            // Validate option is in allowed list
-            if (proposal.options && !proposal.options.includes(option)) {
-                throw new Error(`Opción "${option}" no válida para esta propuesta.`);
-            }
+            if (proposal.expiresAt && nowSecs > proposal.expiresAt) throw new Error('El periodo de votación ha expirado.');
+            if (proposal.options && !proposal.options.includes(option)) throw new Error(`Opción "${option}" no válida.`);
         }
 
-        // Anti-double-vote check
-        if (_myVotes.has(proposalDTag)) {
-            throw new Error('Ya has votado en esta propuesta. No se permite doble voto.');
-        }
+        if (_myVotes.has(proposalDTag)) throw new Error('Ya has votado en esta propuesta.');
 
-        // Also verify against relay (in case local state is stale)
         const alreadyVoted = await _checkAlreadyVoted(proposalEventId);
-        if (alreadyVoted) {
-            throw new Error('Ya existe un voto tuyo registrado en los relays.');
-        }
+        if (alreadyVoted) throw new Error('Ya existe un voto tuyo registrado en los relays.');
 
         const tags = [
-            ['e', proposalEventId],                   // Reference to proposal event
-            ['d', proposalDTag],                       // D-tag for NIP-33 (must be 'd', not 'd-tag')
+            ['e', proposalEventId],
+            ['d', proposalDTag],
             ['t', 'lbw-governance'],
             ['t', 'lbw-vote'],
             ['client', 'LiberBit World']
         ];
 
-        const result = await LBW_Nostr.publishEvent({
-            kind: KIND.VOTE,
-            content: option.trim(),
-            tags
-        });
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.VOTE, content: option.trim(), tags });
 
-        // === VERIFICACIÓN DE PUBLICACIÓN EXITOSA ===
-        if (!result.event?.id) {
-            console.error('[Governance] Error: No se generó ID de evento para el voto');
-            throw new Error('Error registrando voto. No se generó ID de evento.');
-        }
-
+        if (!result.event?.id) throw new Error('Error registrando voto. No se generó ID de evento.');
         const successfulRelays = (result.results || []).filter(r => r.success === true);
-        
-        if (successfulRelays.length === 0) {
-            console.error('[Governance] ❌ Ningún relay aceptó el voto:', {
-                event: result.event?.id,
-                proposal: proposalDTag
-            });
-            throw new Error(
-                'No se pudo registrar el voto en ningún relay.\n\n' +
-                'Tu voto NO ha sido contabilizado.\n' +
-                'Verifica tu conexión y vuelve a intentar.'
-            );
-        }
-
-        console.log(`[Governance] ✅ Voto publicado en ${successfulRelays.length} relay(s)`);
-        // === FIN VERIFICACIÓN ===
+        if (successfulRelays.length === 0) throw new Error('No se pudo registrar el voto en ningún relay.');
 
         const pubkey = LBW_Nostr.getPubkey();
         const npub = LBW_Nostr.getNpub();
-        
-        // Track locally SOLO si se publicó exitosamente
+
         const myVoteData = {
-            option: option.trim(),
-            eventId: result.event.id,
+            option: option.trim(), eventId: result.event.id,
             created_at: Math.floor(Date.now() / 1000),
-            pubkey: pubkey, // Guardar pubkey para persistencia
-            npub: npub,     // Guardar npub también
-            _publishedTo: successfulRelays.map(r => r.relay)
+            pubkey, npub
         };
         _myVotes.set(proposalDTag, myVoteData);
-        _persistVotesToStorage();
-        
-        // También agregar a _votes para que se muestre en resultados inmediatamente
+
         if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
         const votesList = _votes.get(proposalDTag);
-        // Eliminar voto anterior si existe (no debería pero por seguridad)
         const existingIdx = votesList.findIndex(v => v.pubkey === pubkey);
         if (existingIdx >= 0) votesList.splice(existingIdx, 1);
-        // Agregar nuevo voto
-        votesList.push({
-            id: result.event.id,
-            pubkey: pubkey,
-            npub: npub,
-            option: option.trim(),
-            proposalDTag: proposalDTag,
-            created_at: Math.floor(Date.now() / 1000)
-        });
+        votesList.push({ id: result.event.id, pubkey, npub, option: option.trim(), proposalDTag, created_at: Math.floor(Date.now() / 1000) });
 
+        _persistVotesToStorage();
         console.log(`[Governance] ✅ Voto registrado: "${option}" para d=${proposalDTag}`);
         return { ...result, relaysUsed: successfulRelays.length };
     }
@@ -458,227 +354,525 @@ const LBW_Governance = (() => {
     async function _checkAlreadyVoted(proposalEventId) {
         const pubkey = LBW_Nostr.getPubkey();
         if (!pubkey) return false;
-
         return new Promise(resolve => {
             const timeout = setTimeout(() => resolve(false), 3000);
             let found = false;
-
             const sub = LBW_Nostr.subscribe(
-                {
-                    kinds: [KIND.VOTE],
-                    authors: [pubkey],
-                    '#e': [proposalEventId],
-                    limit: 1
-                },
-                () => {
-                    if (!found) { found = true; clearTimeout(timeout); resolve(true); }
-                },
-                () => {
-                    clearTimeout(timeout);
-                    if (!found) resolve(false);
-                }
+                { kinds: [KIND.VOTE], authors: [pubkey], '#e': [proposalEventId], limit: 1 },
+                () => { if (!found) { found = true; clearTimeout(timeout); resolve(true); } },
+                () => { clearTimeout(timeout); if (!found) resolve(false); }
             );
-
-            // Cleanup
             setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch (e) {} }, 3500);
         });
     }
 
     // ── Subscribe Proposals ──────────────────────────────────
-    // Listens for kind 31000 events tagged lbw-governance.
-    // Hydrates from cache via SyncEngine if available.
-
     function subscribeProposals(onProposal) {
         if (onProposal) _onProposalCallbacks.push(onProposal);
-
-        // Load cached proposals from localStorage on first call
         if (_proposals.size === 0) _loadFromStorage();
+        if (_myVotes.size === 0) _fetchMyVotesFromNostr();
+        if (!_resultSub) _subscribeResultEvents();
+        if (!_execSub) _subscribeExecutionEvents();
 
-        // Siempre buscar mis votos en Nostr (si no los tenemos)
-        if (_myVotes.size === 0) {
-            _fetchMyVotesFromNostr();
-        }
-
-        if (_sub) return _sub; // Already subscribed
+        if (_sub) return _sub;
 
         _sub = LBW_Nostr.subscribe(
-            {
-                kinds: [KIND.PROPOSAL],
-                '#t': ['lbw-proposal'],
-                limit: 100
-            },
+            { kinds: [KIND.PROPOSAL], '#t': ['lbw-proposal'], limit: 100 },
             (event) => {
                 const proposal = _parseProposal(event);
                 if (!proposal) return;
-
-                // Replaceable: newer event with same d-tag wins
                 const existing = _proposals.get(proposal.dTag);
                 if (existing && existing.created_at >= proposal.created_at) return;
-
                 _proposals.set(proposal.dTag, proposal);
                 _persistToStorage();
+                _onProposalCallbacks.forEach(cb => { try { cb(proposal, existing ? 'updated' : 'new'); } catch (e) {} });
 
-                // Deliver to callbacks
-                _onProposalCallbacks.forEach(cb => {
-                    try { cb(proposal, existing ? 'updated' : 'new'); }
-                    catch (e) { console.warn('[Governance] onProposal error:', e); }
-                });
+                // Schedule result calc for expired proposals without a result
+                if (proposal.status === 'expired' && !_results.has(proposal.dTag)) {
+                    _scheduleResultCalc(proposal.dTag);
+                }
             }
         );
 
-        // Re-render diferido para captar respuestas tardías de relays
         setTimeout(() => {
-            _onProposalCallbacks.forEach(cb => {
-                try { cb(null, 'relay-sync'); } catch (e) {}
+            _onProposalCallbacks.forEach(cb => { try { cb(null, 'relay-sync'); } catch (e) {} });
+            // Check all cached expired proposals
+            _proposals.forEach((p, dTag) => {
+                if (p.status === 'expired' && !_results.has(dTag)) {
+                    _scheduleResultCalc(dTag);
+                }
             });
-        }, 2000);
+        }, 2500);
 
         return _sub;
     }
-    
-    // ── Fetch My Votes from Nostr ─────────────────────────────
-    // Busca todos mis votos en los relays para sincronizar estado
-    let _fetchingVotes = false;
-    
-    function _fetchMyVotesFromNostr() {
-        const pubkey = LBW_Nostr.getPubkey();
-        if (!pubkey) {
-            console.log('[Governance] No hay pubkey, no se pueden buscar votos');
-            return;
-        }
-        
-        if (_fetchingVotes) {
-            console.log('[Governance] Ya se están buscando votos...');
-            return;
-        }
-        
-        _fetchingVotes = true;
-        console.log('[Governance] 🔍 Buscando mis votos en Nostr...');
-        
-        LBW_Nostr.subscribe(
-            {
-                kinds: [KIND.VOTE],
-                authors: [pubkey],
-                '#t': ['lbw-vote'],
-                limit: 100
-            },
+
+    // ── Subscribe Result Events (kind 31010) ─────────────────
+    function _subscribeResultEvents() {
+        _resultSub = LBW_Nostr.subscribe(
+            { kinds: [KIND.RESULT], '#t': ['lbw-governance'], limit: 200 },
             (event) => {
-                // Extraer el proposalDTag del evento (buscar tag 'd')
-                const dTagTag = event.tags.find(t => t[0] === 'd');
-                const proposalDTag = dTagTag ? dTagTag[1] : null;
-                
-                if (!proposalDTag) {
-                    console.warn('[Governance] Voto sin d tag:', event.id?.substring(0, 8));
-                    return;
+                const result = _parseResult(event);
+                if (!result) return;
+
+                // Keep first received result per proposal (deterministic)
+                const existing = _results.get(result.dTag);
+                if (existing) return;
+
+                _results.set(result.dTag, result);
+                _persistResults();
+
+                // Update proposal status
+                const proposal = _proposals.get(result.dTag);
+                if (proposal) {
+                    proposal.status = result.approved ? 'approved' :
+                                     (result.quorum_met === false ? 'quorum_failed' : 'rejected');
+                    _persistToStorage();
                 }
-                
-                const vote = {
-                    id: event.id,
-                    pubkey: event.pubkey,
-                    npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
-                    option: event.content?.trim() || '',
-                    proposalDTag,
-                    created_at: event.created_at
-                };
-                
-                // Guardar en _myVotes
-                const existing = _myVotes.get(proposalDTag);
-                if (!existing || vote.created_at > existing.created_at) {
-                    _myVotes.set(proposalDTag, {
-                        option: vote.option,
-                        eventId: vote.id,
-                        created_at: vote.created_at,
-                        pubkey: vote.pubkey,
-                        npub: vote.npub
-                    });
-                    console.log('[Governance] ✅ Mi voto recuperado de Nostr:', proposalDTag, '-', vote.option);
-                }
-                
-                // También agregar a _votes
-                if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
-                const votesList = _votes.get(proposalDTag);
-                const idx = votesList.findIndex(v => v.pubkey === vote.pubkey);
-                if (idx >= 0) {
-                    if (vote.created_at > votesList[idx].created_at) {
-                        votesList[idx] = vote;
+
+                _onResultCallbacks.forEach(cb => { try { cb(result); } catch (e) {} });
+                _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'result'); } catch (e) {} });
+
+                // Auto-claim voting merits for current user
+                _autoClaimVotingMerits(result.dTag, result);
+
+                console.log(`[Governance] 📊 Resultado recibido: ${result.dTag} → ${result.approved ? 'APROBADA' : result.quorum_met === false ? 'SIN QUORUM' : 'RECHAZADA'}`);
+            }
+        );
+    }
+
+    // ── Subscribe Execution Events (kind 31011 + 31012) ──────
+    function _subscribeExecutionEvents() {
+        _execSub = LBW_Nostr.subscribe(
+            { kinds: [KIND.EXECUTION, KIND.EXEC_VERIFY], '#t': ['lbw-governance'], limit: 100 },
+            (event) => {
+                if (event.kind === KIND.EXECUTION) {
+                    const exec = _parseExecution(event);
+                    if (!exec) return;
+                    const existing = _executions.get(exec.dTag);
+                    if (!existing || event.created_at > existing.created_at) {
+                        _executions.set(exec.dTag, exec);
+                        // Update proposal status
+                        const proposal = _proposals.get(exec.dTag);
+                        if (proposal && proposal.status === 'approved') {
+                            proposal.status = 'in_execution';
+                            _persistToStorage();
+                        }
+                        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'execution'); } catch (e) {} });
                     }
-                } else {
-                    votesList.push(vote);
-                }
-                
-                // Persistir
-                _persistVotesToStorage();
-            },
-            () => {
-                _fetchingVotes = false;
-                console.log('[Governance] 🔍 Búsqueda de mis votos completada. Total:', _myVotes.size);
-                // Forzar re-render para mostrar votos encontrados
-                if (_myVotes.size > 0) {
-                    _persistVotesToStorage();
-                    _onProposalCallbacks.forEach(cb => {
-                        try { cb(null, 'votes-synced'); } catch (e) {}
-                    });
+                } else if (event.kind === KIND.EXEC_VERIFY) {
+                    _handleExecVerification(event);
                 }
             }
         );
     }
-    
-    // Función pública para forzar búsqueda de votos (sin borrar existentes)
-    function fetchMyVotes() {
-        // No limpiar _myVotes - mantener los existentes mientras buscamos
-        _fetchingVotes = false;
-        _fetchMyVotesFromNostr();
+
+    // ── Schedule Result Calculation ──────────────────────────
+    function _scheduleResultCalc(dTag) {
+        if (_resultCalcScheduled.has(dTag)) return;
+        if (_results.has(dTag)) return;
+        _resultCalcScheduled.add(dTag);
+
+        // Wait 5s to accumulate votes from relay, then calculate
+        setTimeout(async () => {
+            if (_results.has(dTag)) {
+                _resultCalcScheduled.delete(dTag);
+                return;
+            }
+            // Subscribe to votes for this proposal first to ensure we have them
+            const proposal = _proposals.get(dTag);
+            if (!proposal) { _resultCalcScheduled.delete(dTag); return; }
+
+            console.log(`[Governance] ⏱️ Calculando resultado para: ${dTag}`);
+
+            // Check relay for existing result first
+            const alreadyPublished = await _checkResultExists(dTag);
+            if (alreadyPublished) {
+                _resultCalcScheduled.delete(dTag);
+                return;
+            }
+
+            // Subscribe to votes if not already done
+            subscribeVotes(proposal.id, dTag, null);
+
+            // Wait for votes to load
+            setTimeout(async () => {
+                try {
+                    await _publishResultForProposal(dTag);
+                } catch (err) {
+                    console.warn(`[Governance] Error calculando resultado: ${err.message}`);
+                }
+                _resultCalcScheduled.delete(dTag);
+            }, 4000);
+        }, 5000);
     }
 
-    // ── Subscribe Votes for a Proposal ───────────────────────
+    // Check if a result event already exists on relay
+    async function _checkResultExists(dTag) {
+        return new Promise(resolve => {
+            const timeout = setTimeout(() => resolve(false), 3000);
+            let found = false;
+            const sub = LBW_Nostr.subscribe(
+                { kinds: [KIND.RESULT], '#d': [dTag], limit: 1 },
+                () => { if (!found) { found = true; clearTimeout(timeout); resolve(true); } },
+                () => { clearTimeout(timeout); if (!found) resolve(false); }
+            );
+            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch (e) {} }, 3500);
+        });
+    }
+
+    // ── Publish Result ───────────────────────────────────────
+    async function _publishResultForProposal(dTag) {
+        if (!LBW_Nostr.isLoggedIn()) return;
+        if (_results.has(dTag)) return;
+
+        const proposal = _proposals.get(dTag);
+        if (!proposal) return;
+        if (proposal.status === 'active') return; // Not expired yet
+
+        const calc = _calculateWeightedResult(dTag);
+        const nowSecs = Math.floor(Date.now() / 1000);
+
+        const content = JSON.stringify({
+            dTag,
+            proposalId: proposal.id,
+            title: proposal.title,
+            category: proposal.category,
+            quorum_met: calc.quorum_met,
+            winner: calc.winner,
+            approved: calc.approved || false,
+            weighted_votes: calc.weighted,
+            total_votes: calc.total_votes,
+            voter_count: calc.voter_count,
+            calculated_at: nowSecs,
+            calculatedBy: LBW_Nostr.getPubkey()
+        });
+
+        const status = calc.quorum_met === false ? 'quorum_failed' :
+                       calc.approved ? 'approved' : 'rejected';
+
+        const tags = [
+            ['d', dTag],
+            ['e', proposal.id],
+            ['status', status],
+            ['winner', calc.winner || ''],
+            ['total-votes', String(calc.total_votes)],
+            ['quorum-met', String(calc.quorum_met)],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-result'],
+            ['client', 'LiberBit World']
+        ];
+
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.RESULT, content, tags });
+        const successfulRelays = (result.results || []).filter(r => r.success === true);
+
+        if (successfulRelays.length > 0) {
+            console.log(`[Governance] 📊 Resultado publicado: ${status} (ganador: "${calc.winner}") en ${successfulRelays.length} relay(s)`);
+        }
+    }
+
+    // ── Calculate Weighted Result ────────────────────────────
+    function _calculateWeightedResult(dTag) {
+        const votes = _votes.get(dTag) || [];
+        const proposal = _proposals.get(dTag);
+        const category = proposal?.category || 'referendum';
+
+        if (votes.length === 0) {
+            return { quorum_met: false, winner: null, approved: false, weighted: {}, total_votes: 0, voter_count: 0 };
+        }
+
+        const weighted = {};
+        let quorum_met = false;
+        let voterCount = 0;
+
+        for (const vote of votes) {
+            if (!vote.option) continue;
+            let weight = 1; // fallback equal weight
+
+            if (typeof LBW_Merits !== 'undefined') {
+                const userData = LBW_Merits.getUserMerits(vote.pubkey);
+                if (userData && userData.total > 0) {
+                    weight = userData.total;
+                    const bloc = userData.level?.bloc || 'Comunidad';
+                    if (bloc === 'Gobernanza') quorum_met = true;
+                }
+            }
+
+            weighted[vote.option] = (weighted[vote.option] || 0) + weight;
+            voterCount++;
+        }
+
+        if (!quorum_met) {
+            return { quorum_met: false, winner: null, approved: false, weighted, total_votes: votes.length, voter_count: voterCount };
+        }
+
+        // Determine winner
+        const sorted = Object.entries(weighted).sort((a, b) => b[1] - a[1]);
+        const winner = sorted[0]?.[0] || null;
+
+        // Determine if approved
+        let approved = false;
+        if (winner) {
+            if (category === 'election') {
+                approved = true; // Elections always produce a winner
+            } else {
+                approved = APPROVAL_OPTIONS.includes(winner);
+            }
+        }
+
+        return { quorum_met: true, winner, approved, weighted, total_votes: votes.length, voter_count: voterCount };
+    }
+
+    // ── Auto-Claim Voting Merits ──────────────────────────────
+    async function _autoClaimVotingMerits(dTag, result) {
+        if (!LBW_Nostr.isLoggedIn()) return;
+        const pubkey = LBW_Nostr.getPubkey();
+        const claimKey = `${MERIT_CLAIMED_KEY}_vote_${dTag}_${pubkey.substring(0, 12)}`;
+
+        // Already claimed?
+        if (localStorage.getItem(claimKey)) return;
+
+        // Did this user vote on this proposal?
+        const myVote = _myVotes.get(dTag);
+        if (!myVote) return;
+
+        // Determine merit tier
+        let meritConfig = MERIT_CONFIG.VOTE_COMMUNITY;
+        if (typeof LBW_Merits !== 'undefined') {
+            const userData = LBW_Merits.getUserMerits(pubkey);
+            const bloc = userData?.level?.bloc || 'Comunidad';
+            if (bloc === 'Ciudadanía' || bloc === 'Gobernanza') {
+                meritConfig = MERIT_CONFIG.VOTE_SENIOR;
+            }
+        }
+
+        // Mark as claimed before attempting (prevents duplicates on error)
+        localStorage.setItem(claimKey, '1');
+
+        try {
+            const proposal = _proposals.get(dTag);
+            const resultEventId = result.eventId || dTag;
+            let category = meritConfig.category;
+
+            // Responsabilidad requires 1000+ in other categories — try it, fallback to productiva
+            if (category === 'responsabilidad') {
+                try {
+                    await LBW_Merits.submitContribution({
+                        description: `Participación en votación de gobernanza: "${proposal?.title || dTag}"`,
+                        category: 'responsabilidad',
+                        amount: meritConfig.amount,
+                        currency: 'LBWM',
+                        evidence: [resultEventId, dTag]
+                    });
+                } catch (e) {
+                    if (e.message?.includes('requiere al menos')) {
+                        // Fallback to productiva
+                        await LBW_Merits.submitContribution({
+                            description: `Participación en votación de gobernanza: "${proposal?.title || dTag}"`,
+                            category: 'productiva',
+                            amount: MERIT_CONFIG.VOTE_COMMUNITY.amount,
+                            currency: 'LBWM',
+                            evidence: [resultEventId, dTag]
+                        });
+                    } else throw e;
+                }
+            } else {
+                await LBW_Merits.submitContribution({
+                    description: `Participación en votación de gobernanza: "${proposal?.title || dTag}"`,
+                    category,
+                    amount: meritConfig.amount,
+                    currency: 'LBWM',
+                    evidence: [resultEventId, dTag]
+                });
+            }
+            console.log(`[Governance] 🏅 Méritos de votación reclamados: ${meritConfig.amount} ${meritConfig.category} para ${pubkey.substring(0, 8)}`);
+            if (typeof showNotification === 'function') {
+                showNotification(`🏅 +${meritConfig.amount} méritos reclamados por participar en la votación`, 'success');
+            }
+        } catch (err) {
+            console.warn('[Governance] Error reclamando méritos de votación:', err.message);
+            localStorage.removeItem(claimKey); // Allow retry
+        }
+
+        // Also claim author merits if current user is the proposal author
+        await _autoClaimAuthorMerits(dTag, result);
+    }
+
+    // ── Auto-Claim Author Merits ─────────────────────────────
+    async function _autoClaimAuthorMerits(dTag, result) {
+        if (!LBW_Nostr.isLoggedIn()) return;
+        const pubkey = LBW_Nostr.getPubkey();
+        const proposal = _proposals.get(dTag);
+        if (!proposal || proposal.pubkey !== pubkey) return;
+
+        const claimKey = `${MERIT_CLAIMED_KEY}_author_${dTag}_${pubkey.substring(0, 12)}`;
+        if (localStorage.getItem(claimKey)) return;
+
+        if (result.quorum_met === false) return; // No merits for quorum failure
+
+        const meritConfig = result.approved ? MERIT_CONFIG.AUTHOR_APPROVED : MERIT_CONFIG.AUTHOR_REJECTED;
+        localStorage.setItem(claimKey, '1');
+
+        try {
+            await LBW_Merits.submitContribution({
+                description: `Propuesta de gobernanza ${result.approved ? 'aprobada' : 'rechazada'}: "${proposal.title}"`,
+                category: meritConfig.category,
+                amount: meritConfig.amount,
+                currency: 'LBWM',
+                evidence: [proposal.id, dTag]
+            });
+            console.log(`[Governance] 🏅 Méritos de autor reclamados: ${meritConfig.amount} (propuesta ${result.approved ? 'aprobada' : 'rechazada'})`);
+            if (typeof showNotification === 'function') {
+                showNotification(`🏅 +${meritConfig.amount} méritos por tu propuesta ${result.approved ? 'aprobada ✅' : 'rechazada'}`, result.approved ? 'success' : 'info');
+            }
+        } catch (err) {
+            console.warn('[Governance] Error reclamando méritos de autor:', err.message);
+            localStorage.removeItem(claimKey);
+        }
+    }
+
+    // ── Publish Execution Report ─────────────────────────────
+    async function publishExecution(dTag, data) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+        const proposal = _proposals.get(dTag);
+        if (!proposal) throw new Error('Propuesta no encontrada.');
+        if (proposal.pubkey !== LBW_Nostr.getPubkey()) throw new Error('Solo el autor puede reportar la ejecución.');
+        if (!['approved'].includes(proposal.status)) throw new Error('Solo se puede reportar ejecución de propuestas aprobadas.');
+        if (!data.description?.trim()) throw new Error('Descripción de ejecución requerida.');
+
+        const nowSecs = Math.floor(Date.now() / 1000);
+        const content = JSON.stringify({
+            description: data.description.trim(),
+            evidence: data.evidence || [],
+            links: data.links || [],
+            reportedAt: nowSecs
+        });
+
+        const tags = [
+            ['d', dTag],
+            ['e', proposal.id],
+            ['status', 'in_execution'],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-execution'],
+            ['client', 'LiberBit World']
+        ];
+
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.EXECUTION, content, tags });
+        const successfulRelays = (result.results || []).filter(r => r.success === true);
+        if (successfulRelays.length === 0) throw new Error('No se pudo publicar el reporte de ejecución.');
+
+        // Update local state
+        proposal.status = 'in_execution';
+        _persistToStorage();
+        const exec = { dTag, proposalId: proposal.id, description: data.description.trim(), evidence: data.evidence || [], created_at: nowSecs, eventId: result.event.id };
+        _executions.set(dTag, exec);
+
+        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'execution'); } catch (e) {} });
+        console.log(`[Governance] 📋 Reporte de ejecución publicado: ${dTag}`);
+        return result;
+    }
+
+    // ── Verify Execution (Governor) ──────────────────────────
+    async function verifyExecution(dTag) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+
+        // Must be a Governor
+        if (typeof LBW_Merits !== 'undefined' && !LBW_Merits.isGovernor()) {
+            throw new Error('Solo los Gobernadores pueden verificar ejecuciones.');
+        }
+
+        const proposal = _proposals.get(dTag);
+        if (!proposal) throw new Error('Propuesta no encontrada.');
+        if (!['approved', 'in_execution'].includes(proposal.status)) throw new Error('La propuesta no está en estado de ejecución.');
+
+        const exec = _executions.get(dTag);
+        if (!exec) throw new Error('No hay reporte de ejecución para verificar.');
+
+        const pubkey = LBW_Nostr.getPubkey();
+        if (proposal.pubkey === pubkey) throw new Error('El autor no puede verificar su propia ejecución.');
+
+        const nowSecs = Math.floor(Date.now() / 1000);
+        const content = JSON.stringify({
+            verified: true,
+            verifiedBy: pubkey,
+            verifiedAt: nowSecs
+        });
+
+        const tags = [
+            ['d', dTag],
+            ['e', exec.eventId || proposal.id],
+            ['p', proposal.pubkey], // author
+            ['status', 'executed'],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-exec-verify'],
+            ['client', 'LiberBit World']
+        ];
+
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.EXEC_VERIFY, content, tags });
+        const successfulRelays = (result.results || []).filter(r => r.success === true);
+        if (successfulRelays.length === 0) throw new Error('No se pudo publicar la verificación.');
+
+        // Update proposal status
+        proposal.status = 'executed';
+        _persistToStorage();
+        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'executed'); } catch (e) {} });
+
+        // Award execution merits to author (Governor can call awardMerit directly)
+        try {
+            await LBW_Merits.awardMerit(
+                proposal.pubkey,
+                MERIT_CONFIG.EXEC_VERIFIED.amount,
+                MERIT_CONFIG.EXEC_VERIFIED.category,
+                `Ejecución verificada de propuesta: "${proposal.title}"`
+            );
+            console.log(`[Governance] 🏅 Méritos de ejecución otorgados al autor: ${MERIT_CONFIG.EXEC_VERIFIED.amount}`);
+        } catch (err) {
+            console.warn('[Governance] Error otorgando méritos de ejecución:', err.message);
+        }
+
+        console.log(`[Governance] ✅ Ejecución verificada: ${dTag}`);
+        return result;
+    }
+
+    // ── Handle Exec Verification from Relay ──────────────────
+    function _handleExecVerification(event) {
+        const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
+        const dTag = g('d');
+        if (!dTag) return;
+        const proposal = _proposals.get(dTag);
+        if (proposal) {
+            proposal.status = 'executed';
+            _persistToStorage();
+            _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'executed'); } catch (e) {} });
+        }
+    }
+
+    // ── Subscribe Votes ──────────────────────────────────────
     function subscribeVotes(proposalEventId, proposalDTag, onVote) {
         if (onVote) _onVoteCallbacks.push(onVote);
-
-        // Don't duplicate subscriptions for same proposal
         if (_voteSubs[proposalDTag]) return _voteSubs[proposalDTag];
 
         const sub = LBW_Nostr.subscribe(
-            {
-                kinds: [KIND.VOTE],
-                '#e': [proposalEventId],
-                limit: 500
-            },
+            { kinds: [KIND.VOTE], '#e': [proposalEventId], limit: 500 },
             (event) => {
                 const vote = _parseVote(event, proposalDTag);
                 if (!vote) return;
 
-                // Track votes
                 if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
                 const existing = _votes.get(proposalDTag);
-
-                // Dedup by pubkey (one vote per person)
                 const idx = existing.findIndex(v => v.pubkey === vote.pubkey);
                 if (idx >= 0) {
-                    // Keep newer vote only
-                    if (vote.created_at > existing[idx].created_at) {
-                        existing[idx] = vote;
-                    } else return;
+                    if (vote.created_at > existing[idx].created_at) existing[idx] = vote;
+                    else return;
                 } else {
                     existing.push(vote);
                 }
 
-                // Track own vote
                 if (vote.pubkey === LBW_Nostr.getPubkey()) {
-                    _myVotes.set(proposalDTag, {
-                        option: vote.option,
-                        eventId: vote.id,
-                        created_at: vote.created_at
-                    });
+                    _myVotes.set(proposalDTag, { option: vote.option, eventId: vote.id, created_at: vote.created_at });
                 }
-                
-                // Persistir votos recibidos
                 _persistVotesToStorage();
-
-                // Deliver to callbacks
-                _onVoteCallbacks.forEach(cb => {
-                    try { cb(vote, proposalDTag); }
-                    catch (e) { console.warn('[Governance] onVote error:', e); }
-                });
+                _onVoteCallbacks.forEach(cb => { try { cb(vote, proposalDTag); } catch (e) {} });
             }
         );
 
@@ -686,33 +880,49 @@ const LBW_Governance = (() => {
         return sub;
     }
 
-    // ── Unsubscribe ──────────────────────────────────────────
-    function unsubscribeAll() {
-        if (_sub) { LBW_Nostr.unsubscribe(_sub); _sub = null; }
-        Object.values(_voteSubs).forEach(s => {
-            try { LBW_Nostr.unsubscribe(s); } catch (e) {}
-        });
-        _voteSubs = {};
-        _onProposalCallbacks = [];
-        _onVoteCallbacks = [];
+    // ── Fetch My Votes from Nostr ────────────────────────────
+    function _fetchMyVotesFromNostr() {
+        const pubkey = LBW_Nostr.getPubkey();
+        if (!pubkey || _fetchingVotes) return;
+        _fetchingVotes = true;
+
+        LBW_Nostr.subscribe(
+            { kinds: [KIND.VOTE], authors: [pubkey], '#t': ['lbw-vote'], limit: 100 },
+            (event) => {
+                const dTagTag = event.tags.find(t => t[0] === 'd');
+                const proposalDTag = dTagTag ? dTagTag[1] : null;
+                if (!proposalDTag) return;
+
+                const vote = { id: event.id, pubkey: event.pubkey, npub: LBW_Nostr.pubkeyToNpub(event.pubkey), option: event.content?.trim() || '', proposalDTag, created_at: event.created_at };
+                const existing = _myVotes.get(proposalDTag);
+                if (!existing || vote.created_at > existing.created_at) {
+                    _myVotes.set(proposalDTag, { option: vote.option, eventId: vote.id, created_at: vote.created_at, pubkey: vote.pubkey, npub: vote.npub });
+                }
+                if (!_votes.has(proposalDTag)) _votes.set(proposalDTag, []);
+                const votesList = _votes.get(proposalDTag);
+                const idx = votesList.findIndex(v => v.pubkey === vote.pubkey);
+                if (idx >= 0) { if (vote.created_at > votesList[idx].created_at) votesList[idx] = vote; }
+                else votesList.push(vote);
+                _persistVotesToStorage();
+            },
+            () => {
+                _fetchingVotes = false;
+                if (_myVotes.size > 0) {
+                    _persistVotesToStorage();
+                    _onProposalCallbacks.forEach(cb => { try { cb(null, 'votes-synced'); } catch (e) {} });
+                }
+            }
+        );
     }
 
-    function unsubscribeVotes(proposalDTag) {
-        if (_voteSubs[proposalDTag]) {
-            LBW_Nostr.unsubscribe(_voteSubs[proposalDTag]);
-            delete _voteSubs[proposalDTag];
-        }
-    }
+    function fetchMyVotes() { _fetchingVotes = false; _fetchMyVotesFromNostr(); }
 
     // ── Parse Proposal ───────────────────────────────────────
     function _parseProposal(event) {
         try {
             const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
             const dTag = g('d');
-            if (!dTag) {
-                console.warn('[Governance] Propuesta sin d-tag:', event.id?.substring(0, 8));
-                return null;
-            }
+            if (!dTag) return null;
 
             let parsed = {};
             try { parsed = JSON.parse(event.content); } catch (e) {}
@@ -721,185 +931,167 @@ const LBW_Governance = (() => {
             const nowSecs = Math.floor(Date.now() / 1000);
             let status = g('status') || 'active';
 
-            // Auto-close if expired
             if (status === 'active' && expiresAt > 0 && nowSecs > expiresAt) {
                 status = 'expired';
             }
 
+            // Apply result status if we have it cached
+            const cachedResult = _results.get(dTag);
+            if (cachedResult && status === 'expired') {
+                status = cachedResult.approved ? 'approved' :
+                         (cachedResult.quorum_met === false ? 'quorum_failed' : 'rejected');
+            }
+
             return {
-                id: event.id,
-                pubkey: event.pubkey,
-                npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
-                dTag,
-                title: g('title') || 'Sin título',
-                description: parsed.description || event.content,
-                category: g('category') || 'referendum',
-                status,
+                id: event.id, pubkey: event.pubkey, npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
+                dTag, title: g('title') || 'Sin título', description: parsed.description || event.content,
+                category: g('category') || 'referendum', status,
                 options: parsed.options || DEFAULT_OPTIONS[g('category')] || ['A favor', 'En contra', 'Abstención'],
-                candidates: parsed.candidates || null,
-                budget: parsed.budget || null,
-                quorum: parsed.quorum || null,
-                expiresAt,
-                createdAt: parseInt(g('created'), 10) || event.created_at,
-                created_at: event.created_at,
-                tags: event.tags,
-                _rawContent: event.content
+                candidates: parsed.candidates || null, budget: parsed.budget || null, quorum: parsed.quorum || null,
+                expiresAt, createdAt: parseInt(g('created'), 10) || event.created_at,
+                created_at: event.created_at, tags: event.tags, _rawContent: event.content
             };
-        } catch (e) {
-            console.warn('[Governance] Error parsing proposal:', e);
-            return null;
-        }
+        } catch (e) { return null; }
+    }
+
+    // ── Parse Result ─────────────────────────────────────────
+    function _parseResult(event) {
+        try {
+            const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
+            const dTag = g('d');
+            if (!dTag) return null;
+            let parsed = {};
+            try { parsed = JSON.parse(event.content); } catch (e) {}
+            return {
+                eventId: event.id,
+                dTag,
+                proposalId: parsed.proposalId || g('e'),
+                quorum_met: parsed.quorum_met !== false,
+                winner: parsed.winner || g('winner') || null,
+                approved: parsed.approved || false,
+                weighted_votes: parsed.weighted_votes || {},
+                total_votes: parsed.total_votes || parseInt(g('total-votes')) || 0,
+                calculated_at: parsed.calculated_at || event.created_at,
+                calculatedBy: parsed.calculatedBy || event.pubkey,
+                status: g('status')
+            };
+        } catch (e) { return null; }
+    }
+
+    // ── Parse Execution ──────────────────────────────────────
+    function _parseExecution(event) {
+        try {
+            const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
+            const dTag = g('d');
+            if (!dTag) return null;
+            let parsed = {};
+            try { parsed = JSON.parse(event.content); } catch (e) {}
+            return {
+                eventId: event.id, dTag,
+                description: parsed.description || '',
+                evidence: parsed.evidence || [],
+                links: parsed.links || [],
+                created_at: parsed.reportedAt || event.created_at,
+                pubkey: event.pubkey
+            };
+        } catch (e) { return null; }
     }
 
     // ── Parse Vote ───────────────────────────────────────────
     function _parseVote(event, proposalDTag) {
         try {
-            return {
-                id: event.id,
-                pubkey: event.pubkey,
-                npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
-                option: event.content?.trim() || '',
-                proposalDTag,
-                created_at: event.created_at
-            };
-        } catch (e) {
-            console.warn('[Governance] Error parsing vote:', e);
-            return null;
-        }
+            return { id: event.id, pubkey: event.pubkey, npub: LBW_Nostr.pubkeyToNpub(event.pubkey), option: event.content?.trim() || '', proposalDTag, created_at: event.created_at };
+        } catch (e) { return null; }
     }
 
-    // ── Results Calculation ──────────────────────────────────
-    // Calculates vote results for a proposal.
-    // Returns: { total, results: { option: count }, voters: [pubkeys] }
+    // ── Unsubscribe ──────────────────────────────────────────
+    function unsubscribeAll() {
+        if (_sub) { LBW_Nostr.unsubscribe(_sub); _sub = null; }
+        if (_resultSub) { LBW_Nostr.unsubscribe(_resultSub); _resultSub = null; }
+        if (_execSub) { LBW_Nostr.unsubscribe(_execSub); _execSub = null; }
+        Object.values(_voteSubs).forEach(s => { try { LBW_Nostr.unsubscribe(s); } catch (e) {} });
+        _voteSubs = {};
+        _onProposalCallbacks = [];
+        _onVoteCallbacks = [];
+        _onResultCallbacks = [];
+    }
 
+    function unsubscribeVotes(proposalDTag) {
+        if (_voteSubs[proposalDTag]) { LBW_Nostr.unsubscribe(_voteSubs[proposalDTag]); delete _voteSubs[proposalDTag]; }
+    }
+
+    // ── Results Calculation (public) ─────────────────────────
     function getResults(proposalDTag) {
         const votes = _votes.get(proposalDTag) || [];
         const results = {};
         const voters = [];
-
-        votes.forEach(v => {
-            if (!results[v.option]) results[v.option] = 0;
-            results[v.option]++;
-            voters.push(v.pubkey);
-        });
-
-        // Sort by count descending
-        const sorted = Object.entries(results)
-            .sort((a, b) => b[1] - a[1])
-            .reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});
-
-        return {
-            total: votes.length,
-            results: sorted,
-            voters,
-            myVote: _myVotes.get(proposalDTag) || null
-        };
+        votes.forEach(v => { if (!results[v.option]) results[v.option] = 0; results[v.option]++; voters.push(v.pubkey); });
+        const sorted = Object.entries(results).sort((a, b) => b[1] - a[1]).reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});
+        return { total: votes.length, results: sorted, voters, myVote: _myVotes.get(proposalDTag) || null };
     }
 
     // ── Getters ──────────────────────────────────────────────
-
-    function getProposal(dTag) {
-        return _proposals.get(dTag) || null;
-    }
+    function getProposal(dTag) { return _proposals.get(dTag) || null; }
+    function getResult(dTag) { return _results.get(dTag) || null; }
+    function getExecution(dTag) { return _executions.get(dTag) || null; }
+    function getMyVote(dTag) { return _myVotes.get(dTag) || null; }
+    function getVotesForProposal(dTag) { return _votes.get(dTag) || []; }
 
     function getAllProposals() {
-        return [..._proposals.values()]
-            .sort((a, b) => b.created_at - a.created_at);
+        return [..._proposals.values()].sort((a, b) => b.created_at - a.created_at);
     }
-
-    function getActiveProposals() {
-        return getAllProposals().filter(p => p.status === 'active');
-    }
-
-    function getClosedProposals() {
-        return getAllProposals().filter(p => p.status !== 'active');
-    }
-
-    function getMyVote(proposalDTag) {
-        return _myVotes.get(proposalDTag) || null;
-    }
-
-    function getVotesForProposal(proposalDTag) {
-        return _votes.get(proposalDTag) || [];
-    }
+    function getActiveProposals() { return getAllProposals().filter(p => p.status === 'active'); }
+    function getClosedProposals() { return getAllProposals().filter(p => p.status !== 'active'); }
 
     function getStats() {
         const all = getAllProposals();
         return {
             total: all.length,
             active: all.filter(p => p.status === 'active').length,
-            closed: all.filter(p => p.status !== 'active').length,
+            approved: all.filter(p => p.status === 'approved' || p.status === 'in_execution' || p.status === 'executed').length,
+            rejected: all.filter(p => p.status === 'rejected').length,
+            quorum_failed: all.filter(p => p.status === 'quorum_failed').length,
+            executed: all.filter(p => p.status === 'executed').length,
             myProposals: all.filter(p => p.pubkey === LBW_Nostr.getPubkey()).length,
-            myVotes: _myVotes.size,
-            categories: Object.fromEntries(
-                Object.entries(CATEGORIES).map(([k, v]) => [k, all.filter(p => p.category === k).length])
-            )
+            myVotes: _myVotes.size
         };
     }
 
-    // ── Time Helpers ─────────────────────────────────────────
     function getTimeLeft(expiresAt) {
         const now = Math.floor(Date.now() / 1000);
         const diff = expiresAt - now;
         if (diff <= 0) return { expired: true, text: 'Expirado' };
-
         const days = Math.floor(diff / 86400);
         const hours = Math.floor((diff % 86400) / 3600);
         const minutes = Math.floor((diff % 3600) / 60);
-
         if (days > 0) return { expired: false, text: `${days}d ${hours}h`, days, hours, minutes };
         if (hours > 0) return { expired: false, text: `${hours}h ${minutes}m`, days: 0, hours, minutes };
         return { expired: false, text: `${minutes}m`, days: 0, hours: 0, minutes };
     }
 
-    // ── Reset (logout) ───────────────────────────────────────
+    // ── Reset ────────────────────────────────────────────────
     function reset() {
         unsubscribeAll();
-        // NO borrar propuestas de localStorage — son datos públicos compartidos
-        // Solo limpiar el Map interno (se recargará del caché al próximo login)
         _proposals.clear();
         _votes.clear();
         _myVotes.clear();
+        _results.clear();
+        _executions.clear();
+        _resultCalcScheduled.clear();
         _fetchingVotes = false;
-        // Solo borrar votos del usuario actual, no de todos
         try { localStorage.removeItem(_votesKey()); } catch (e) {}
-        // NO borrar STORAGE_KEY (propuestas) ni ALL_VOTES_STORAGE_KEY (votos públicos)
     }
 
     // ── Public API ───────────────────────────────────────────
     return {
-        // Constants
-        KIND,
-        CATEGORIES,
-        DEFAULT_OPTIONS,
-        DURATIONS,
-
-        // Publish
-        publishProposal,
-        closeProposal,
-        publishVote,
-
-        // Subscribe
-        subscribeProposals,
-        subscribeVotes,
-        unsubscribeAll,
-        unsubscribeVotes,
-
-        // Query
-        getProposal,
-        getAllProposals,
-        getActiveProposals,
-        getClosedProposals,
-        getResults,
-        getMyVote,
-        getVotesForProposal,
-        getStats,
-        getTimeLeft,
-
-        // Lifecycle
-        reset,
-        reloadMyVotes,
-        fetchMyVotes
+        KIND, CATEGORIES, DEFAULT_OPTIONS, DURATIONS, MERIT_CONFIG,
+        publishProposal, closeProposal, publishVote,
+        publishExecution, verifyExecution,
+        subscribeProposals, subscribeVotes, unsubscribeAll, unsubscribeVotes,
+        getProposal, getAllProposals, getActiveProposals, getClosedProposals,
+        getResult, getExecution, getResults,
+        getMyVote, getVotesForProposal, getStats, getTimeLeft,
+        reset, reloadMyVotes, fetchMyVotes
     };
 })();
 
