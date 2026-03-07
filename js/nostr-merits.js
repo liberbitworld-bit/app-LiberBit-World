@@ -325,7 +325,8 @@ const LBW_Merits = (() => {
     // ── Subscribe Merits ─────────────────────────────────────
     // ── Auto-Bootstrap Founder ──────────────────────────────
     // Called once per session when the founder logs in.
-    // Checks relay first; only publishes if no merit record exists.
+    // Checks BOTH local cache AND relay before publishing — prevents duplicate bootstrap.
+    const BOOTSTRAP_SESSION_KEY = 'lbw_bootstrap_checked';
     async function _autoBootstrapIfFounder() {
         try {
             if (!LBW_Nostr.isLoggedIn()) return;
@@ -342,25 +343,56 @@ const LBW_Merits = (() => {
             const myPubkey = LBW_Nostr.getPubkey();
             if (myPubkey !== founderHex) return; // Not the founder
 
-            // Wait a moment for relay data to arrive
-            await new Promise(r => setTimeout(r, 2500));
+            // Prevent multiple checks within the same session
+            if (sessionStorage.getItem(BOOTSTRAP_SESSION_KEY)) {
+                console.log('[Merits] \u{1F3D7}\uFE0F Bootstrap ya comprobado en esta sesión');
+                return;
+            }
+            sessionStorage.setItem(BOOTSTRAP_SESSION_KEY, '1');
 
+            // Wait for relay data to arrive
+            await new Promise(r => setTimeout(r, 4000));
+
+            // Check local cache first (fast path)
             const existing = _merits.get(founderHex);
             if (existing && existing.total >= 3000) {
-                console.log('[Merits] 🏗️ Founder already has merits:', existing.total);
+                console.log('[Merits] \u{1F3D7}\uFE0F Founder ya tiene méritos en caché:', existing.total);
                 return;
             }
 
-            console.log('[Merits] 🏗️ Auto-bootstrapping founder merits...');
+            // Check relay directly — do NOT trust only local state
+            const relayHasBootstrap = await _checkBootstrapOnRelay(founderHex);
+            if (relayHasBootstrap) {
+                console.log('[Merits] \u{1F3D7}\uFE0F Bootstrap ya existe en relay — omitiendo');
+                return;
+            }
+
+            console.log('[Merits] \u{1F3D7}\uFE0F Auto-bootstrapping founder merits...');
             await bootstrapFounder(
                 founderHex,
                 FOUNDER_BOOTSTRAP_AMOUNT,
                 'Méritos fundacionales — desarrollo app, infraestructura, diseño sistema LBWM, documentación pre-lanzamiento'
             );
-            console.log('[Merits] 🏗️ ✅ Founder bootstrap completado');
+            console.log('[Merits] \u{1F3D7}\uFE0F \u2705 Founder bootstrap completado');
         } catch (e) {
             console.warn('[Merits] Auto-bootstrap error (non-fatal):', e.message);
         }
+    }
+
+    // Query relay for existing bootstrap event — returns true if found
+    function _checkBootstrapOnRelay(founderHex) {
+        return new Promise(resolve => {
+            const timeout = setTimeout(() => resolve(false), 4000);
+            let found = false;
+            const sub = LBW_Nostr.subscribe(
+                { kinds: [KIND.MERIT], authors: [founderHex], '#t': ['lbw-bootstrap'], limit: 1 },
+                () => {
+                    if (!found) { found = true; clearTimeout(timeout); resolve(true); }
+                },
+                () => { clearTimeout(timeout); if (!found) resolve(false); }
+            );
+            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 4500);
+        });
     }
 
     function subscribeMerits(onMerit) {
