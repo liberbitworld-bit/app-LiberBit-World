@@ -325,13 +325,11 @@ const LBW_Merits = (() => {
     // ── Subscribe Merits ─────────────────────────────────────
     // ── Auto-Bootstrap Founder ──────────────────────────────
     // Called once per session when the founder logs in.
-    // Checks BOTH local cache AND relay before publishing — prevents duplicate bootstrap.
-    const BOOTSTRAP_SESSION_KEY = 'lbw_bootstrap_checked';
+    // Uses localStorage flag (permanent) to prevent duplicate bootstrap across sessions.
     async function _autoBootstrapIfFounder() {
         try {
             if (!LBW_Nostr.isLoggedIn()) return;
 
-            // Resolve founder hex pubkey from npub
             let founderHex;
             try {
                 founderHex = LBW_Nostr.npubToHex(FOUNDER_NPUB);
@@ -343,37 +341,41 @@ const LBW_Merits = (() => {
             const myPubkey = LBW_Nostr.getPubkey();
             if (myPubkey !== founderHex) return; // Not the founder
 
-            // Prevent multiple checks within the same session
-            if (sessionStorage.getItem(BOOTSTRAP_SESSION_KEY)) {
-                console.log('[Merits] \u{1F3D7}\uFE0F Bootstrap ya comprobado en esta sesión');
+            // Permanent localStorage flag — once set, never bootstrap again
+            const BOOTSTRAP_DONE_KEY = 'lbw_bootstrap_done_' + founderHex.substring(0, 12);
+            if (localStorage.getItem(BOOTSTRAP_DONE_KEY)) {
+                console.log('[Merits] Bootstrap ya realizado anteriormente — omitiendo');
                 return;
             }
-            sessionStorage.setItem(BOOTSTRAP_SESSION_KEY, '1');
 
-            // Wait for relay data to arrive
-            await new Promise(r => setTimeout(r, 4000));
+            // Wait for relay events to arrive
+            await new Promise(r => setTimeout(r, 5000));
 
-            // Check local cache first (fast path)
+            // Check local merit cache — most reliable signal
             const existing = _merits.get(founderHex);
             if (existing && existing.total >= 3000) {
-                console.log('[Merits] \u{1F3D7}\uFE0F Founder ya tiene méritos en caché:', existing.total);
+                console.log('[Merits] Founder ya tiene meritos:', existing.total, '— marcando como completado');
+                localStorage.setItem(BOOTSTRAP_DONE_KEY, String(Date.now()));
                 return;
             }
 
-            // Check relay directly — do NOT trust only local state
+            // Last resort: query relay directly with extended timeout
             const relayHasBootstrap = await _checkBootstrapOnRelay(founderHex);
             if (relayHasBootstrap) {
-                console.log('[Merits] \u{1F3D7}\uFE0F Bootstrap ya existe en relay — omitiendo');
+                console.log('[Merits] Bootstrap ya existe en relay — omitiendo y marcando');
+                localStorage.setItem(BOOTSTRAP_DONE_KEY, String(Date.now()));
                 return;
             }
 
-            console.log('[Merits] \u{1F3D7}\uFE0F Auto-bootstrapping founder merits...');
+            console.log('[Merits] Auto-bootstrapping founder merits...');
             await bootstrapFounder(
                 founderHex,
                 FOUNDER_BOOTSTRAP_AMOUNT,
-                'Méritos fundacionales — desarrollo app, infraestructura, diseño sistema LBWM, documentación pre-lanzamiento'
+                'Meritos fundacionales — desarrollo app, infraestructura, diseno sistema LBWM, documentacion pre-lanzamiento'
             );
-            console.log('[Merits] \u{1F3D7}\uFE0F \u2705 Founder bootstrap completado');
+            // Mark as done permanently so it never runs again
+            localStorage.setItem(BOOTSTRAP_DONE_KEY, String(Date.now()));
+            console.log('[Merits] Founder bootstrap completado y bloqueado');
         } catch (e) {
             console.warn('[Merits] Auto-bootstrap error (non-fatal):', e.message);
         }
@@ -382,16 +384,22 @@ const LBW_Merits = (() => {
     // Query relay for existing bootstrap event — returns true if found
     function _checkBootstrapOnRelay(founderHex) {
         return new Promise(resolve => {
-            const timeout = setTimeout(() => resolve(false), 4000);
+            const timeout = setTimeout(() => resolve(false), 5000);
             let found = false;
+            // Query ALL kind 31002 by founder — check tag client-side to avoid relay filter issues
             const sub = LBW_Nostr.subscribe(
-                { kinds: [KIND.MERIT], authors: [founderHex], '#t': ['lbw-bootstrap'], limit: 1 },
-                () => {
-                    if (!found) { found = true; clearTimeout(timeout); resolve(true); }
+                { kinds: [KIND.MERIT], authors: [founderHex], limit: 20 },
+                (event) => {
+                    const isBootstrap = event.tags.some(t => t[0] === 't' && t[1] === 'lbw-bootstrap');
+                    if (isBootstrap && !found) {
+                        found = true;
+                        clearTimeout(timeout);
+                        resolve(true);
+                    }
                 },
                 () => { clearTimeout(timeout); if (!found) resolve(false); }
             );
-            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 4500);
+            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 5500);
         });
     }
 
