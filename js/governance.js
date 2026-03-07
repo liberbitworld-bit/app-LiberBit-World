@@ -620,8 +620,8 @@ function displayVoteResults(proposalVotes, results) {
                 <span style="font-weight:600;">${escapeHtml(option)}</span>
                 <span style="color:var(--color-gold);font-weight:700;">${count} (${pct}%)</span>
             </div>
-            <div class="vote-progress-bar">
-                <div class="vote-progress-fill" style="width:${pct}%"></div>
+            <div style="background:rgba(255,255,255,0.1);height:8px;border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#E5B95C,#52c41a);border-radius:4px;transition:width 0.3s ease;"></div>
             </div>
         </div>`;
     }).join('');
