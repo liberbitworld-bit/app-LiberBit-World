@@ -5,13 +5,12 @@ export default async function handler(req, res) {
     );
     const data = await response.json();
     
-    // Usar el host real de la request (funciona con www y sin www)
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'liberbitworld.org';
-    data.callback = `https://${host}/api/lnurlp/callback`;
+    // Siempre usar el dominio sin www para que LNURL no rompa por redirects
+    data.callback = 'https://liberbitworld.org/api/lnurlp/callback';
     
     // Forzar maxSendable
     if (!data.maxSendable || data.maxSendable === 0) {
-      data.maxSendable = 100000000000; // 1 BTC en millisats
+      data.maxSendable = 100000000000;
     }
     
     res.setHeader('Content-Type', 'application/json');
