@@ -1199,10 +1199,18 @@
                 </p>
 
                 <!-- Stats Bar -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                     <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; border: 2px solid var(--color-border); text-align: center;">
                         <div style="font-size: 1.8rem; font-weight: 700; color: var(--color-gold);" id="activeProposalsCount">0</div>
-                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Propuestas Activas</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Activas</div>
+                    </div>
+                    <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; border: 2px solid rgba(82,196,26,0.4); text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #52c41a;" id="approvedProposalsCount">0</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Aprobadas</div>
+                    </div>
+                    <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; border: 2px solid rgba(156,39,176,0.4); text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #CE93D8;" id="executedProposalsCount">0</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Ejecutadas</div>
                     </div>
                     <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; border: 2px solid var(--color-border); text-align: center;">
                         <div style="font-size: 1.8rem; font-weight: 700; color: var(--color-accent-green);" id="myVotesCount">0</div>
@@ -1210,7 +1218,7 @@
                     </div>
                     <div style="background: var(--color-bg-card); padding: 1rem; border-radius: 12px; border: 2px solid var(--color-border); text-align: center;">
                         <div style="font-size: 1.8rem; font-weight: 700; color: var(--color-teal-light);" id="totalProposalsCount">0</div>
-                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Total Propuestas</div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.25rem;">Total</div>
                     </div>
                 </div>
 
@@ -1222,11 +1230,11 @@
                     <button class="filter-btn" onclick="filterProposals('active')" data-filter-prop="active">
                         ✅ Activas
                     </button>
+                    <button class="filter-btn" onclick="filterProposals('approved')" data-filter-prop="approved">
+                        🏆 Aprobadas
+                    </button>
                     <button class="filter-btn" onclick="filterProposals('closed')" data-filter-prop="closed">
                         🔒 Cerradas
-                    </button>
-                    <button class="filter-btn" onclick="filterProposals('pending')" data-filter-prop="pending">
-                        ⏳ Pendientes
                     </button>
                 </div>
 
@@ -2304,7 +2312,7 @@
     <script src="js/chat.js?v=phase2f"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/lightning.js?v=phase2"></script>
-    <script src="js/governance.js?v=phase1"></script>
+    <script src="js/governance.js?v=phase2"></script>
     <script src="js/profile.js?v=phase1"></script>
     <script src="js/wallet.js?v=phase1"></script>
 
@@ -2314,7 +2322,7 @@
     <script src="js/nostr.js?v=phase1"></script>
     <script src="js/nostr-dm.js?v=phase1"></script>
     <script src="js/nostr-sync.js?v=phase1"></script>
-    <script src="js/nostr-governance.js?v=phase1"></script>
+    <script src="js/nostr-governance.js?v=phase2"></script>
     <script src="js/nostr-merits.js?v=phase1"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
     <script src="js/merits.js?v=phase1"></script>
