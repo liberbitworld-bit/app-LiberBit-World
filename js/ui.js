@@ -187,6 +187,10 @@ async function openApp(appName) {
         if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.refreshMarketplace) {
             LBW_NostrBridge.refreshMarketplace();
         }
+        // Inject mission cards into networking grid
+        if (typeof LBW_Missions !== 'undefined') {
+            LBW_Missions.onNetworkingOpen();
+        }
         markAsRead('networking');
     } else if (appName === 'directMessages') {
         showSection('chatSection');
