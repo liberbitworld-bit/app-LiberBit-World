@@ -80,9 +80,27 @@ function filterOffers(category) {
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.querySelector('[data-filter="' + category + '"]');
     if (activeBtn) activeBtn.classList.add('active');
+
+    if (category === 'misiones') {
+        // Show only mission cards
+        document.querySelectorAll('.offer-card').forEach(c => {
+            c.style.display = c.classList.contains('mission-card') ? '' : 'none';
+        });
+        // Inject if none yet
+        const grid = document.getElementById('offersGrid');
+        if (grid && !grid.querySelector('.mission-card') && typeof LBW_Missions !== 'undefined') {
+            LBW_Missions.renderMissionCards();
+        }
+        return;
+    }
+
     if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.filterMarketplace) {
         LBW_NostrBridge.filterMarketplace(category);
     }
+    // Mission cards: show only when 'todos', hide for specific categories
+    document.querySelectorAll('.mission-card').forEach(c => {
+        c.style.display = (category === 'todos') ? '' : 'none';
+    });
 }
 
 function loadOffers() {
