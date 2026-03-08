@@ -460,7 +460,7 @@ const LBW_Missions = (function () {
         const modal = document.createElement('div');
         modal.id = 'missionDetailModal';
         modal.className = 'modal';
-        modal.style.display = 'flex';
+        modal.classList.add('active');
         modal.innerHTML = `
             <div class="modal-content" style="max-width:600px;padding:2rem;position:relative;">
                 <button class="modal-close" onclick="document.getElementById('missionDetailModal').remove()">✕</button>
@@ -512,7 +512,7 @@ const LBW_Missions = (function () {
         const modal = document.createElement('div');
         modal.id = 'missionShareModal';
         modal.className = 'modal';
-        modal.style.display = 'flex';
+        modal.classList.add('active');
         modal.innerHTML = `
             <div class="modal-content" style="max-width:520px;padding:2rem;">
                 <button class="modal-close" onclick="document.getElementById('missionShareModal').remove()">✕</button>
@@ -581,7 +581,7 @@ const LBW_Missions = (function () {
         const modal = document.createElement('div');
         modal.id = 'missionCreateModal';
         modal.className = 'modal';
-        modal.style.display = 'flex';
+        modal.classList.add('active');
         modal.innerHTML = `
             <div class="modal-content" style="max-width:640px;padding:2rem;max-height:90vh;overflow-y:auto;">
                 <button class="modal-close" onclick="document.getElementById('missionCreateModal').remove()">✕</button>
@@ -688,7 +688,7 @@ const LBW_Missions = (function () {
         const modal = document.createElement('div');
         modal.id = 'missionDeliveryModal';
         modal.className = 'modal';
-        modal.style.display = 'flex';
+        modal.classList.add('active');
         modal.innerHTML = `
             <div class="modal-content" style="max-width:500px;padding:2rem;">
                 <button class="modal-close" onclick="document.getElementById('missionDeliveryModal').remove()">✕</button>
