@@ -94,6 +94,14 @@ async function loadMeritsData() {
             return;
         }
 
+        // Init missions in background
+        if (typeof LBW_Missions !== 'undefined') {
+            LBW_Missions.init().then(() => {
+                const badge = document.getElementById('tabBadgeMissions');
+                if (badge) { const n = LBW_Missions.getOpenCount(); badge.textContent = n; badge.style.display = n > 0 ? 'inline-flex' : 'none'; }
+            }).catch(e => console.warn('[Missions] init error:', e));
+        }
+
         // Migrar aportaciones legacy de localStorage → Nostr (una sola vez por usuario)
         await _migrateLegacyContributions();
 
@@ -495,6 +503,12 @@ function switchLbwmTab(tabName) {
     if (tabName === 'verificaciones') loadPendingVerifications();
     if (tabName === 'niveles') { var m2 = parseInt(document.getElementById('userTotalMerits')?.textContent) || 0; renderCitizenshipLevels(m2); }
     if (tabName === 'mis-aportaciones') loadMyContributions();
+    if (tabName === 'misiones') {
+        LBW_Missions.renderMissionsTab();
+        // Update badge
+        const badge = document.getElementById('tabBadgeMissions');
+        if (badge) { const n = LBW_Missions.getOpenCount(); badge.textContent = n; badge.style.display = n > 0 ? 'inline-flex' : 'none'; }
+    }
 }
 
 function toggleFinanciada() {
