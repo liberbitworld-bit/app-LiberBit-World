@@ -128,6 +128,7 @@ function _nostrProposalToLegacy(p) {
         budget_amount: p.budget?.amount || null,
         candidates: p.candidates || [],
         options: p.options || [],
+        proposalNumber: p.proposalNumber || 0,
         _nostrOriginal: p
     };
 }
@@ -183,9 +184,16 @@ function displayProposals() {
         const timeLeft = proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : '';
         const statusConf = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.closed;
 
+        const prpLabel = proposal.proposalNumber > 0
+            ? LBW_Governance.formatProposalNumber(proposal.proposalNumber)
+            : '';
+
         return `
             <div class="proposal-card ${statusConf.class}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
-                <div class="proposal-type-badge">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+                    <div class="proposal-type-badge">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
+                    ${prpLabel ? `<div style="font-size:0.75rem;font-weight:700;color:var(--color-gold);opacity:0.85;letter-spacing:0.05em;font-family:monospace;">${prpLabel}</div>` : ''}
+                </div>
                 <div class="proposal-status ${statusConf.class}">${statusConf.label}</div>
                 <div class="proposal-title">${escapeHtml(proposal.title)}</div>
                 <div class="proposal-description">${escapeHtml(proposal.description)}</div>
@@ -308,7 +316,10 @@ async function showProposalDetail(proposalIdentifier) {
 
             <div class="modal-header" style="background:linear-gradient(135deg,var(--color-teal),var(--color-teal-dark));padding:2rem;">
                 <div class="proposal-status ${statusConf.class}" style="margin-bottom:1rem;">${statusConf.label}</div>
-                <div style="font-size:0.9rem;color:var(--color-gold);margin-bottom:0.5rem;">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
+                <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+                    <div style="font-size:0.9rem;color:var(--color-gold);">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
+                    ${proposal.proposalNumber > 0 ? `<div style="font-size:0.8rem;font-weight:700;color:var(--color-gold);opacity:0.9;font-family:monospace;background:rgba(229,185,92,0.15);padding:0.15rem 0.5rem;border-radius:4px;border:1px solid rgba(229,185,92,0.3);">${LBW_Governance.formatProposalNumber(proposal.proposalNumber)}</div>` : ''}
+                </div>
                 <h2 style="color:white;margin:0;">${escapeHtml(proposal.title)}</h2>
             </div>
 
@@ -329,6 +340,7 @@ async function showProposalDetail(proposalIdentifier) {
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Votos</div><div id="modalVoteCount" style="font-weight:600;color:var(--color-gold);">${proposalVotes.length}</div></div>
                         <div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">${proposal.status === 'active' ? 'Tiempo restante' : 'Estado final'}</div>
                         <div style="font-weight:600;">${proposal.status === 'active' && proposal.ends_at ? getTimeLeft(new Date(proposal.ends_at).getTime()) : statusConf.label}</div></div>
+                        ${proposal.proposalNumber > 0 ? `<div><div style="color:var(--color-text-secondary);margin-bottom:0.25rem;">Identificador</div><div style="font-weight:700;color:var(--color-gold);font-family:monospace;">${LBW_Governance.formatProposalNumber(proposal.proposalNumber)}</div></div>` : ''}
                     </div>
                 </div>
 
