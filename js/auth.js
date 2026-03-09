@@ -76,13 +76,16 @@ async function checkExistingSession() {
         }
         
         // Sync with Supabase to get user ID and name if not present
+        // Wrapped in a race with a 5s timeout so a dead proxy never blocks showMainMenu()
         if (currentPubKey) {
             try {
-                const { data, error } = await supabaseClient
+                const timeout = new Promise(resolve => setTimeout(() => resolve({ data: null, error: 'timeout' }), 5000));
+                const query = supabaseClient
                     .from('users')
                     .select('*')
                     .eq('public_key', currentPubKey)
                     .single();
+                const { data, error } = await Promise.race([query, timeout]);
                 
                 if (data) {
                     if (!currentUser.id) {
