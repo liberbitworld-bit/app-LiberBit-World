@@ -221,13 +221,36 @@ function _renderResultBadge(result, proposal) {
     const icon = result.approved ? '✅' : result.quorum_met === false ? '⚠️' : '❌';
 
     if (result.quorum_met === false) {
+        const myVote = proposal._nostrOriginal ? LBW_Governance.getMyVote(proposal._nostrOriginal.dTag) : null;
+        const isGov = typeof LBW_Merits !== 'undefined' && LBW_Merits.isGovernor();
+        const dTagId = proposal.dTag || proposal.id;
+        const recalcBtn = (myVote && isGov)
+            ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${dTagId}')"
+                  style="margin-top:0.4rem;background:#faad14;color:#000;border:none;border-radius:6px;padding:0.25rem 0.7rem;font-size:0.78rem;cursor:pointer;font-weight:700;">
+                  🔄 Recalcular — voté como Gobernador
+              </button>`
+            : '';
         return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:0.5rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
             ${icon} Sin quórum — ningún Gobernador participó
+            ${recalcBtn}
         </div>`;
     }
     return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:0.5rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
         ${icon} ${winner} · ${result.total_votes} votos
     </div>`;
+}
+
+async function recalculateGovResult(dTag) {
+    if (typeof LBW_Governance === 'undefined') return;
+    showNotification('🔄 Recalculando resultado... espera ~15 segundos', 'info');
+    try {
+        await LBW_Governance.recalculateResult(dTag);
+        showNotification('✅ Resultado recalculado correctamente', 'success');
+    } catch (err) {
+        showNotification('Error al recalcular: ' + err.message, 'error');
+        console.error('[Governance] recalculate error:', err);
+    }
+    setTimeout(() => { updateGovStats(); displayProposals(); }, 1000);
 }
 
 function filterProposals(filter) {
@@ -368,6 +391,27 @@ function _renderResultSection(result, proposal) {
             ? `La opción <strong>"${escapeHtml(result.winner)}"</strong> ganó con ${result.total_votes} votos ponderados.`
             : `La opción <strong>"${escapeHtml(result.winner)}"</strong> fue la más votada (propuesta rechazada).`;
 
+    // Recalculate button: only shown when quorum failed AND current user has voted as governor
+    let recalcSection = '';
+    if (quorumFailed) {
+        const dTagId = proposal.dTag || proposal.id;
+        const myVote = typeof LBW_Governance !== 'undefined' ? LBW_Governance.getMyVote(dTagId) : null;
+        const isGov = typeof LBW_Merits !== 'undefined' && LBW_Merits.isGovernor();
+        if (myVote && isGov) {
+            recalcSection = `
+                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(250,173,20,0.3);">
+                    <div style="font-size:0.82rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">
+                        ⚠️ Detectado: votaste como Gobernador pero el resultado no lo registró.<br>
+                        Esto ocurre por un desfase de sincronización de méritos. Puedes recalcular:
+                    </div>
+                    <button onclick="recalculateGovResult('${dTagId}')"
+                        style="background:#faad14;color:#000;border:none;border-radius:8px;padding:0.6rem 1.2rem;font-weight:700;cursor:pointer;font-size:0.9rem;">
+                        🔄 Recalcular Resultado
+                    </button>
+                </div>`;
+        }
+    }
+
     const weightedBreakdown = result.weighted_votes && Object.keys(result.weighted_votes).length > 0
         ? `<div style="margin-top:1rem;">
             <div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">Votación ponderada por méritos:</div>
@@ -397,6 +441,7 @@ function _renderResultSection(result, proposal) {
             </div>
             <div style="color:var(--color-text-secondary);font-size:0.9rem;">${detail}</div>
             ${weightedBreakdown}
+            ${recalcSection}
         </div>
     `;
 }
