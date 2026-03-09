@@ -112,7 +112,8 @@ class SupabaseProxyQuery {
             const response = await fetch(`${API_BASE}/db`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(8000)  // max 8s — evita bucle infinito si proxy no responde
             });
 
             const result = await response.json();
@@ -138,7 +139,11 @@ class SupabaseProxyQuery {
 
             return result;
         } catch (err) {
-            console.error('API proxy error:', err);
+            if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+                console.warn('[Proxy] Timeout al conectar con API proxy — continuando sin datos');
+            } else {
+                console.error('API proxy error:', err);
+            }
             return { data: null, error: err.message };
         }
     }
