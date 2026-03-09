@@ -221,10 +221,8 @@ function _renderResultBadge(result, proposal) {
     const icon = result.approved ? '✅' : result.quorum_met === false ? '⚠️' : '❌';
 
     if (result.quorum_met === false) {
-        const myVote = proposal._nostrOriginal ? LBW_Governance.getMyVote(proposal._nostrOriginal.dTag) : null;
-        const isGov = typeof LBW_Merits !== 'undefined' && LBW_Merits.isGovernor();
         const dTagId = proposal.dTag || proposal.id;
-        const recalcBtn = (myVote && isGov)
+        const recalcBtn = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
             ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${dTagId}')"
                   style="margin-top:0.4rem;background:#faad14;color:#000;border:none;border-radius:6px;padding:0.25rem 0.7rem;font-size:0.78rem;cursor:pointer;font-weight:700;">
                   🔄 Recalcular — voté como Gobernador
@@ -397,7 +395,7 @@ function _renderResultSection(result, proposal) {
         const dTagId = proposal.dTag || proposal.id;
         const myVote = typeof LBW_Governance !== 'undefined' ? LBW_Governance.getMyVote(dTagId) : null;
         const isGov = typeof LBW_Merits !== 'undefined' && LBW_Merits.isGovernor();
-        if (myVote && isGov) {
+        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
             recalcSection = `
                 <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(250,173,20,0.3);">
                     <div style="font-size:0.82rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">
