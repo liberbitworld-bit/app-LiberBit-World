@@ -1383,22 +1383,25 @@ const LBW_NostrBridge = (() => {
                 name = p.name || p.display_name || null;
                 picture = p.picture || null;
             }
-            if (!name) {
+            if (!name || !picture) {
                 try {
                     const cached = await LBW_Store.getProfile(pubkey);
                     if (cached) {
-                        name = cached.name || cached.display_name || null;
-                        picture = cached.picture || cached.image || null;
+                        if (!name) name = cached.name || cached.display_name || null;
+                        if (!picture) picture = cached.picture || cached.image || null;
                     }
                 } catch(e) {}
             }
-            if (!name && typeof supabaseClient !== 'undefined') {
+            if ((!name || !picture) && typeof supabaseClient !== 'undefined') {
                 try {
                     const npub = LBW_Nostr.pubkeyToNpub(pubkey);
                     const { data } = await supabaseClient
                         .from('users').select('name, avatar_url')
                         .eq('public_key', npub).maybeSingle();
-                    if (data) { name = data.name || null; picture = data.avatar_url || null; }
+                    if (data) {
+                        if (!name) name = data.name || null;
+                        if (!picture) picture = data.avatar_url || null;
+                    }
                 } catch(e) {}
             }
             if (!name) {
