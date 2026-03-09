@@ -260,11 +260,15 @@ async function loadUserProfile() {
     }
     
     updateProfileDisplay();
-    
-    // Re-update after delays to catch late-loaded feeds (chat, marketplace, governance)
-    setTimeout(() => updateProfileDisplay(), 2000);
-    setTimeout(() => updateProfileDisplay(), 5000);
-    setTimeout(() => updateProfileDisplay(), 10000);
+
+    // Re-update after delays to catch late-loaded feeds (chat, marketplace, governance).
+    // Cancel any previously registered timeouts to avoid stale callbacks from old visits.
+    if (window._profileUpdateTimers) window._profileUpdateTimers.forEach(clearTimeout);
+    window._profileUpdateTimers = [
+        setTimeout(() => updateProfileDisplay(), 2000),
+        setTimeout(() => updateProfileDisplay(), 5000),
+        setTimeout(() => updateProfileDisplay(), 10000)
+    ];
     
     // Try Nostr profile picture if no avatar loaded yet
     if (!userProfile.avatarUrl) {
