@@ -157,34 +157,13 @@ console.log('✅ Supabase proxy client initialized');
 // Everything below is unchanged from original config.js
 // ================================================
 
-// Function to count and display active nodes
-async function updateActiveNodesCounter() {
-    try {
-        let userCount = 0;
-        
-        const { data, error } = await supabaseClient
-            .from('users')
-            .select('id');
-        
-        if (error) {
-            const savedKeys = localStorage.getItem('liberbit_keys');
-            if (savedKeys) userCount = 1;
-        } else if (data) {
-            userCount = data.length;
-        } else {
-            userCount = 1;
-        }
-        
-        const counter = document.getElementById('activeNodesCount');
-        if (counter) {
-            const currentValue = parseInt(counter.textContent) || 0;
-            animateCounter(counter, currentValue, userCount, 1500);
-        }
-    } catch (err) {
-        const counter = document.getElementById('activeNodesCount');
-        if (counter && counter.textContent === '0') {
-            counter.textContent = '1';
-        }
+// Function to display active nodes — valor fijo: 3 nodos conocidos
+function updateActiveNodesCounter() {
+    const ACTIVE_NODES = 3;
+    const counter = document.getElementById('activeNodesCount');
+    if (counter) {
+        const currentValue = parseInt(counter.textContent) || 0;
+        animateCounter(counter, currentValue, ACTIVE_NODES, 1500);
     }
 }
 
