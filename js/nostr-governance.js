@@ -467,6 +467,46 @@ const LBW_Governance = (() => {
         );
     }
 
+    // ── Ensure Voter Merits Loaded ───────────────────────────
+    // Subscribes directly to merit events for specific pubkeys and waits
+    // until the relay EOSE arrives (or timeout). This guarantees that when
+    // we compute the weighted result we have the correct citizenship level
+    // for every voter, preventing a false "quorum_failed" when the merit
+    // subscription hasn't yet received their records.
+    async function _ensureVoterMeritsLoaded(pubkeys, timeoutMs = 6000) {
+        if (!pubkeys || pubkeys.length === 0) return;
+        if (typeof LBW_Merits === 'undefined') return;
+        if (typeof LBW_Nostr === 'undefined') return;
+
+        // Filter to pubkeys that haven't loaded merit records yet
+        const missing = pubkeys.filter(pk => {
+            try {
+                const d = LBW_Merits.getUserMerits(pk);
+                // records.length > 0 means we have real data; total > 0 also works
+                return (!d || (d.total === 0 && d.records.length === 0));
+            } catch (e) { return true; }
+        });
+
+        if (missing.length === 0) return; // all already loaded
+
+        console.log(`[Governance] 🔍 Cargando méritos de ${missing.length} votante(s) antes de calcular...`);
+
+        return new Promise(resolve => {
+            const done = setTimeout(resolve, timeoutMs);
+            const sub = LBW_Nostr.subscribe(
+                { kinds: [LBW_Merits.KIND.MERIT], authors: missing, limit: 200 },
+                () => {}, // Events are processed by the existing merit subscription
+                () => { clearTimeout(done); resolve(); }
+            );
+            // Always clean up and resolve after timeout
+            setTimeout(() => {
+                try { LBW_Nostr.unsubscribe(sub); } catch (e) {}
+                clearTimeout(done);
+                resolve();
+            }, timeoutMs + 500);
+        });
+    }
+
     // ── Schedule Result Calculation ──────────────────────────
     function _scheduleResultCalc(dTag) {
         if (_resultCalcScheduled.has(dTag)) return;
@@ -495,16 +535,79 @@ const LBW_Governance = (() => {
             // Subscribe to votes if not already done
             subscribeVotes(proposal.id, dTag, null);
 
-            // Wait for votes to load
+            // Wait for votes to load (increased to 8s for slow relays)
             setTimeout(async () => {
+                // Pre-load merit data for all voters before computing result
+                // This is critical: without this, governors may be misidentified
+                // as regular community members (quorum_met = false incorrectly).
+                const votes = _votes.get(dTag) || [];
+                const voterPubkeys = [...new Set(votes.map(v => v.pubkey).filter(Boolean))];
+                await _ensureVoterMeritsLoaded(voterPubkeys, 7000);
+
                 try {
                     await _publishResultForProposal(dTag);
                 } catch (err) {
                     console.warn(`[Governance] Error calculando resultado: ${err.message}`);
                 }
                 _resultCalcScheduled.delete(dTag);
-            }, 4000);
+            }, 8000);
         }, 5000);
+    }
+
+    // ── Recalculate Result (Governor override) ───────────────
+    // Clears a cached quorum_failed result and re-runs the calculation.
+    // Only meaningful after merits have finished loading. Governors can
+    // call this when they know they voted but the result shows "sin quórum".
+    async function recalculateResult(dTag) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+
+        const proposal = _proposals.get(dTag);
+        if (!proposal) throw new Error('Propuesta no encontrada.');
+
+        const existing = _results.get(dTag);
+        // Only allow recalculation if the current result is quorum_failed
+        // (to avoid erasing legitimate results)
+        if (existing && existing.quorum_met !== false) {
+            throw new Error('El resultado ya está calculado correctamente.');
+        }
+
+        console.log(`[Governance] 🔄 Recalculando resultado para: ${dTag}`);
+
+        // Clear cached result so _publishResultForProposal can run again
+        _results.delete(dTag);
+        _resultCalcScheduled.delete(dTag);
+
+        // Persist cleared result
+        try {
+            const stored = localStorage.getItem(RESULTS_STORAGE_KEY);
+            if (stored) {
+                const data = JSON.parse(stored);
+                delete data[dTag];
+                localStorage.setItem(RESULTS_STORAGE_KEY, JSON.stringify(data));
+            }
+        } catch (e) {}
+
+        // Reset proposal status to expired so recalc can proceed
+        if (proposal.status === 'quorum_failed') {
+            proposal.status = 'expired';
+            _persistToStorage();
+        }
+
+        // Re-subscribe to votes to make sure they're all loaded
+        subscribeVotes(proposal.id, dTag, null);
+
+        // Pre-load merit data for all known voters
+        const votes = _votes.get(dTag) || [];
+        const voterPubkeys = [...new Set(votes.map(v => v.pubkey).filter(Boolean))];
+        await _ensureVoterMeritsLoaded(voterPubkeys, 8000);
+
+        // Extra wait in case new votes arrived during merit loading
+        await new Promise(r => setTimeout(r, 3000));
+
+        await _publishResultForProposal(dTag);
+        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'result'); } catch (e) {} });
+
+        console.log(`[Governance] ✅ Recálculo completo para: ${dTag}`);
     }
 
     // Check if a result event already exists on relay
@@ -1091,7 +1194,8 @@ const LBW_Governance = (() => {
         getProposal, getAllProposals, getActiveProposals, getClosedProposals,
         getResult, getExecution, getResults,
         getMyVote, getVotesForProposal, getStats, getTimeLeft,
-        reset, reloadMyVotes, fetchMyVotes
+        reset, reloadMyVotes, fetchMyVotes,
+        recalculateResult
     };
 })();
 
