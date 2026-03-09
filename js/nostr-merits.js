@@ -139,7 +139,16 @@ const LBW_Merits = (() => {
                     }
                 });
                 console.log(`[Merits] 📂 ${_merits.size} usuarios cargados de caché`);
-                
+
+                // If MY merits were in the cache, schedule a deferred profile refresh
+                // so the profile shows the correct level without waiting for the relay.
+                const _myPkCache = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : null;
+                if (_myPkCache && _merits.has(_myPkCache)) {
+                    setTimeout(() => {
+                        try { if (typeof updateProfileDisplay === 'function') updateProfileDisplay(); } catch(e) {}
+                    }, 100);
+                }
+
                 // Restore myContributions from separate cache
                 const rawC = localStorage.getItem(CONTRIBS_STORAGE_KEY);
                 if (rawC) {
@@ -672,6 +681,15 @@ const LBW_Merits = (() => {
 
         // Persist to localStorage
         _persistMeritsToStorage();
+
+        // If this merit is for the current user, refresh the profile display.
+        // This covers the relay-delivery path: merits arrive AFTER profile rendered.
+        const _myPkNow = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : null;
+        if (_myPkNow && pubkey === _myPkNow) {
+            setTimeout(() => {
+                try { if (typeof updateProfileDisplay === 'function') updateProfileDisplay(); } catch(e) {}
+            }, 50);
+        }
     }
 
     // ── Leaderboard ──────────────────────────────────────────
