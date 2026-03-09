@@ -85,6 +85,52 @@ const LBW_Governance = (() => {
     const RESULTS_STORAGE_KEY   = 'lbw_governance_results';
     const MERIT_CLAIMED_KEY     = 'lbw_governance_merit_claimed';
 
+    // ── Proposal Numbering ───────────────────────────────────
+    // Each proposal carries a permanent sequential number (PRP-001, PRP-002…)
+    // embedded as a Nostr tag ['proposal_number', 'N'] at publish time.
+    // Legacy proposals (no tag) receive a display-only number assigned
+    // silently by created_at order after all proposals are loaded.
+
+    function formatProposalNumber(n) {
+        if (!n || n <= 0) return '';
+        return 'PRP-' + String(n).padStart(3, '0');
+    }
+
+    // Returns the next available number based on the highest known proposal number.
+    function _computeNextNumber() {
+        let max = 0;
+        _proposals.forEach(p => {
+            if (p.proposalNumber && p.proposalNumber > max) max = p.proposalNumber;
+        });
+        return max + 1;
+    }
+
+    // Assign sequential numbers to legacy proposals (no embedded tag),
+    // sorted by created_at ascending, starting after any already-numbered ones.
+    function _assignLegacyNumbers() {
+        // Separate proposals with and without numbers
+        const withNumber    = [];
+        const withoutNumber = [];
+        _proposals.forEach(p => {
+            if (p.proposalNumber > 0) withNumber.push(p);
+            else withoutNumber.push(p);
+        });
+
+        if (withoutNumber.length === 0) return;
+
+        // Legacy proposals get numbers starting after the highest existing number
+        const maxExisting = withNumber.reduce((m, p) => Math.max(m, p.proposalNumber), 0);
+
+        // Sort legacy by created_at ascending (oldest = lowest number)
+        withoutNumber.sort((a, b) => (a.createdAt || a.created_at) - (b.createdAt || b.created_at));
+
+        withoutNumber.forEach((p, i) => {
+            p.proposalNumber = maxExisting + i + 1;
+        });
+
+        console.log(`[Governance] 🔢 ${withoutNumber.length} propuestas legacy numeradas desde PRP-${String(maxExisting + 1).padStart(3,'0')}`);
+    }
+
     function _votesKey() {
         const pk = LBW_Nostr.getPubkey();
         return pk ? VOTES_STORAGE_KEY + '_' + pk.substring(0, 12) : VOTES_STORAGE_KEY;
@@ -138,7 +184,6 @@ const LBW_Governance = (() => {
                 console.log(`[Governance] 📂 ${_proposals.size} propuestas cargadas de caché`);
             }
         } catch (e) { console.warn('[Governance] Storage load error:', e); }
-
         // All votes
         try {
             const raw = localStorage.getItem(ALL_VOTES_STORAGE_KEY);
@@ -171,6 +216,7 @@ const LBW_Governance = (() => {
         } catch (e) {}
 
         _loadMyVotes();
+        _assignLegacyNumbers();
     }
 
     function _loadMyVotes() {
@@ -234,6 +280,9 @@ const LBW_Governance = (() => {
         const pubkey = LBW_Nostr.getPubkey();
         const dTag = `proposal-${pubkey.substring(0, 8)}-${nowSecs}`;
 
+        // Assign sequential number (permanent, embedded in the Nostr event)
+        const proposalNumber = _computeNextNumber();
+
         const content = JSON.stringify({
             description: data.description.trim(),
             options,
@@ -249,6 +298,7 @@ const LBW_Governance = (() => {
             ['status', 'active'],
             ['expires', String(expiresAt)],
             ['created', String(nowSecs)],
+            ['proposal_number', String(proposalNumber)],
             ['t', 'lbw-governance'],
             ['t', 'lbw-proposal'],
             ['t', `lbw-${category}`],
@@ -273,14 +323,14 @@ const LBW_Governance = (() => {
             category, status: 'active', options,
             candidates: data.candidates || null, budget: data.budget || null,
             quorum: data.quorum || null, expiresAt, createdAt: nowSecs,
-            created_at: nowSecs, tags, _rawContent: content
+            created_at: nowSecs, proposalNumber, tags, _rawContent: content
         };
 
         _proposals.set(dTag, localProposal);
         _persistToStorage();
         _onProposalCallbacks.forEach(cb => { try { cb(localProposal, 'new'); } catch (e) {} });
 
-        console.log(`[Governance] 📋 Propuesta publicada: "${data.title}" [${category}] d=${dTag}`);
+        console.log(`[Governance] 📋 Propuesta publicada: "${data.title}" [${category}] ${formatProposalNumber(proposalNumber)} d=${dTag}`);
         return { ...result, dTag, category, expiresAt, relaysUsed: successfulRelays.length };
     }
 
@@ -396,6 +446,8 @@ const LBW_Governance = (() => {
 
         setTimeout(() => {
             _onProposalCallbacks.forEach(cb => { try { cb(null, 'relay-sync'); } catch (e) {} });
+            // Assign numbers to any legacy proposals that arrived without a tag
+            _assignLegacyNumbers();
             // Check all cached expired proposals
             _proposals.forEach((p, dTag) => {
                 if (p.status === 'expired' && !_results.has(dTag)) {
@@ -1052,7 +1104,9 @@ const LBW_Governance = (() => {
                 options: parsed.options || DEFAULT_OPTIONS[g('category')] || ['A favor', 'En contra', 'Abstención'],
                 candidates: parsed.candidates || null, budget: parsed.budget || null, quorum: parsed.quorum || null,
                 expiresAt, createdAt: parseInt(g('created'), 10) || event.created_at,
-                created_at: event.created_at, tags: event.tags, _rawContent: event.content
+                created_at: event.created_at,
+                proposalNumber: parseInt(g('proposal_number'), 10) || 0,
+                tags: event.tags, _rawContent: event.content
             };
         } catch (e) { return null; }
     }
@@ -1195,7 +1249,7 @@ const LBW_Governance = (() => {
         getResult, getExecution, getResults,
         getMyVote, getVotesForProposal, getStats, getTimeLeft,
         reset, reloadMyVotes, fetchMyVotes,
-        recalculateResult
+        recalculateResult, formatProposalNumber
     };
 })();
 
