@@ -344,7 +344,16 @@ const LBW_Merits = (() => {
             // Permanent localStorage flag — once set, never bootstrap again
             const BOOTSTRAP_DONE_KEY = 'lbw_bootstrap_done_' + founderHex.substring(0, 12);
             if (localStorage.getItem(BOOTSTRAP_DONE_KEY)) {
-                console.log('[Merits] Bootstrap ya realizado anteriormente — omitiendo');
+                console.log('[Merits] Bootstrap ya realizado anteriormente — omitiendo re-bootstrap');
+                // BUT: still verify merits are loaded into memory (relay subscription
+                // may not have returned yet, or tag filter may have returned 0 results).
+                // Wait briefly for relay events and re-query directly if still empty.
+                await new Promise(r => setTimeout(r, 3000));
+                const cachedData = _merits.get(founderHex);
+                if (!cachedData || cachedData.total < 3000) {
+                    console.log('[Merits] Méritos del fundador no están en memoria — recargando desde relay...');
+                    await _reloadFounderMeritsFromRelay(founderHex);
+                }
                 return;
             }
 
@@ -403,6 +412,40 @@ const LBW_Merits = (() => {
         });
     }
 
+    // Reload founder merits from relay directly (bypasses #t tag filter issues).
+    // Called when the merit subscription may have returned 0 results due to relay
+    // not supporting tag filters, but we know the bootstrap event exists.
+    function _reloadFounderMeritsFromRelay(founderHex) {
+        return new Promise(resolve => {
+            const timeout = setTimeout(() => resolve(), 6000);
+            let processed = 0;
+            const sub = LBW_Nostr.subscribe(
+                { kinds: [KIND.MERIT], authors: [founderHex], limit: 50 },
+                (event) => {
+                    const hasLbwTag = event.tags && event.tags.some(
+                        t => t[0] === 't' && (t[1] === 'lbw-merits' || t[1] === 'lbw-bootstrap' || t[1] === 'lbw-merit-award')
+                    );
+                    if (!hasLbwTag) return;
+                    const merit = _parseMerit(event);
+                    if (merit) { _processMerit(merit); processed++; }
+                },
+                () => {
+                    clearTimeout(timeout);
+                    if (processed > 0) {
+                        console.log(`[Merits] ✅ Recargados ${processed} evento(s) del fundador desde relay`);
+                        // Trigger profile refresh now that merits are loaded
+                        if (typeof updateProfileDisplay === 'function') {
+                            try { updateProfileDisplay(); } catch(e) {}
+                        }
+                    }
+                    try { LBW_Nostr.unsubscribe(sub); } catch(e) {}
+                    resolve();
+                }
+            );
+            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 6500);
+        });
+    }
+
     function subscribeMerits(onMerit) {
         if (onMerit) _onMeritCallbacks.push(onMerit);
         if (_subMerits) return _subMerits;
@@ -416,10 +459,17 @@ const LBW_Merits = (() => {
         _subMerits = LBW_Nostr.subscribe(
             {
                 kinds: [KIND.MERIT],
-                '#t': ['lbw-merits'],
+                // NOTE: '#t' filter omitted intentionally — relay.liberbitworld.org
+                // does not support tag filters reliably (same issue documented in
+                // _checkBootstrapOnRelay). Filter client-side instead.
                 limit: 500
             },
             (event) => {
+                // Client-side tag filter: only process LBW merit events
+                const hasLbwTag = event.tags && event.tags.some(
+                    t => t[0] === 't' && (t[1] === 'lbw-merits' || t[1] === 'lbw-bootstrap' || t[1] === 'lbw-merit-award')
+                );
+                if (!hasLbwTag) return;
                 const merit = _parseMerit(event);
                 if (!merit) return;
                 _processMerit(merit);
