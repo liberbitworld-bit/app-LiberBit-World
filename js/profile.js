@@ -538,6 +538,16 @@ async function handleAvatarUpload(event) {
         userProfile.avatarUrl = base64Image;
         localStorage.setItem('userProfile_' + pubKey, JSON.stringify(userProfile));
 
+        // Publish picture to Nostr (kind 0) so chat and other modules can resolve it
+        try {
+            if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.updateProfile) {
+                await LBW_Nostr.updateProfile({ picture: base64Image });
+                console.log('[Profile] ✅ Foto publicada en Nostr (kind 0)');
+            }
+        } catch (nostrErr) {
+            console.warn('[Profile] Foto guardada en Supabase pero no publicada en Nostr:', nostrErr);
+        }
+
         showNotification('✅ Foto de perfil actualizada');
 
     } catch (err) {
