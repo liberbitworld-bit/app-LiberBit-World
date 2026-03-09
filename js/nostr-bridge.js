@@ -436,6 +436,49 @@ const LBW_NostrBridge = (() => {
             sessionStorage.setItem('lbw_nsec_session', result.nsec); 
         } catch (e) {}
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
+
+        // ══ CRITICAL: Set currentUser so the rest of the app can use it ══
+        if (typeof currentUser !== 'undefined') {
+            currentUser = {
+                pubkey: result.npub,
+                publicKey: result.npub,
+                privateKey: result.nsec,
+                name: name,
+                id: null
+            };
+            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+        }
+
+        // ══ Save new user to Supabase immediately ══
+        try {
+            if (typeof supabaseClient !== 'undefined' && typeof generateUUID === 'function') {
+                const newId = generateUUID();
+                const { data: newUser, error: insertError } = await supabaseClient
+                    .from('users')
+                    .upsert([{
+                        id: newId,
+                        public_key: result.npub,
+                        name: name,
+                        citizenship_type: 'Amigo',
+                        registration_date: new Date().toISOString()
+                    }], { onConflict: 'public_key', ignoreDuplicates: true })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.warn('[Bridge] ⚠️ Supabase upsert error (non-fatal):', insertError.message);
+                } else if (newUser) {
+                    if (typeof currentUser !== 'undefined' && currentUser) {
+                        currentUser.id = newUser.id;
+                        try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+                    }
+                    console.log('[Bridge] ✅ Nueva identidad guardada en Supabase:', name, result.npub.substring(0, 20));
+                }
+            }
+        } catch (e) {
+            console.warn('[Bridge] ⚠️ Error guardando en Supabase (non-fatal):', e.message);
+        }
+
         _updateLoginModeUI('created');
         await _startAllFeeds();
         return result;
