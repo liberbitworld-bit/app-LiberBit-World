@@ -452,27 +452,42 @@ const LBW_NostrBridge = (() => {
         // ══ Save new user to Supabase immediately ══
         try {
             if (typeof supabaseClient !== 'undefined' && typeof generateUUID === 'function') {
-                const newId = generateUUID();
-                const { data: newUser, error: insertError } = await supabaseClient
+                // Check first if already exists (avoid duplicate insert error)
+                const { data: existing } = await supabaseClient
                     .from('users')
-                    .upsert([{
-                        id: newId,
-                        public_key: result.npub,
-                        name: name,
-                        citizenship_type: 'Amigo',
-                        registration_date: new Date().toISOString()
-                    }], { onConflict: 'public_key', ignoreDuplicates: true })
-                    .select()
-                    .single();
+                    .select('id')
+                    .eq('public_key', result.npub)
+                    .maybeSingle();
 
-                if (insertError) {
-                    console.warn('[Bridge] ⚠️ Supabase upsert error (non-fatal):', insertError.message);
-                } else if (newUser) {
+                if (!existing) {
+                    const newId = generateUUID();
+                    const { data: newUser, error: insertError } = await supabaseClient
+                        .from('users')
+                        .insert([{
+                            id: newId,
+                            public_key: result.npub,
+                            name: name,
+                            citizenship_type: 'Amigo',
+                            registration_date: new Date().toISOString()
+                        }])
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.warn('[Bridge] ⚠️ Supabase insert error (non-fatal):', insertError.message);
+                    } else if (newUser) {
+                        if (typeof currentUser !== 'undefined' && currentUser) {
+                            currentUser.id = newUser.id;
+                            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+                        }
+                        console.log('[Bridge] ✅ Nueva identidad guardada en Supabase:', name, result.npub.substring(0, 20));
+                    }
+                } else {
+                    console.log('[Bridge] ℹ️ Usuario ya existe en Supabase, id:', existing.id);
                     if (typeof currentUser !== 'undefined' && currentUser) {
-                        currentUser.id = newUser.id;
+                        currentUser.id = existing.id;
                         try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
                     }
-                    console.log('[Bridge] ✅ Nueva identidad guardada en Supabase:', name, result.npub.substring(0, 20));
                 }
             }
         } catch (e) {
