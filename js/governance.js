@@ -210,9 +210,19 @@ function displayProposals() {
                     </div>
                 ` : ''}
 
-                <div class="proposal-meta">
-                    <span>Por ${escapeHtml(proposal.author_name)}</span>
-                    <span>${new Date(proposal.created_at).toLocaleDateString('es-ES')}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; flex-wrap:wrap; gap:0.4rem;">
+                    <div class="proposal-meta" style="margin-top:0;">
+                        <span>Por ${escapeHtml(proposal.author_name)}</span>
+                        <span>${new Date(proposal.created_at).toLocaleDateString('es-ES')}</span>
+                    </div>
+                    <button
+                        onclick="openProposalDebate('${escapeHtml(proposal.dTag || proposal.id)}', '${escapeHtml(proposal.title)}', event)"
+                        style="display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; font-weight:600; padding:0.25rem 0.65rem; border-radius:20px; background:rgba(229,185,92,0.1); color:var(--color-gold); border:1px solid rgba(229,185,92,0.3); cursor:pointer; transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(229,185,92,0.2)'"
+                        onmouseout="this.style.background='rgba(229,185,92,0.1)'"
+                        title="Abrir debate de esta propuesta">
+                        💬 Debate
+                    </button>
                 </div>
             </div>
         `;
