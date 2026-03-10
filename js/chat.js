@@ -755,8 +755,7 @@ async function sendDebateMessage() {
 }
 
 // ── Abrir debates desde gobernanza (llamado desde tarjeta de propuesta) ──
-function openProposalDebate(proposalDTag, proposalTitle, event) {
-    if (event) event.stopPropagation();
+function openProposalDebate(proposalDTag, proposalTitle) {
     showSection('chatSection');
     switchChatTab('debates');
     setTimeout(() => openDebateChannel(proposalDTag, proposalTitle), 200);
