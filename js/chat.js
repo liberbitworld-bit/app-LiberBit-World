@@ -56,36 +56,43 @@ function switchChatTab(tab) {
         lastSeenCommunity = Date.now();
         localStorage.setItem('lastSeen_community', lastSeenCommunity.toString());
         updateChatTabBadge('community', 0);
-    } else {
+    } else if (tab === 'private') {
         lastSeenPrivate = Date.now();
         localStorage.setItem('lastSeen_private', lastSeenPrivate.toString());
         updateChatTabBadge('private', 0);
+    } else if (tab === 'debates') {
+        updateChatTabBadge('debates', 0);
     }
     
     // Update tab buttons
     document.getElementById('tabCommunity').classList.toggle('active', tab === 'community');
+    document.getElementById('tabDebates').classList.toggle('active', tab === 'debates');
     document.getElementById('tabPrivate').classList.toggle('active', tab === 'private');
     
     // Update main view
     document.getElementById('communityView').style.display = tab === 'community' ? 'flex' : 'none';
-    document.getElementById('privateView').style.display = tab === 'private' ? 'flex' : 'none';
+    document.getElementById('debatesView').style.display  = tab === 'debates'   ? 'flex' : 'none';
+    document.getElementById('privateView').style.display  = tab === 'private'   ? 'flex' : 'none';
     
     // Load sidebar content
     loadChatSidebar();
     
     if (tab === 'community') {
         // Community messages are rendered by LBW_NostrBridge._renderCommunityMessage()
-        // loadPosts() is no longer called here to avoid overwriting Nostr messages
-    } else {
+    } else if (tab === 'private') {
         loadPrivateConversationsSidebar();
+    } else if (tab === 'debates') {
+        loadDebatesSidebar();
     }
     
-    // Update the OTHER tab's badge
+    // Update the OTHER tabs' badges
     updateChatBadges();
 }
 
 function updateChatTabBadge(tab, count) {
-    const badgeId = tab === 'community' ? 'badgeCommunity' : 'badgePrivate';
+    const badgeId = tab === 'community' ? 'badgeCommunity'
+                  : tab === 'debates'   ? 'badgeDebates'
+                  :                      'badgePrivate';
     const badge = document.getElementById(badgeId);
     if (!badge) return;
     if (count > 0) {
@@ -142,6 +149,8 @@ async function loadChatSidebar() {
         `;
         // Load private conversations below
         await appendPrivateConversationsToSidebar(container);
+    } else if (currentChatTab === 'debates') {
+        await loadDebatesSidebar();
     } else {
         await loadPrivateConversationsSidebar();
     }
@@ -427,3 +436,328 @@ function clearChatSearch() {
 const LN_ADDRESS = 'aportaciones@liberbitworld.org';
 // Lightning functions (copyLnAddress, selectSatsAmount, openLightningPayment, generateLnQR)
 // are defined in lightning.js to avoid duplication.
+
+
+// ========== DEBATES DE GOBERNANZA ==========
+
+let _currentDebateDTag    = null;   // dTag de la propuesta en debate activo
+let _currentDebateTitle   = null;   // Título de la propuesta
+let _debateReplyToId      = null;   // eventId al que se responde (threading)
+let _debateReplyToAuthor  = null;   // nombre del autor del mensaje al que se responde
+
+// ── Cargar sidebar de debates ─────────────────────────────────────
+async function loadDebatesSidebar() {
+    const container = document.getElementById('chatSidebarList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (typeof LBW_Governance === 'undefined') {
+        container.innerHTML = `
+            <div style="padding:1.5rem 1rem; text-align:center; color:var(--color-text-secondary); font-size:0.82rem;">
+                <div style="font-size:2rem; margin-bottom:0.5rem;">🗳️</div>
+                Módulo de gobernanza no disponible
+            </div>`;
+        return;
+    }
+
+    const proposals = LBW_Governance.getAllProposals();
+
+    if (!proposals || proposals.length === 0) {
+        container.innerHTML = `
+            <div style="padding:1.5rem 1rem; text-align:center; color:var(--color-text-secondary); font-size:0.82rem;">
+                <div style="font-size:2rem; margin-bottom:0.5rem;">📭</div>
+                No hay propuestas activas.<br>
+                <span style="font-size:0.75rem;">Crea una propuesta en Gobernanza.</span>
+            </div>`;
+        return;
+    }
+
+    // Header de sección
+    container.innerHTML = `<div style="padding:0.5rem 0.75rem; font-size:0.7rem; color:var(--color-text-secondary); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--color-border); margin-bottom:0.25rem;">🗳️ Canales de Debate</div>`;
+
+    // Ordenar: activas primero, luego por fecha desc
+    const sorted = [...proposals].sort((a, b) => {
+        const aActive = a.status === 'active' ? 1 : 0;
+        const bActive = b.status === 'active' ? 1 : 0;
+        if (aActive !== bActive) return bActive - aActive;
+        return b.createdAt - a.createdAt;
+    });
+
+    sorted.forEach(p => {
+        const dTag    = p.dTag || p.id;
+        const title   = p.title || 'Propuesta sin título';
+        const status  = p.status || 'closed';
+        const isActive = status === 'active';
+        const isCurrent = _currentDebateDTag === dTag;
+
+        const typeEmoji = { referendum: '📋', budget: '💰', election: '👥' }[p.category] || '🗳️';
+        const statusDot = isActive
+            ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--color-accent-green);margin-right:4px;"></span>'
+            : '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--color-text-secondary);opacity:0.4;margin-right:4px;"></span>';
+
+        const msgCount = typeof LBW_Debate !== 'undefined' ? LBW_Debate.getMessageCount(dTag) : 0;
+        const countBadge = msgCount > 0
+            ? `<span style="font-size:0.65rem; background:rgba(229,185,92,0.15); color:var(--color-gold); border:1px solid rgba(229,185,92,0.25); border-radius:10px; padding:1px 6px;">${msgCount}</span>`
+            : '';
+
+        container.innerHTML += `
+            <div class="sidebar-conversation ${isCurrent ? 'active' : ''}"
+                 onclick="openDebateChannel('${escapeHtml(dTag)}', '${escapeHtml(title)}')"
+                 style="cursor:pointer;">
+                <div class="sidebar-conv-avatar" style="background:linear-gradient(135deg,rgba(229,185,92,0.25),rgba(229,185,92,0.05)); font-size:1.1rem; flex-shrink:0;">
+                    ${typeEmoji}
+                </div>
+                <div class="sidebar-conv-info" style="flex:1; min-width:0;">
+                    <div class="sidebar-conv-name" style="display:flex; align-items:center; gap:2px;">
+                        ${statusDot}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(title)}</span>
+                    </div>
+                    <div class="sidebar-conv-preview">${isActive ? '🟢 Activa' : '🔒 Cerrada'}</div>
+                </div>
+                <div style="flex-shrink:0;">${countBadge}</div>
+            </div>`;
+    });
+}
+
+// ── Abrir canal de debate de una propuesta ────────────────────────
+function openDebateChannel(proposalDTag, proposalTitle) {
+    if (currentChatTab !== 'debates') switchChatTab('debates');
+
+    _currentDebateDTag  = proposalDTag;
+    _currentDebateTitle = proposalTitle;
+    cancelDebateReply();
+
+    // Actualizar header
+    const titleEl = document.getElementById('debateChannelTitle');
+    const metaEl  = document.getElementById('debateChannelMeta');
+    if (titleEl) titleEl.textContent = proposalTitle;
+    if (metaEl)  metaEl.textContent  = `Propuesta · Debate público Nostr`;
+
+    // Mostrar canal activo, ocultar placeholder
+    document.getElementById('debatePlaceholder').style.display  = 'none';
+    document.getElementById('debateActiveChannel').style.display = 'flex';
+
+    // Limpiar mensajes y mostrar loading
+    const msgContainer = document.getElementById('debateMessages');
+    msgContainer.innerHTML = `
+        <div id="debateLoadingState" style="padding:2rem; text-align:center; color:var(--color-text-secondary); font-size:0.85rem;">
+            <div style="font-size:1.5rem; margin-bottom:0.5rem;">⏳</div>
+            Conectando al debate...
+        </div>`;
+
+    // Actualizar sidebar para marcar activo
+    loadDebatesSidebar();
+
+    // Suscribirse al debate vía Nostr
+    if (typeof LBW_Debate !== 'undefined') {
+        LBW_Debate.subscribeDebate(proposalDTag, (msg, type) => {
+            if (type === 'eose') {
+                _renderDebateMessages(proposalDTag);
+                return;
+            }
+            if (msg && _currentDebateDTag === proposalDTag) {
+                _renderDebateMessages(proposalDTag);
+                // Actualizar contador en sidebar
+                loadDebatesSidebar();
+            }
+        });
+
+        // Render inicial con lo que ya hay en caché
+        setTimeout(() => _renderDebateMessages(proposalDTag), 800);
+    }
+}
+
+// ── Cerrar canal activo ───────────────────────────────────────────
+function closeDebateChannel() {
+    _currentDebateDTag  = null;
+    _currentDebateTitle = null;
+    cancelDebateReply();
+
+    document.getElementById('debatePlaceholder').style.display   = 'flex';
+    document.getElementById('debateActiveChannel').style.display  = 'none';
+    loadDebatesSidebar();
+}
+
+// ── Ir a la propuesta desde el header del debate ──────────────────
+function openDebateProposalLink() {
+    if (!_currentDebateDTag) return;
+    // Navegar a la sección de gobernanza y mostrar detalle
+    showSection('governanceSection');
+    setTimeout(() => {
+        if (typeof showProposalDetail === 'function') {
+            showProposalDetail(_currentDebateDTag);
+        }
+    }, 300);
+}
+
+// ── Renderizar todos los mensajes del debate ──────────────────────
+async function _renderDebateMessages(proposalDTag) {
+    if (_currentDebateDTag !== proposalDTag) return;
+
+    const container = document.getElementById('debateMessages');
+    if (!container) return;
+
+    const messages = typeof LBW_Debate !== 'undefined'
+        ? LBW_Debate.getMessages(proposalDTag)
+        : [];
+
+    if (messages.length === 0) {
+        container.innerHTML = `
+            <div style="padding:2rem 1rem; text-align:center; color:var(--color-text-secondary);">
+                <div style="font-size:2rem; margin-bottom:0.75rem;">💬</div>
+                <div style="font-weight:600; color:var(--color-gold); margin-bottom:0.4rem;">Sé el primero en debatir</div>
+                <div style="font-size:0.8rem; line-height:1.5;">
+                    Este es el canal de debate para esta propuesta.<br>
+                    Comparte tus argumentos, preguntas o reflexiones.
+                </div>
+            </div>`;
+        return;
+    }
+
+    // Construir mapa id → mensaje para threading
+    const msgMap = {};
+    messages.forEach(m => { msgMap[m.id] = m; });
+
+    let html = '';
+    for (const msg of messages) {
+        html += await _renderDebateMessage(msg, msgMap);
+    }
+
+    container.innerHTML = html;
+
+    // Scroll al fondo
+    container.scrollTop = container.scrollHeight;
+}
+
+// ── Renderizar un mensaje individual ─────────────────────────────
+async function _renderDebateMessage(msg, msgMap) {
+    const isMe = LBW_Nostr && LBW_Nostr.isLoggedIn &&
+                 msg.pubkey === (window.currentUser?.publicKey || window.currentUser?.pubkey);
+
+    // Nombre del autor
+    let authorName = msg.pubkey.substring(0, 8) + '...';
+    try {
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge._resolveName) {
+            const resolved = await LBW_NostrBridge._resolveName(msg.pubkey);
+            if (resolved) authorName = resolved;
+        }
+    } catch (e) {}
+
+    // Si es reply, obtener texto del padre
+    let replyBlock = '';
+    if (msg.replyTo && msgMap[msg.replyTo]) {
+        const parent = msgMap[msg.replyTo];
+        let parentAuthor = parent.pubkey.substring(0, 8) + '...';
+        const preview = (parent.content || '').substring(0, 60) + (parent.content.length > 60 ? '…' : '');
+        replyBlock = `
+            <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" onclick="_scrollToDebateMessage('${msg.replyTo}')">
+                <span style="color:var(--color-gold); font-weight:600;">↩ ${escapeHtml(parentAuthor)}</span>
+                <span style="margin-left:0.4rem;">${escapeHtml(preview)}</span>
+            </div>`;
+    }
+
+    const timeStr = msg.createdAt ? timeAgo(msg.createdAt * 1000) : '';
+    const initial = (authorName.replace(/[^\p{L}\p{N}]/gu, '')[0] || '?').toUpperCase();
+    const avatarColor = isMe ? 'var(--color-teal-dark)' : 'rgba(229,185,92,0.25)';
+
+    return `
+        <div id="debate-msg-${msg.id}" class="debate-message ${isMe ? 'debate-message-mine' : ''}"
+             style="display:flex; gap:0.6rem; padding:0.5rem 0.75rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
+            <div style="flex-shrink:0; width:30px; height:30px; border-radius:50%; background:${avatarColor}; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:var(--color-gold);">
+                ${initial}
+            </div>
+            <div style="flex:1; min-width:0; max-width:75%; ${isMe ? 'align-items:flex-end;' : ''} display:flex; flex-direction:column;">
+                <div style="display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.25rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
+                    <span style="font-size:0.8rem; font-weight:700; color:${isMe ? 'var(--color-teal-light)' : 'var(--color-gold)'};">${escapeHtml(authorName)}</span>
+                    <span style="font-size:0.65rem; color:var(--color-text-secondary);">${timeStr}</span>
+                </div>
+                ${replyBlock}
+                <div style="background:${isMe ? 'rgba(38,166,154,0.15)' : 'var(--color-bg-card)'}; border:1px solid ${isMe ? 'rgba(38,166,154,0.3)' : 'var(--color-border)'}; border-radius:${isMe ? '12px 2px 12px 12px' : '2px 12px 12px 12px'}; padding:0.5rem 0.75rem; font-size:0.85rem; line-height:1.5; color:var(--color-text-primary); word-wrap:break-word;">
+                    ${escapeHtml(msg.content).replace(/\n/g, '<br>')}
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.25rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
+                    <button onclick="replyToDebateMessage('${msg.id}', '${escapeHtml(authorName)}')"
+                            style="font-size:0.65rem; color:var(--color-text-secondary); background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px; transition:all 0.2s;"
+                            onmouseover="this.style.color='var(--color-gold)'" onmouseout="this.style.color='var(--color-text-secondary)'">
+                        ↩ Responder
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+// ── Scroll a un mensaje específico ────────────────────────────────
+function _scrollToDebateMessage(eventId) {
+    const el = document.getElementById(`debate-msg-${eventId}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.background = 'rgba(229,185,92,0.08)';
+        setTimeout(() => { el.style.background = ''; }, 1500);
+    }
+}
+
+// ── Activar reply a un mensaje ────────────────────────────────────
+function replyToDebateMessage(eventId, authorName) {
+    _debateReplyToId     = eventId;
+    _debateReplyToAuthor = authorName;
+
+    // Obtener preview del mensaje
+    const messages = typeof LBW_Debate !== 'undefined' && _currentDebateDTag
+        ? LBW_Debate.getMessages(_currentDebateDTag)
+        : [];
+    const parent = messages.find(m => m.id === eventId);
+    const preview = parent ? (parent.content || '').substring(0, 50) : '';
+
+    document.getElementById('debateReplyPreview').style.display = 'flex';
+    document.getElementById('debateReplyAuthor').textContent = authorName;
+    document.getElementById('debateReplyText').textContent = ' · ' + preview + (preview.length >= 50 ? '…' : '');
+    document.getElementById('debateInput').focus();
+}
+
+// ── Cancelar reply ────────────────────────────────────────────────
+function cancelDebateReply() {
+    _debateReplyToId     = null;
+    _debateReplyToAuthor = null;
+    const preview = document.getElementById('debateReplyPreview');
+    if (preview) preview.style.display = 'none';
+}
+
+// ── Enviar mensaje al debate ──────────────────────────────────────
+async function sendDebateMessage() {
+    if (!_currentDebateDTag) return;
+
+    const input = document.getElementById('debateInput');
+    const content = input ? input.value.trim() : '';
+    if (!content) return;
+
+    if (!LBW_Nostr || !LBW_Nostr.isLoggedIn()) {
+        showNotification('Necesitas conectarte con Nostr para participar en el debate', 'error');
+        return;
+    }
+
+    const btn = document.querySelector('#debateActiveChannel .chat-send-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+    try {
+        await LBW_Debate.publishDebateMessage(
+            _currentDebateDTag,
+            content,
+            _debateReplyToId || null
+        );
+        if (input) input.value = '';
+        cancelDebateReply();
+        showNotification('💬 Mensaje publicado en el debate', 'success');
+    } catch (err) {
+        console.error('[Debate] Error enviando mensaje:', err);
+        showNotification('Error: ' + (err.message || 'No se pudo publicar'), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '➤'; }
+    }
+}
+
+// ── Abrir debates desde gobernanza (llamado desde tarjeta de propuesta) ──
+function openProposalDebate(proposalDTag, proposalTitle, event) {
+    if (event) event.stopPropagation();
+    showSection('chatSection');
+    switchChatTab('debates');
+    setTimeout(() => openDebateChannel(proposalDTag, proposalTitle), 200);
+}
