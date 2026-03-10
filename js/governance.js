@@ -216,9 +216,12 @@ function displayProposals() {
                         <span>${new Date(proposal.created_at).toLocaleDateString('es-ES')}</span>
                     </div>
                     <button
-                        onclick="openProposalDebate('${escapeHtml(proposal.dTag || proposal.id)}', '${escapeHtml(proposal.title)}', event)"
-                        style="display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; font-weight:600; padding:0.25rem 0.65rem; border-radius:20px; background:rgba(229,185,92,0.1); color:var(--color-gold); border:1px solid rgba(229,185,92,0.3); cursor:pointer; transition:all 0.2s;"
-                        onmouseover="this.style.background='rgba(229,185,92,0.2)'"
+                        class="debate-open-btn"
+                        data-dtag="${escapeHtml(proposal.dTag || proposal.id)}"
+                        data-title="${escapeHtml(proposal.title)}"
+                        onclick="event.stopPropagation(); openProposalDebate(this.dataset.dtag, this.dataset.title)"
+                        style="display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; font-weight:600; padding:0.25rem 0.65rem; border-radius:20px; background:rgba(229,185,92,0.1); color:var(--color-gold); border:1px solid rgba(229,185,92,0.3); cursor:pointer; transition:all 0.2s; position:relative; z-index:2;"
+                        onmouseover="this.style.background='rgba(229,185,92,0.25)'"
                         onmouseout="this.style.background='rgba(229,185,92,0.1)'"
                         title="Abrir debate de esta propuesta">
                         💬 Debate
