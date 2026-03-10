@@ -1,138 +1,121 @@
-// LiberBit World — Debate Module v1.1 (debate.js)
-// Canales de debate por propuesta de gobernanza via Nostr kind:1
+// LiberBit World — Debate Module v1.2
 
-const LBW_Debate = (() => {
-    'use strict';
+window.LBW_Debate = {
 
-    const _messages      = {};
-    const _subscriptions = {};
-    const _callbacks     = {};
+    _messages: {},
+    _subscriptions: {},
+    _callbacks: {},
 
-    function _tag(dTag) { return 'lbw-debate-' + dTag; }
+    _tag: function(dTag) { return 'lbw-debate-' + dTag; },
 
-    function _ensureCache(dTag) {
-        if (!_messages[dTag]) _messages[dTag] = new Map();
-    }
+    _ensureCache: function(dTag) {
+        if (!this._messages[dTag]) this._messages[dTag] = {};
+    },
 
-    function _normalize(event) {
-        var replyTag = null, rootTag = null;
+    _normalize: function(event) {
+        var replyTo = null;
         for (var i = 0; i < event.tags.length; i++) {
-            var t = event.tags[i];
-            if (t[0] === 'e' && t[3] === 'reply') replyTag = t;
-            if (t[0] === 'e' && t[3] === 'root')  rootTag  = t;
+            if (event.tags[i][0] === 'e' && event.tags[i][3] === 'reply') {
+                replyTo = event.tags[i][1];
+            }
         }
         return {
             id:        event.id,
             pubkey:    event.pubkey,
             content:   event.content,
             createdAt: event.created_at,
-            replyTo:   replyTag ? replyTag[1] : null,
-            rootId:    rootTag  ? rootTag[1]  : null,
+            replyTo:   replyTo,
             tags:      event.tags
         };
-    }
+    },
 
-    function subscribeDebate(proposalDTag, onMessage) {
-        _ensureCache(proposalDTag);
+    subscribeDebate: function(proposalDTag, onMessage) {
+        var self = this;
+        self._ensureCache(proposalDTag);
 
-        if (!_callbacks[proposalDTag]) _callbacks[proposalDTag] = [];
-        if (onMessage) _callbacks[proposalDTag].push(onMessage);
+        if (!self._callbacks[proposalDTag]) self._callbacks[proposalDTag] = [];
+        if (onMessage) self._callbacks[proposalDTag].push(onMessage);
 
-        if (_subscriptions[proposalDTag]) {
-            var cached = getMessages(proposalDTag);
+        if (self._subscriptions[proposalDTag]) {
+            var cached = self.getMessages(proposalDTag);
             for (var i = 0; i < cached.length; i++) {
                 if (onMessage) onMessage(cached[i], 'cached');
             }
             return;
         }
 
-        var nostr = window.LBW_Nostr;
-        if (!nostr || typeof nostr.subscribe !== 'function') {
+        if (!window.LBW_Nostr || typeof window.LBW_Nostr.subscribe !== 'function') {
             console.warn('[Debate] LBW_Nostr no disponible');
             return;
         }
 
-        var filter = { kinds: [1], '#t': [_tag(proposalDTag)], limit: 200 };
+        var filter = { kinds: [1], '#t': [self._tag(proposalDTag)], limit: 200 };
 
-        var sub = nostr.subscribe(
+        var sub = window.LBW_Nostr.subscribe(
             [filter],
             function(event) {
-                _ensureCache(proposalDTag);
-                var msg = _normalize(event);
-                if (!_messages[proposalDTag].has(msg.id)) {
-                    _messages[proposalDTag].set(msg.id, msg);
-                    var cbs = _callbacks[proposalDTag] || [];
+                self._ensureCache(proposalDTag);
+                var msg = self._normalize(event);
+                if (!self._messages[proposalDTag][msg.id]) {
+                    self._messages[proposalDTag][msg.id] = msg;
+                    var cbs = self._callbacks[proposalDTag] || [];
                     for (var i = 0; i < cbs.length; i++) cbs[i](msg, 'new');
                 }
             },
             function() {
-                var cbs = _callbacks[proposalDTag] || [];
+                var cbs = self._callbacks[proposalDTag] || [];
                 for (var i = 0; i < cbs.length; i++) cbs[i](null, 'eose');
             }
         );
 
-        _subscriptions[proposalDTag] = sub;
-    }
+        self._subscriptions[proposalDTag] = sub;
+    },
 
-    function unsubscribeDebate(proposalDTag) {
-        if (_subscriptions[proposalDTag]) {
+    unsubscribeDebate: function(proposalDTag) {
+        if (this._subscriptions[proposalDTag]) {
             try {
-                var s = _subscriptions[proposalDTag];
+                var s = this._subscriptions[proposalDTag];
                 if (s && typeof s.unsub === 'function') s.unsub();
             } catch(e) {}
-            delete _subscriptions[proposalDTag];
+            delete this._subscriptions[proposalDTag];
         }
-        delete _callbacks[proposalDTag];
-    }
+        delete this._callbacks[proposalDTag];
+    },
 
-    async function publishDebateMessage(proposalDTag, content, replyToEventId) {
-        var nostr = window.LBW_Nostr;
-        if (!nostr || !nostr.isLoggedIn()) {
+    publishDebateMessage: async function(proposalDTag, content, replyToEventId) {
+        if (!window.LBW_Nostr || !window.LBW_Nostr.isLoggedIn()) {
             throw new Error('Necesitas estar conectado con Nostr para participar.');
         }
         if (!content || !content.trim()) {
             throw new Error('El mensaje no puede estar vacío.');
         }
-        if (content.trim().length > 2000) {
-            throw new Error('Máximo 2.000 caracteres.');
-        }
-
         var tags = [
             ['t', 'lbw-debate'],
-            ['t', _tag(proposalDTag)]
+            ['t', this._tag(proposalDTag)]
         ];
-
         if (replyToEventId) {
             tags.push(['e', replyToEventId, '', 'reply']);
         }
+        await window.LBW_Nostr.publishEvent({ kind: 1, content: content.trim(), tags: tags });
+    },
 
-        await nostr.publishEvent({ kind: 1, content: content.trim(), tags: tags });
+    getMessages: function(proposalDTag) {
+        this._ensureCache(proposalDTag);
+        var msgs = this._messages[proposalDTag];
+        var arr = [];
+        for (var id in msgs) { arr.push(msgs[id]); }
+        arr.sort(function(a, b) { return a.createdAt - b.createdAt; });
+        return arr;
+    },
+
+    getMessageCount: function(proposalDTag) {
+        if (!this._messages[proposalDTag]) return 0;
+        return Object.keys(this._messages[proposalDTag]).length;
+    },
+
+    clearCache: function(proposalDTag) {
+        delete this._messages[proposalDTag];
     }
+};
 
-    function getMessages(proposalDTag) {
-        _ensureCache(proposalDTag);
-        return Array.from(_messages[proposalDTag].values())
-            .sort(function(a, b) { return a.createdAt - b.createdAt; });
-    }
-
-    function getMessageCount(proposalDTag) {
-        if (!_messages[proposalDTag]) return 0;
-        return _messages[proposalDTag].size;
-    }
-
-    function clearCache(proposalDTag) {
-        delete _messages[proposalDTag];
-    }
-
-    return {
-        subscribeDebate:      subscribeDebate,
-        unsubscribeDebate:    unsubscribeDebate,
-        publishDebateMessage: publishDebateMessage,
-        getMessages:          getMessages,
-        getMessageCount:      getMessageCount,
-        clearCache:           clearCache
-    };
-
-})();
-
-window.LBW_Debate = LBW_Debate;
+console.log('[Debate] ✅ LBW_Debate cargado v1.2');
