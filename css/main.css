@@ -2209,7 +2209,16 @@
             color: var(--color-text-primary);
         }
 
-        .post-reply-context {
+        /* ── Debate messages ── */
+        .debate-message {
+            transition: background 0.3s ease;
+        }
+        .debate-message:hover {
+            background: rgba(229, 185, 92, 0.03);
+        }
+        .debate-message-mine .sidebar-conv-avatar {
+            background: rgba(38, 166, 154, 0.2) !important;
+        }
             background: rgba(229, 185, 92, 0.05);
             border-left: 2px solid var(--color-gold);
             padding: 0.4rem 0.75rem;
