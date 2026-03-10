@@ -495,7 +495,7 @@ async function loadDebatesSidebar() {
             ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--color-accent-green);margin-right:4px;"></span>'
             : '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--color-text-secondary);opacity:0.4;margin-right:4px;"></span>';
 
-        const msgCount = typeof LBW_Debate !== 'undefined' ? LBW_Debate.getMessageCount(dTag) : 0;
+        const msgCount = window.LBW_Debate ? window.LBW_Debate.getMessageCount(dTag) : 0;
         const countBadge = msgCount > 0
             ? `<span style="font-size:0.65rem; background:rgba(229,185,92,0.15); color:var(--color-gold); border:1px solid rgba(229,185,92,0.25); border-radius:10px; padding:1px 6px;">${msgCount}</span>`
             : '';
@@ -548,22 +548,21 @@ function openDebateChannel(proposalDTag, proposalTitle) {
     loadDebatesSidebar();
 
     // Suscribirse al debate vía Nostr
-    if (typeof LBW_Debate !== 'undefined') {
-        LBW_Debate.subscribeDebate(proposalDTag, (msg, type) => {
+    if (window.LBW_Debate) {
+        window.LBW_Debate.subscribeDebate(proposalDTag, function(msg, type) {
             if (type === 'eose') {
                 _renderDebateMessages(proposalDTag);
                 return;
             }
             if (msg && _currentDebateDTag === proposalDTag) {
                 _renderDebateMessages(proposalDTag);
-                // Actualizar contador en sidebar
                 loadDebatesSidebar();
             }
         });
-
-        // Render inicial con lo que ya hay en caché
-        setTimeout(() => _renderDebateMessages(proposalDTag), 800);
     }
+
+    // Render tras 1.5s pase lo que pase (elimina el spinner)
+    setTimeout(function() { _renderDebateMessages(proposalDTag); }, 1500);
 }
 
 // ── Cerrar canal activo ───────────────────────────────────────────
@@ -596,8 +595,8 @@ async function _renderDebateMessages(proposalDTag) {
     const container = document.getElementById('debateMessages');
     if (!container) return;
 
-    const messages = typeof LBW_Debate !== 'undefined'
-        ? LBW_Debate.getMessages(proposalDTag)
+    const messages = window.LBW_Debate
+        ? window.LBW_Debate.getMessages(proposalDTag)
         : [];
 
     if (messages.length === 0) {
@@ -701,8 +700,8 @@ function replyToDebateMessage(eventId, authorName) {
     _debateReplyToAuthor = authorName;
 
     // Obtener preview del mensaje
-    const messages = typeof LBW_Debate !== 'undefined' && _currentDebateDTag
-        ? LBW_Debate.getMessages(_currentDebateDTag)
+    const messages = window.LBW_Debate && _currentDebateDTag
+        ? window.LBW_Debate.getMessages(_currentDebateDTag)
         : [];
     const parent = messages.find(m => m.id === eventId);
     const preview = parent ? (parent.content || '').substring(0, 50) : '';
@@ -738,7 +737,7 @@ async function sendDebateMessage() {
     if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
     try {
-        await LBW_Debate.publishDebateMessage(
+        await window.LBW_Debate.publishDebateMessage(
             _currentDebateDTag,
             content,
             _debateReplyToId || null
