@@ -1,40 +1,26 @@
-// ============================================================
-// LiberBit World — Debate Module v1.0 (debate.js)
-//
-// Canales de debate por propuesta de gobernanza, sobre Nostr.
-// Cada propuesta genera un canal público de discusión.
-//
-// Protocolo Nostr:
-//   kind 1 (nota pública regular — máxima compatibilidad)
-//   tags:
-//     ['t', 'lbw-debate']                      → debate genérico LBW
-//     ['t', `lbw-debate-${proposalDTag}`]       → debate específico de propuesta
-//     ['e', parentEventId, '', 'reply']          → hilo de respuesta (NIP-10)
-//
-// Dependencias: nostr.js (LBW_Nostr)
-// ============================================================
+// LiberBit World — Debate Module v1.1 (debate.js)
+// Canales de debate por propuesta de gobernanza via Nostr kind:1
 
 const LBW_Debate = (() => {
     'use strict';
 
-    // ── Caché de mensajes por proposalDTag ──────────────────────
-    const _messages = {};          // { [dTag]: Map<eventId, message> }
-    const _subscriptions = {};     // { [dTag]: subHandle }
-    const _callbacks = {};         // { [dTag]: Set<fn> }
+    const _messages      = {};
+    const _subscriptions = {};
+    const _callbacks     = {};
 
-    // ── Helpers ─────────────────────────────────────────────────
-    function _debateTag(proposalDTag) {
-        return `lbw-debate-${proposalDTag}`;
-    }
+    function _tag(dTag) { return 'lbw-debate-' + dTag; }
 
     function _ensureCache(dTag) {
         if (!_messages[dTag]) _messages[dTag] = new Map();
     }
 
-    // Convierte un evento Nostr en objeto de mensaje normalizado
-    function _normalizeMessage(event) {
-        const replyTag = event.tags.find(t => t[0] === 'e' && t[3] === 'reply');
-        const rootTag  = event.tags.find(t => t[0] === 'e' && t[3] === 'root');
+    function _normalize(event) {
+        var replyTag = null, rootTag = null;
+        for (var i = 0; i < event.tags.length; i++) {
+            var t = event.tags[i];
+            if (t[0] === 'e' && t[3] === 'reply') replyTag = t;
+            if (t[0] === 'e' && t[3] === 'root')  rootTag  = t;
+        }
         return {
             id:        event.id,
             pubkey:    event.pubkey,
@@ -42,131 +28,111 @@ const LBW_Debate = (() => {
             createdAt: event.created_at,
             replyTo:   replyTag ? replyTag[1] : null,
             rootId:    rootTag  ? rootTag[1]  : null,
-            tags:      event.tags,
+            tags:      event.tags
         };
     }
 
-    // ── Suscribirse al debate de una propuesta ──────────────────
     function subscribeDebate(proposalDTag, onMessage) {
         _ensureCache(proposalDTag);
 
-        // Registrar callback
-        if (!_callbacks[proposalDTag]) _callbacks[proposalDTag] = new Set();
-        if (onMessage) _callbacks[proposalDTag].add(onMessage);
+        if (!_callbacks[proposalDTag]) _callbacks[proposalDTag] = [];
+        if (onMessage) _callbacks[proposalDTag].push(onMessage);
 
-        // Si ya hay suscripción activa, devolver mensajes en caché
         if (_subscriptions[proposalDTag]) {
-            const cached = getMessages(proposalDTag);
-            cached.forEach(msg => onMessage && onMessage(msg, 'cached'));
+            var cached = getMessages(proposalDTag);
+            for (var i = 0; i < cached.length; i++) {
+                if (onMessage) onMessage(cached[i], 'cached');
+            }
             return;
         }
 
-        const filter = {
-            kinds: [1],
-            '#t': [_debateTag(proposalDTag)],
-            limit: 200
-        };
+        var nostr = window.LBW_Nostr;
+        if (!nostr || typeof nostr.subscribe !== 'function') {
+            console.warn('[Debate] LBW_Nostr no disponible');
+            return;
+        }
 
-        const sub = LBW_Nostr.subscribe(
+        var filter = { kinds: [1], '#t': [_tag(proposalDTag)], limit: 200 };
+
+        var sub = nostr.subscribe(
             [filter],
-            (event) => {
+            function(event) {
                 _ensureCache(proposalDTag);
-                const msg = _normalizeMessage(event);
-
+                var msg = _normalize(event);
                 if (!_messages[proposalDTag].has(msg.id)) {
                     _messages[proposalDTag].set(msg.id, msg);
-                    // Notificar a todos los callbacks registrados
-                    const cbs = _callbacks[proposalDTag] || new Set();
-                    cbs.forEach(cb => cb(msg, 'new'));
+                    var cbs = _callbacks[proposalDTag] || [];
+                    for (var i = 0; i < cbs.length; i++) cbs[i](msg, 'new');
                 }
             },
-            () => {
-                // EOSE — fin de eventos históricos
-                const cbs = _callbacks[proposalDTag] || new Set();
-                cbs.forEach(cb => cb(null, 'eose'));
+            function() {
+                var cbs = _callbacks[proposalDTag] || [];
+                for (var i = 0; i < cbs.length; i++) cbs[i](null, 'eose');
             }
         );
 
         _subscriptions[proposalDTag] = sub;
-        return sub;
     }
 
-    // ── Cancelar suscripción ────────────────────────────────────
     function unsubscribeDebate(proposalDTag) {
         if (_subscriptions[proposalDTag]) {
             try {
-                if (typeof _subscriptions[proposalDTag].unsub === 'function') {
-                    _subscriptions[proposalDTag].unsub();
-                }
-            } catch (e) {
-                console.warn('[Debate] Error al cancelar suscripción:', e);
-            }
+                var s = _subscriptions[proposalDTag];
+                if (s && typeof s.unsub === 'function') s.unsub();
+            } catch(e) {}
             delete _subscriptions[proposalDTag];
         }
-        if (_callbacks[proposalDTag]) {
-            delete _callbacks[proposalDTag];
-        }
+        delete _callbacks[proposalDTag];
     }
 
-    // ── Publicar mensaje en el debate ───────────────────────────
-    async function publishDebateMessage(proposalDTag, content, replyToEventId = null) {
-        if (!LBW_Nostr.isLoggedIn()) {
-            throw new Error('Necesitas estar conectado con Nostr para participar en el debate.');
+    async function publishDebateMessage(proposalDTag, content, replyToEventId) {
+        var nostr = window.LBW_Nostr;
+        if (!nostr || !nostr.isLoggedIn()) {
+            throw new Error('Necesitas estar conectado con Nostr para participar.');
         }
         if (!content || !content.trim()) {
             throw new Error('El mensaje no puede estar vacío.');
         }
         if (content.trim().length > 2000) {
-            throw new Error('El mensaje no puede superar los 2.000 caracteres.');
+            throw new Error('Máximo 2.000 caracteres.');
         }
 
-        const tags = [
+        var tags = [
             ['t', 'lbw-debate'],
-            ['t', _debateTag(proposalDTag)],
+            ['t', _tag(proposalDTag)]
         ];
 
         if (replyToEventId) {
-            // NIP-10: reply to a specific message
             tags.push(['e', replyToEventId, '', 'reply']);
         }
 
-        const event = {
-            kind: 1,
-            content: content.trim(),
-            tags,
-        };
-
-        await LBW_Nostr.publishEvent(event);
-        console.log(`[Debate] ✅ Mensaje publicado en debate: ${proposalDTag}`);
+        await nostr.publishEvent({ kind: 1, content: content.trim(), tags: tags });
     }
 
-    // ── Obtener mensajes en caché (ordenados por fecha) ─────────
     function getMessages(proposalDTag) {
         _ensureCache(proposalDTag);
         return Array.from(_messages[proposalDTag].values())
-            .sort((a, b) => a.createdAt - b.createdAt);
+            .sort(function(a, b) { return a.createdAt - b.createdAt; });
     }
 
-    // ── Obtener número de mensajes en caché ─────────────────────
     function getMessageCount(proposalDTag) {
         if (!_messages[proposalDTag]) return 0;
         return _messages[proposalDTag].size;
     }
 
-    // ── Limpiar caché de una propuesta ──────────────────────────
     function clearCache(proposalDTag) {
         delete _messages[proposalDTag];
     }
 
-    // ── API pública ─────────────────────────────────────────────
     return {
-        subscribeDebate,
-        unsubscribeDebate,
-        publishDebateMessage,
-        getMessages,
-        getMessageCount,
-        clearCache,
+        subscribeDebate:      subscribeDebate,
+        unsubscribeDebate:    unsubscribeDebate,
+        publishDebateMessage: publishDebateMessage,
+        getMessages:          getMessages,
+        getMessageCount:      getMessageCount,
+        clearCache:           clearCache
     };
+
 })();
 
 window.LBW_Debate = LBW_Debate;
