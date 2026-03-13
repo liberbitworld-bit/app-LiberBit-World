@@ -363,6 +363,27 @@ const LBW_Merits = (() => {
                     console.log('[Merits] Méritos del fundador no están en memoria — recargando desde relay...');
                     await _reloadFounderMeritsFromRelay(founderHex);
                 }
+                // Offline fallback: if relay is down and merits still absent after reload,
+                // inject from constant. BOOTSTRAP_DONE_KEY is proof the event was already
+                // published — this is local-memory restoration only, not a double-bootstrap.
+                const afterReload = _merits.get(founderHex);
+                if (!afterReload || afterReload.total < 3000) {
+                    const fallbackId = 'bootstrap-offline-' + founderHex.substring(0, 8);
+                    const alreadyFallback = afterReload && afterReload.records &&
+                        afterReload.records.some(r => r.id === fallbackId);
+                    if (!alreadyFallback) {
+                        console.warn('[Merits] Relay inaccesible — restaurando meritos fundacionales (offline fallback)');
+                        _processMerit({
+                            id: fallbackId,
+                            pubkey: founderHex,
+                            amount: FOUNDER_BOOTSTRAP_AMOUNT,
+                            category: 'productiva',
+                            created_at: Math.floor(Date.now() / 1000),
+                            source: 'bootstrap-offline'
+                        });
+                        console.log('[Merits] Meritos del fundador restaurados en memoria:', FOUNDER_BOOTSTRAP_AMOUNT);
+                    }
+                }
                 return;
             }
 
