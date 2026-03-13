@@ -380,12 +380,25 @@ async function showProposalDetail(proposalIdentifier) {
                 </div>
 
                 <div id="voteResultsContainer" style="margin-top:1.5rem;">
-                ${proposalVotes.length > 0 ? `
-                    <h3 style="color:var(--color-gold);margin-bottom:1rem;">
-                        ${proposal.status === 'active' ? 'Resultados Parciales' : 'Resultados Finales'}
-                    </h3>
-                    ${displayVoteResults(proposalVotes, voteResults)}
-                ` : '<p style="color:var(--color-text-secondary);text-align:center;">Aún no hay votos</p>'}
+                ${proposalVotes.length > 0 ? (() => {
+                    const isClosed = proposal.status !== 'active';
+                    const hasWeighted = result && result.weighted_votes && Object.keys(result.weighted_votes).length > 0;
+                    if (isClosed && hasWeighted) {
+                        // Propuesta cerrada: mostrar resultados ponderados por méritos (el verdadero resultado)
+                        return `
+                            <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">Resultados Finales</h3>
+                            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:1rem;">Ponderados por méritos LBWM · ${proposalVotes.length} voto${proposalVotes.length !== 1 ? 's' : ''} emitido${proposalVotes.length !== 1 ? 's' : ''}</div>
+                            ${displayWeightedVoteResults(result.weighted_votes)}
+                        `;
+                    } else {
+                        // Propuesta activa: mostrar conteo bruto como resultados parciales
+                        return `
+                            <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">Resultados Parciales</h3>
+                            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:1rem;">Conteo provisional (sin ponderar) · ${proposalVotes.length} voto${proposalVotes.length !== 1 ? 's' : ''} emitido${proposalVotes.length !== 1 ? 's' : ''}</div>
+                            ${displayVoteResults(proposalVotes, voteResults)}
+                        `;
+                    }
+                })() : '<p style="color:var(--color-text-secondary);text-align:center;">Aún no hay votos</p>'}
                 </div>
 
                 ${/* EXECUTION SECTION */ _renderExecutionSection(proposal, execution, isAuthor, isGovernor)}
@@ -695,6 +708,27 @@ function displayVoteResults(proposalVotes, results) {
     }).join('');
 }
 
+// Muestra resultados ponderados por méritos LBWM (para propuestas cerradas con resultado oficial)
+function displayWeightedVoteResults(weightedVotes) {
+    if (!weightedVotes || Object.keys(weightedVotes).length === 0) return '';
+    const totalWeight = Object.values(weightedVotes).reduce((s, v) => s + v, 0);
+    if (totalWeight === 0) return '';
+    return Object.entries(weightedVotes)
+        .sort((a, b) => b[1] - a[1])
+        .map(([option, weight]) => {
+            const pct = ((weight / totalWeight) * 100).toFixed(1);
+            return `<div style="margin-bottom:1rem;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                    <span style="font-weight:600;">${escapeHtml(option)}</span>
+                    <span style="color:var(--color-gold);font-weight:700;">${pct}%</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.1);height:8px;border-radius:4px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#E5B95C,#52c41a);border-radius:4px;transition:width 0.3s ease;"></div>
+                </div>
+            </div>`;
+        }).join('');
+}
+
 function getTimeLeft(endTime) {
     const diff = endTime - Date.now();
     if (diff <= 0) return 'Finalizada';
@@ -719,11 +753,29 @@ function updateVoteResultsInModal(proposalDTag) {
 
     if (proposalVotes.length > 0) {
         const proposal = allProposals.find(p => p.dTag === proposalDTag);
-        const label = proposal && proposal.status !== 'active' ? 'Resultados Finales' : 'Resultados Parciales';
-        resultsContainer.innerHTML = `
-            <h3 style="color:var(--color-gold);margin-bottom:1rem;">${label}</h3>
-            ${displayVoteResults(proposalVotes, voteResults)}
-        `;
+        const isClosed = proposal && proposal.status !== 'active';
+        const result = LBW_Governance.getResult(proposalDTag);
+        const hasWeighted = result && result.weighted_votes && Object.keys(result.weighted_votes).length > 0;
+
+        let innerHtml = '';
+        if (isClosed && hasWeighted) {
+            innerHtml = `
+                <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">Resultados Finales</h3>
+                <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:1rem;">Ponderados por méritos LBWM · ${proposalVotes.length} voto${proposalVotes.length !== 1 ? 's' : ''} emitido${proposalVotes.length !== 1 ? 's' : ''}</div>
+                ${displayWeightedVoteResults(result.weighted_votes)}
+            `;
+        } else {
+            const label = isClosed ? 'Resultados Finales' : 'Resultados Parciales';
+            const sublabel = isClosed
+                ? ''
+                : `<div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:1rem;">Conteo provisional (sin ponderar) · ${proposalVotes.length} voto${proposalVotes.length !== 1 ? 's' : ''} emitido${proposalVotes.length !== 1 ? 's' : ''}</div>`;
+            innerHtml = `
+                <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">${label}</h3>
+                ${sublabel}
+                ${displayVoteResults(proposalVotes, voteResults)}
+            `;
+        }
+        resultsContainer.innerHTML = innerHtml;
     }
 
     const voteSection = document.getElementById('voteSectionContainer');
