@@ -1,210 +1,173 @@
-# LiberBit World 🌐
+# LiberBit World
 
-> Ecosistema de gobernanza descentralizada sobre protocolo Nostr + Bitcoin Lightning Network
+**Plataforma descentralizada de gobernanza y comunidad para ciudades privadas soberanas.**
 
-**Principio fundamental:** *LiberBit World propone, nunca impone.*
+LiberBit World es una aplicación web construida sobre el protocolo Nostr y la red Bitcoin/Lightning, donde los ciudadanos se identifican, contribuyen y participan en la gobernanza de comunidades con economías basadas en Bitcoin.
+
+> "Una red de ciudades libres, con identidad digital soberana, gobernanza por méritos y economía Bitcoin."
 
 ---
 
 ## ¿Qué es LiberBit World?
 
-Red de comunidades soberanas donde cada individuo mantiene su soberanía mientras participa en gobernanza colectiva transparente. El ecosistema conecta identidad descentralizada, economía basada en méritos (LBWM) y comunicación cifrada — todo sin servidores centralizados.
+LiberBit World implementa el concepto de **network state**: comunidades privadas con reglas propias, economía interna en Bitcoin y un sistema de ciudadanía progresivo basado en méritos. La primera ciudad fundacional es **IberAtlas**, ubicada en la Península Ibérica.
 
-### Pilares
+La plataforma permite a sus ciudadanos:
 
-- **Soberanía individual** — Tu identidad y tus datos son tuyos. Tu clave privada nunca sale de tu dispositivo.
-- **Gobernanza transparente** — Propuestas y votos verificables criptográficamente. Sistema de 3 bloques con protecciones anti-plutocráticas.
-- **Méritos lineales (LBWM)** — Reconocimiento justo de valor. Sin escalas logarítmicas que penalicen a los mayores contribuyentes.
-- **Autonomía local** — Cada comunidad se autogobierna. Interoperabilidad global sin coerción externa.
-- **Propiedad privada + contratos voluntarios** — Toda participación es voluntaria.
-
----
-
-## Stack Tecnológico
-
-| Capa | Tecnología | Función |
-|------|-----------|---------|
-| Identidad | Nostr keypairs | Generación local, bech32 (npub/nsec), NIP-07 extensions |
-| Comunicación | Nostr relays | Chat comunitario, DMs cifrados, metadata de perfil |
-| Marketplace | NIP-99 | Clasificados descentralizados con imágenes verificadas |
-| Gobernanza | Kinds 31000-31006 | Propuestas, votos, delegaciones — solo relays privados |
-| Méritos | LBWM (Taproot Assets) | Tracking de contribuciones, leaderboard, ciudadanía |
-| Pagos | Lightning Network | WebLN + Blink wallet integration |
-| Cache | IndexedDB | Offline-first, instant UI, incremental sync |
-| UI | Tailwind CSS + DaisyUI | Single-page application responsive |
+- Autenticarse con identidad Nostr (sin usuarios ni contraseñas)
+- Acumular méritos por contribuciones reales a la comunidad
+- Progresar por niveles de ciudadanía (Visitante → Fundador)
+- Crear y debatir propuestas de gobernanza
+- Realizar aportaciones en Bitcoin vía Lightning Network
 
 ---
 
-## NIPs Implementados
+## Stack técnico
 
-| NIP | Nombre | Uso en LiberBit |
-|-----|--------|----------------|
-| 01 | Basic Protocol | Eventos, metadata (kind 0), notas comunitarias (kind 1) |
-| 04 | Encrypted DMs | DMs cifrados (fallback cuando NIP-44 no disponible) |
-| 07 | Browser Extension | Login con Alby, nos2x, Flamingo |
-| 09 | Event Deletion | Eliminación de ofertas y posts (kind 5) |
-| 19 | bech32 Encoding | Formato npub1.../nsec1... para claves |
-| 25 | Reactions | Likes y zaps en posts comunitarios (kind 7) |
-| 33 | Parameterized Replaceable | Propuestas actualizables, marketplace listings |
-| 44 | Encrypted DMs v2 | Cifrado preferido para DMs (forward secrecy) |
-| 65 | Relay List Metadata | Soberanía de relays por usuario (kind 10002) |
-| 94 | File Metadata | SHA-256 integrity para imágenes subidas |
-| 99 | Classified Listings | Marketplace descentralizado (kind 30402) |
-
-### Kinds Custom LiberBit (rango 31000-31006)
-
-| Kind | Nombre | Uso | Relays |
-|------|--------|-----|--------|
-| 31000 | `LBW_PROPOSAL` | Propuestas de gobernanza | 🔒 Privados |
-| 31001 | `LBW_VOTE` | Votos en propuestas | 🔒 Privados |
-| 31002 | `LBW_MERIT` | Registros de méritos LBWM | 🔒 Privados |
-| 31003 | `LBW_CONTRIB` | Contribuciones al ecosistema | 🔒 Privados |
-| 31004 | `LBW_DELEGATE` | Delegaciones de poder de voto | 🔒 Privados |
-| 31005 | `LBW_SNAPSHOT` | Snapshots de leaderboard | 🔒 Privados |
-| 31006 | `LBW_CONFIG` | Configuración y verificación | 🔒 Privados |
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | Vanilla JavaScript SPA |
+| Identidad | Nostr (NIP-01, NIP-44, NIP-07) |
+| Mensajería | NIP-44 (mensajes cifrados de extremo a extremo) |
+| Relay | Relay Nostr privado |
+| Base de datos | Supabase (caché e índices) |
+| Pagos | Lightning Network (Lightning Address) |
+| Despliegue | Vercel (vía GitHub) |
 
 ---
 
 ## Arquitectura
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                        index.html (SPA)                       │
-│                     Tailwind CSS + DaisyUI                    │
-├──────────────────────────────────────────────────────────────┤
-│                      nostr-bridge.js                          │
-│         UI ↔ Nostr bridge: login, feeds, lifecycle            │
-├────────────┬────────────┬─────────────┬──────────────────────┤
-│  nostr-    │  nostr-    │  nostr-     │  ui.js               │
-│  governance│  merits.js │  dm.js      │  profile.js          │
-│  .js       │  LBWM      │  Abstraction│  wallet.js           │
-│  Proposals │  Merit sys │  NIP-04/44  │  verification.js     │
-│  + Votes   │  + Contribs│  → NIP-17   │                      │
-├────────────┴────────────┴─────────────┴──────────────────────┤
-│                       nostr-sync.js                           │
-│            Cache-first + incremental relay sync               │
-├──────────────────────────────────────────────────────────────┤
-│                        nostr.js (core)                        │
-│    SimplePool · Event publish/subscribe · NIP-44/04 crypto    │
-│    Relay routing by kind · Rate limiting · Validation         │
-├──────────────────────────────────────────────────────────────┤
-│            nostr-store.js          │     nostr-media.js       │
-│         IndexedDB (local cache)    │  Multi-provider upload   │
-│  events·profiles·cursors·relays    │  SHA-256 · fallback URLs │
-├────────────────────────────────────┴─────────────────────────┤
-│                     Nostr Relays (WebSocket)                  │
-│  🔒 relay.liberbit.world (×3)  │  🌐 relay.damus.io, nos.lol │
-│     Governance · DMs · Merits   │     Discovery · Profiles     │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│           Cliente (Vanilla JS)          │
+└────────────┬────────────────────────────┘
+             │
+     ┌───────┴────────┐
+     │                │
+┌────▼─────┐   ┌──────▼──────┐
+│  Relay   │   │  Supabase   │
+│  Nostr   │   │  (caché)    │
+│  privado │   └─────────────┘
+└──────────┘
 ```
 
-### Flujo de datos
+Los eventos de identidad, méritos y gobernanza viven en Nostr. Supabase actúa como índice para consultas complejas.
+
+---
+
+## Sistema de ciudadanía
+
+LiberBit World tiene 6 niveles de ciudadanía basados en méritos acumulados:
+
+| Nivel | Méritos | Bloque de voto |
+|-------|---------|----------------|
+| 👋 Amigo | 0 | Comunidad |
+| 🪪 E-Residency | 100+ | Comunidad |
+| 🤝 Colaborador | 500+ | Comunidad |
+| 🛂 Ciudadano Senior | 1.000+ | Ciudadanía |
+| 🌍 Embajador | 2.000+ | Ciudadanía |
+| 👑 Gobernador | 3.000+ | Gobernanza |
+
+El sistema de votación está estructurado en 3 bloques: Gobernanza (51%), Ciudadanía (29%) y Comunidad (20%), con un cap máximo de 3.000 méritos de voto para Gobernadores.
+
+Los méritos se acumulan en 4 categorías:
+
+- **Económica Definitiva** (peso 1.0) — aportaciones económicas al ecosistema
+- **Productiva** (peso 1.0) — contribuciones de trabajo y producción
+- **Responsabilidad** (peso 1.2) — requiere 1.000+ méritos en otras categorías
+- **Financiada** (peso 0.6) — actividad financiada por la comunidad
+
+---
+
+## Tipos de propuestas de gobernanza
+
+- `PRP-XXX` — Propuestas de política general
+- Propuestas económicas
+- Propuestas de infraestructura
+
+---
+
+## Cómo levantar el entorno local
+
+### Requisitos
+
+- Navegador moderno con extensión Nostr (ej. [Alby](https://getalby.com) o [nos2x](https://github.com/fiatjaf/nos2x))
+- Cuenta en [Supabase](https://supabase.com) (plan gratuito suficiente)
+- Node.js (opcional, solo para herramientas de desarrollo)
+
+### Instalación
+
+```bash
+git clone https://github.com/liberbitworld-bit/app-LiberBit-World.git
+cd app-LiberBit-World
+```
+
+Copia el archivo de variables de entorno:
+
+```bash
+cp .env.example .env
+```
+
+Rellena `.env` con tus credenciales:
 
 ```
-User Action → Bridge → Nostr Module → Sign Event → Relay Pool → Private/Public Relays
-                                                         ↓
-                                              IndexedDB Cache ← SyncEngine ← Relay Events
-                                                         ↓
-                                                    UI Update
+SUPABASE_URL=tu_url_de_supabase
+SUPABASE_ANON_KEY=tu_anon_key
+NOSTR_RELAY=wss://tu_relay
+```
+
+Al ser una SPA en Vanilla JS, puedes abrirla directamente en el navegador o usar un servidor estático:
+
+```bash
+npx serve .
 ```
 
 ---
 
-## Estructura del Proyecto
+## Cómo contribuir
 
-```
-app-LiberBit-World/
-├── index.html              ← SPA principal (2,600+ líneas)
-├── css/
-│   ├── main.css            ← Estilos de la aplicación
-│   └── landing.css         ← Estilos de landing page
-├── js/
-│   ├── nostr-store.js      ← IndexedDB: eventos, perfiles, cursors, relay lists
-│   ├── nostr-media.js      ← Upload multi-provider + SHA-256 integrity
-│   ├── nostr.js            ← Core: SimplePool, crypto, relay routing, NIPs
-│   ├── nostr-sync.js       ← SyncEngine: cache-first + incremental sync
-│   ├── nostr-dm.js         ← DM abstraction (NIP-04/44 → futuro NIP-17)
-│   ├── nostr-governance.js ← Propuestas + votos descentralizados
-│   ├── nostr-merits.js     ← Sistema LBWM de méritos
-│   ├── nostr-bridge.js     ← Bridge: UI ↔ Nostr (login, feeds, lifecycle)
-│   ├── ui.js               ← Navegación, secciones, badges
-│   ├── profile.js          ← Perfil y ciudadanía
-│   ├── wallet.js           ← Lightning wallet (WebLN + Blink)
-│   └── verification.js     ← Sistema de verificación de identidad
-├── docs/
-│   ├── architecture.md     ← Arquitectura técnica detallada
-│   ├── lbwm-system.md      ← Sistema de méritos LBWM
-│   ├── governance.md       ← Modelo de gobernanza
-│   ├── citizenship.md      ← Niveles de ciudadanía
-│   ├── relay-guide.md      ← Guía de relays y privacidad
-│   └── security.md         ← Seguridad y criptografía
-├── robots.txt
-└── sitemap.xml
-```
+1. Haz fork del repositorio
+2. Crea una rama: `git checkout -b feature/mi-mejora`
+3. Haz tus cambios y commitea: `git commit -m "feat: descripción"`
+4. Abre un Pull Request describiendo qué hace y por qué
+
+### Convenciones de commits
+
+Usamos [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` nueva funcionalidad
+- `fix:` corrección de bug
+- `docs:` cambios en documentación
+- `refactor:` mejora de código sin cambio de comportamiento
+- `chore:` tareas de mantenimiento
+
+### Áreas donde puedes contribuir
+
+- Mejoras de UI/UX
+- Optimización de consultas Nostr
+- Tests
+- Documentación
+- Nuevas integraciones Lightning
 
 ---
 
-## Inicio Rápido
+## Filosofía del proyecto
 
-1. **Abre** la aplicación en tu navegador
-2. **Crea identidad** — genera un par de claves Nostr (o conecta extensión NIP-07)
-3. **Guarda tu nsec** — tu clave privada es tu identidad, no se puede recuperar
-4. **Explora** — Chat, Marketplace, Gobernanza, Méritos, Wallet
+LiberBit World nace de la convicción de que Bitcoin no es solo dinero: es la infraestructura para construir comunidades soberanas, con reglas propias, sin depender de Estados ni corporaciones. El protocolo Nostr aporta la identidad descentralizada que completa ese ecosistema.
 
-### Login con extensión (recomendado)
-
-Instala [Alby](https://getalby.com) o [nos2x](https://github.com/nicolgit/nos2x) → la app detecta automáticamente tu extensión Nostr.
-
-### Login con clave privada
-
-Importa tu nsec1... existente. La clave se almacena solo en sessionStorage (se borra al cerrar pestaña).
+Este proyecto está dirigido a quienes creen que la tecnología puede devolver la soberanía individual y colectiva a las personas.
 
 ---
 
-## Documentación
+## Licencia
 
-| Documento | Contenido |
-|-----------|-----------|
-| [Arquitectura Técnica](docs/architecture.md) | Módulos, flujo de datos, relay routing, cache pattern |
-| [Sistema LBWM](docs/lbwm-system.md) | Méritos lineales, categorías, anti-plutocracy, Taproot Assets |
-| [Gobernanza](docs/governance.md) | 3 bloques de voto, propuestas, ciclo de vida, quorum |
-| [Ciudadanía](docs/citizenship.md) | Niveles, requisitos, derechos, verificación |
-| [Guía de Relays](docs/relay-guide.md) | Privados vs públicos, NIP-65, Privacy Strict |
-| [Seguridad](docs/security.md) | Cifrado, validación, rate limiting, privacidad |
+MIT — consulta el archivo [LICENSE](./LICENSE) para más detalles.
 
 ---
 
-## Principios de Diseño
+## Contacto y comunidad
 
-- **Soberanía > Conveniencia** — Preferimos complejidad técnica a dependencia de terceros
-- **Propone, nunca impone** — Toda regla es opt-in a nivel de comunidad
-- **Lineal > Logarítmico** — Subsidiar a unos penalizando a otros contradice el reconocimiento justo
-- **Privacy by default** — Governance y méritos SOLO en relays privados
-- **Cache-first** — La app funciona aunque los relays estén caídos
-- **Verificable** — Cada evento está firmado criptográficamente
-
----
-
-## Contribuir
-
-LiberBit World es un proyecto abierto. Si quieres contribuir:
-
-1. Fork el repositorio
-2. Crea tu branch (`git checkout -b feature/mi-feature`)
-3. Commit (`git commit -m 'Añadir mi feature'`)
-4. Push (`git push origin feature/mi-feature`)
-5. Abre un Pull Request
-
-Las contribuciones generan méritos LBWM en la categoría correspondiente.
-
----
-
-## Contacto
-
-- **Relays:** wss://relay.liberbit.world
-- **Nostr:** Busca el tag `#liberbit` en cualquier cliente Nostr
-- **Web:** [liberbit.world](https://liberbit.world)
-
----
-
-*"La soberanía individual es el fundamento de la libertad colectiva."*
+- Web: [liberbitworld.org](https://liberbitworld.org)
+- Nostr: búscanos en el relay `relay.liberbitworld.org`
+- Marketing: [liberbitworld.com](https://liberbitworld.com)
