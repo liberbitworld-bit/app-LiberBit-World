@@ -2301,6 +2301,9 @@
                                 <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-family: var(--font-mono); opacity: 0.8;" id="profileNpub">npub1...</div>
                                 <button onclick="copyNpubKey()" style="background: var(--color-gold); color: var(--color-teal-dark); border: none; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.65rem; font-weight: 700; cursor: pointer; white-space: nowrap;" id="copyNpubBtn">📋 Copiar</button>
                             </div>
+                            <div id="profileLud16Display" style="display:none;margin-top:0.25rem;font-size:0.75rem;color:#FFB74D;">
+                                ⚡ <span id="profileLud16Value"></span>
+                            </div>
                             <!-- [v2.0] Governor badge -->
                             <div id="profileGovernorBadge" style="display:none;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;background:rgba(156,39,176,0.15);color:#CE93D8;border:1px solid rgba(156,39,176,0.3);margin-top:0.4rem;"></div>
                             <button class="profile-edit-btn" onclick="showCitizenshipModal()">
@@ -2525,6 +2528,17 @@
                     <input type="text" class="form-input" id="customCityInput" placeholder="Escribe tu ciudad...">
                 </div>
 
+                <!-- Lightning address (Phase 2) -->
+                <div class="form-group">
+                    <label class="form-label">⚡ Lightning Address (para recibir pagos)</label>
+                    <input type="text" class="form-input" id="profileLud16Input"
+                        placeholder="usuario@dominio.com"
+                        autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <small style="color:var(--color-text-secondary);font-size:0.75rem;">
+                        Tu dirección Lightning para recibir pagos del Marketplace · Ej: tu@walletofsatoshi.com
+                    </small>
+                </div>
+
                 <div class="modal-buttons">
                     <button class="btn-cancel" onclick="closeCitizenshipModal()">Cancelar</button>
                     <button class="btn-save" onclick="saveCitizenship()">Guardar Cambios</button>
@@ -2569,6 +2583,7 @@
     <script src="js/nostr-merits.js?v=phase1"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
     <script src="js/merits.js?v=phase1"></script>
+    <script src="js/nostr-marketplace-pay.js?v=phase2"></script>
     <script src="js/nostr-bridge.js?v=phase2f"></script>
     <script src="js/debate.js?v=1.2"></script>
     <script src="js/avatar-fix.js?v=2"></script>
@@ -3094,7 +3109,11 @@
             window.openApp = function(app) {
                 window._origOpenAppFn(app);
                 if (app === 'perfil') {
-                    setTimeout(() => { renderRelayList(); updateProfileStatus(); }, 300);
+                    setTimeout(() => {
+                        renderRelayList();
+                        updateProfileStatus();
+                        if (typeof window._loadLud16OnProfile === 'function') _loadLud16OnProfile();
+                    }, 300);
                 }
             };
         }
