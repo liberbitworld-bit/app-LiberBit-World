@@ -431,6 +431,22 @@ function showCitizenshipModal() {
             document.getElementById('customCityInput').value = userProfile.city;
         }
     }
+
+    // Pre-fill lud16 (Lightning address) — Phase 2
+    const lud16Input = document.getElementById('profileLud16Input');
+    if (lud16Input) {
+        // Prioridad: perfil Nostr → localStorage → vacío
+        let lud16 = '';
+        if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+            const p = LBW_Nostr.getProfile();
+            lud16 = (p && p.lud16) ? p.lud16 : '';
+        }
+        if (!lud16) {
+            const pubKey = currentUser && (currentUser.pubkey || currentUser.publicKey);
+            if (pubKey) lud16 = localStorage.getItem('lbw_lud16_' + pubKey.substring(0, 16)) || '';
+        }
+        lud16Input.value = lud16;
+    }
 }
 
 function closeCitizenshipModal() {
@@ -681,6 +697,39 @@ async function saveCitizenship() {
             }
         }
 
+        // ── Phase 2: guardar Lightning address (lud16) ──────────
+        const lud16Input = document.getElementById('profileLud16Input');
+        const lud16 = lud16Input ? lud16Input.value.trim().toLowerCase() : '';
+
+        if (lud16 && !/^[^@]+@[^@]+\.[^@]+$/.test(lud16)) {
+            showNotification('Lightning address inválida. Formato: usuario@dominio.com', 'error');
+            return;
+        }
+
+        if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+            try {
+                // Actualizar perfil Nostr (kind-0) con el lud16
+                const currentProfile = LBW_Nostr.getProfile() || {};
+                await LBW_Nostr.updateProfile({ ...currentProfile, lud16: lud16 || '' });
+                console.log('[Profile] ⚡ lud16 actualizado en Nostr:', lud16 || '(eliminado)');
+            } catch (e) {
+                console.warn('[Profile] No se pudo actualizar lud16 en Nostr:', e.message);
+            }
+        }
+
+        // Guardar también en localStorage como caché rápido
+        const pubKey2 = currentUser && (currentUser.pubkey || currentUser.publicKey);
+        if (pubKey2) {
+            if (lud16) {
+                localStorage.setItem('lbw_lud16_' + pubKey2.substring(0, 16), lud16);
+            } else {
+                localStorage.removeItem('lbw_lud16_' + pubKey2.substring(0, 16));
+            }
+        }
+
+        // Actualizar display del lud16 en el perfil
+        _updateLud16Display(lud16);
+
         // Update local profile
         userProfile.citizenshipType = citizenship.title;
         userProfile.city = city;
@@ -695,10 +744,23 @@ async function saveCitizenship() {
         closeCitizenshipModal();
         
         // Show confirmation
-        showNotification('✅ Ciudad actualizada correctamente');
+        showNotification('✅ Perfil actualizado correctamente');
     } catch (err) {
         console.error('Error:', err);
-        showNotification('Error al actualizar ciudad', 'error');
+        showNotification('Error al actualizar perfil', 'error');
+    }
+}
+
+// Actualiza el badge de lud16 visible en el header del perfil
+function _updateLud16Display(lud16) {
+    const display = document.getElementById('profileLud16Display');
+    const value   = document.getElementById('profileLud16Value');
+    if (!display || !value) return;
+    if (lud16) {
+        value.textContent = lud16;
+        display.style.display = 'block';
+    } else {
+        display.style.display = 'none';
     }
 }
 
@@ -713,6 +775,20 @@ window.closeCitizenshipModal = closeCitizenshipModal;
 window.toggleCustomCity = toggleCustomCity;
 window.handleAvatarUpload = handleAvatarUpload;
 window.saveCitizenship = saveCitizenship;
+
+// Cargar lud16 al mostrar el perfil (por si ya existía en Nostr)
+window._loadLud16OnProfile = function() {
+    let lud16 = '';
+    if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+        const p = LBW_Nostr.getProfile();
+        lud16 = (p && p.lud16) ? p.lud16 : '';
+    }
+    if (!lud16 && window.currentUser) {
+        const pk = currentUser.pubkey || currentUser.publicKey;
+        if (pk) lud16 = localStorage.getItem('lbw_lud16_' + pk.substring(0, 16)) || '';
+    }
+    _updateLud16Display(lud16);
+};
 window.drawGaugeCanvas = drawGaugeCanvas;
 window.gaugeAnimate = gaugeAnimate;
 
