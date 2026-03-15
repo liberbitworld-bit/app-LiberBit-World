@@ -1214,6 +1214,7 @@ const LBW_NostrBridge = (() => {
                 // Collect t-tags for search
                 const tTags = (listing.tags || []).filter(t => t[0] === 't').map(t => t[1]).join(' ');
                 card.dataset.tags = tTags;
+                _registerListing(listing);
 
                 card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;';
 
@@ -1261,8 +1262,11 @@ const LBW_NostrBridge = (() => {
                             <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(priceDisplay)}</span>
                             <span style="font-size:0.7rem;color:var(--color-text-secondary);">${_esc(name)}</span>
                         </div>
-                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;" class="card-actions">
-                            <button onclick="LBW_NostrBridge.startDMWith('${listing.pubkey}')" style="flex:1;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">💬 Contactar</button>
+                        <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;" class="card-actions">
+                            ${(!isMine && listing.price && listing.price !== 'A negociar' && !isNaN(parseInt(listing.price)) && listing.status === 'active')
+                                ? `<button onclick="LBW_NostrBridge.buyListing('${listing.id}')" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.75rem;font-weight:600;">⚡ Comprar</button>`
+                                : ''}
+                            <button onclick="LBW_NostrBridge.startDMWith('${listing.pubkey}')" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">💬 Contactar</button>
                             ${isMine ? `<button onclick="LBW_NostrBridge.deleteListing('${listing.id}')" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>` : ''}
                         </div>
                     </div>`;
@@ -1362,10 +1366,28 @@ const LBW_NostrBridge = (() => {
         } catch (e) { alert('❌ ' + e.message); }
     }
 
+    // Map de listings activos para acceso rápido desde botones (evita serializar en HTML)
+    const _listingMap = new Map();
+
+    function _registerListing(listing) {
+        _listingMap.set(listing.id, listing);
+    }
+
     function filterMarketplace(cat) {
         document.querySelectorAll('.offer-card:not(.mission-card)').forEach(c => {
             c.style.display = (cat === 'todos' || c.dataset.category === cat) ? '' : 'none';
         });
+    }
+
+    async function buyListing(listingId) {
+        const listing = _listingMap.get(listingId);
+        if (!listing) { showNotification('Oferta no encontrada', 'error'); return; }
+        const sellerName = await _resolveName(listing.pubkey);
+        if (typeof LBW_MarketPay !== 'undefined') {
+            await LBW_MarketPay.resolveAndPay(listing, sellerName);
+        } else {
+            showNotification('Módulo de pago no cargado', 'error');
+        }
     }
 
     function _showListingDetail(listing, authorName) {
@@ -1640,7 +1662,7 @@ const LBW_NostrBridge = (() => {
         handleNIP07Login, handlePrivateKeyLogin, handleCreateIdentity, handleLogout, restoreSession,
         publishCommunityPost, replyToMessage, cancelReply, startCommunityChat, stopCommunityChat,
         sendDM, startDMWith, openDMConversation, startDirectMessages, stopDirectMessages,
-        publishOffer, deleteListing, filterMarketplace, startMarketplace, stopMarketplace, refreshMarketplace,
+        publishOffer, deleteListing, filterMarketplace, buyListing, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
