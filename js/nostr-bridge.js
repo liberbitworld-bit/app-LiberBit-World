@@ -1165,6 +1165,31 @@ const LBW_NostrBridge = (() => {
         if (_marketFeedId) { LBW_Sync.unsyncFeed(_marketFeedId); _marketFeedId = null; }
     }
 
+    // ── Helpers de precio y estado ────────────────────────────
+    function _formatPrice(listing) {
+        const price = listing.price;
+        if (!price || price === 'A negociar' || price === '0' || price === 0) return 'A negociar';
+
+        const freqTag = (listing.tags || []).find(t => t[0] === 'price-freq');
+        const freq = listing.priceFreq || (freqTag ? freqTag[1] : '');
+
+        const currency = listing.currency || 'sats';
+        const currDisplay = currency === 'sats' ? '⚡' : currency === 'BTC' ? '₿' : currency;
+
+        return `${price} ${currDisplay}${freq ? ' ' + freq : ''}`;
+    }
+
+    function _statusBadge(status) {
+        const map = {
+            'active':   { label: 'Activo',    color: '#4CAF50', bg: 'rgba(76,175,80,0.15)' },
+            'reserved': { label: 'Reservado', color: '#FF9800', bg: 'rgba(255,152,0,0.15)' },
+            'sold':     { label: 'Vendido',   color: '#9E9E9E', bg: 'rgba(158,158,158,0.15)' },
+            'closed':   { label: 'Cerrado',   color: '#9E9E9E', bg: 'rgba(158,158,158,0.15)' }
+        };
+        const s = map[status] || map['active'];
+        return `<span style="font-size:0.65rem;background:${s.bg};color:${s.color};padding:0.15rem 0.5rem;border-radius:20px;border:1px solid ${s.color};font-weight:600;">${s.label}</span>`;
+    }
+
     function _renderMarketplaceGrid() {
         const grid = document.getElementById('offersGrid');
         if (!grid) return;
@@ -1183,17 +1208,25 @@ const LBW_NostrBridge = (() => {
             _resolveName(listing.pubkey).then(name => {
                 const card = document.createElement('div');
                 card.className = 'offer-card';
-                card.dataset.category = listing.category;
+                card.dataset.category = listing.category || '';
+                card.dataset.title    = listing.title || '';
+                card.dataset.desc     = listing.description || '';
+                // Collect t-tags for search
+                const tTags = (listing.tags || []).filter(t => t[0] === 't').map(t => t[1]).join(' ');
+                card.dataset.tags = tTags;
+
                 card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;';
 
                 // IMAGE: use fallback chain from MediaService
                 const media = LBW_Media.extractMediaFromTags(listing.tags);
                 let imgHtml = '';
                 if (media.urls.length > 0) {
-                    // Create container; we'll insert the fallback <img> via JS
                     const imgId = `img-${listing.id.substring(0, 8)}`;
-                    imgHtml = `<div id="${imgId}" style="width:100%;height:150px;overflow:hidden;"></div>`;
-                    // After render, insert the actual fallback image
+                    // Multi-image indicator badge
+                    const countBadge = media.urls.length > 1
+                        ? `<div style="position:absolute;top:0.4rem;right:0.4rem;background:rgba(0,0,0,0.65);color:#fff;padding:0.15rem 0.45rem;border-radius:20px;font-size:0.65rem;pointer-events:none;">📷 ${media.urls.length}</div>`
+                        : '';
+                    imgHtml = `<div id="${imgId}" style="position:relative;width:100%;height:150px;overflow:hidden;">${countBadge}</div>`;
                     setTimeout(() => {
                         const container = document.getElementById(imgId);
                         if (container) {
@@ -1201,28 +1234,31 @@ const LBW_NostrBridge = (() => {
                                 style: 'width:100%;height:150px;object-fit:cover;',
                                 alt: listing.title
                             });
-                            if (img) container.appendChild(img);
+                            if (img) container.insertBefore(img, container.firstChild);
                         }
                     }, 0);
                 }
 
                 const isMine = listing.pubkey === LBW_Nostr.getPubkey();
-                const integrity = media.sha256 ? `<span title="SHA-256: ${media.sha256}" style="font-size:0.6rem;color:#4CAF50;cursor:help;">🔒 Verificado</span>` : '';
+                const integrity = media.sha256 ? `<span title="SHA-256: ${media.sha256}" style="font-size:0.6rem;color:#4CAF50;cursor:help;">🔒</span>` : '';
+                const priceDisplay = _formatPrice(listing);
+                const statusBadge  = _statusBadge(listing.status);
 
                 card.innerHTML = `
                     ${imgHtml}
                     <div style="padding:1rem;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                             <span style="font-size:1.5rem;">${listing.emoji || icons[listing.category] || '🏪'}</span>
-                            <div style="display:flex;gap:0.3rem;align-items:center;">
+                            <div style="display:flex;gap:0.3rem;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
                                 ${integrity}
+                                ${statusBadge}
                                 <span style="font-size:0.7rem;background:rgba(229,185,92,0.15);color:var(--color-gold);padding:0.2rem 0.6rem;border-radius:20px;border:1px solid rgba(229,185,92,0.3);">${listing.category}</span>
                             </div>
                         </div>
                         <h4 style="color:var(--color-text-primary);font-size:1rem;margin-bottom:0.4rem;">${_esc(listing.title)}</h4>
                         <p style="color:var(--color-text-secondary);font-size:0.8rem;margin-bottom:0.75rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${_esc(listing.description)}</p>
                         <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(listing.price)} ${listing.currency !== 'sats' ? listing.currency : '⚡'}</span>
+                            <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(priceDisplay)}</span>
                             <span style="font-size:0.7rem;color:var(--color-text-secondary);">${_esc(name)}</span>
                         </div>
                         <div style="margin-top:0.75rem;display:flex;gap:0.5rem;" class="card-actions">
@@ -1242,54 +1278,73 @@ const LBW_NostrBridge = (() => {
         });
     }
 
-    // Publish offer using MediaService for images
+    // Publish offer using MediaService for images (Phase 1: multiple images)
     async function publishOffer(offerData) {
         let mediaTags = [];
-        if (offerData.imageFile) {
-            const media = await LBW_Media.uploadImage(offerData.imageFile, {
-                maxProviders: 2,
-                onProgress: (msg) => console.log(`[Bridge] 📸 ${msg}`)
-            });
-            mediaTags = LBW_Media.buildImageTags(media);
+
+        // Soportar múltiples imágenes (imageFiles) y retrocompat con imageFile singular
+        const imageFiles = offerData.imageFiles && offerData.imageFiles.length > 0
+            ? offerData.imageFiles
+            : (offerData.imageFile ? [offerData.imageFile] : []);
+
+        for (const file of imageFiles.slice(0, 5)) {
+            try {
+                const media = await LBW_Media.uploadImage(file, {
+                    maxProviders: 2,
+                    onProgress: (msg) => console.log(`[Bridge] 📸 ${msg}`)
+                });
+                const tags = LBW_Media.buildImageTags(media);
+                mediaTags = mediaTags.concat(tags);
+            } catch(e) {
+                console.warn('[Bridge] ⚠️ Error subiendo imagen:', e.message);
+            }
         }
 
         const result = await LBW_Nostr.publishMarketplaceListing({
-            title: offerData.title,
+            title:       offerData.title,
             description: offerData.description,
-            category: offerData.category,
-            price: offerData.price,
-            currency: offerData.currency || 'sats',
-            emoji: offerData.emoji,
-            location: offerData.location || '',
-            status: 'active',
+            category:    offerData.category,
+            subcategory: offerData.subcategory || '',
+            price:       offerData.price,
+            priceAmount: offerData.priceAmount || '',
+            currency:    offerData.currency || 'sats',
+            priceFreq:   offerData.priceFreq || '',
+            emoji:       offerData.emoji,
+            location:    offerData.location || '',
+            status:      offerData.status || 'active',
+            expiration:  offerData.expiration || 0,
             mediaTags
         });
 
-        // Inject locally so it appears immediately
+        // Inyectar localmente para que aparezca de inmediato
         if (result && result.event) {
             const ev = result.event;
             const listing = {
-                id: ev.id,
-                pubkey: ev.pubkey,
-                npub: LBW_Nostr.pubkeyToNpub(ev.pubkey),
-                title: offerData.title || 'Sin título',
+                id:          ev.id,
+                pubkey:      ev.pubkey,
+                npub:        LBW_Nostr.pubkeyToNpub(ev.pubkey),
+                title:       offerData.title || 'Sin título',
                 description: offerData.description || '',
-                category: offerData.category || 'servicios',
-                price: offerData.price || 'A negociar',
-                currency: offerData.currency || 'sats',
-                emoji: offerData.emoji || '🏪',
-                image: '',
-                images: [],
-                location: offerData.location || '',
-                status: 'active',
-                created_at: ev.created_at,
-                tags: ev.tags || [],
-                dTag: (ev.tags.find(function(t) { return t[0] === 'd'; }) || [])[1] || '',
-                _source: 'local'
+                category:    offerData.category || 'servicios',
+                subcategory: offerData.subcategory || '',
+                price:       offerData.price || 'A negociar',
+                priceAmount: offerData.priceAmount || '',
+                currency:    offerData.currency || 'sats',
+                priceFreq:   offerData.priceFreq || '',
+                emoji:       offerData.emoji || '🏪',
+                image:       '',
+                images:      [],
+                location:    offerData.location || '',
+                status:      offerData.status || 'active',
+                expiration:  offerData.expiration || 0,
+                created_at:  ev.created_at,
+                tags:        ev.tags || [],
+                dTag:        (ev.tags.find(t => t[0] === 'd') || [])[1] || '',
+                _source:     'local'
             };
-            var idx = _marketplaceListings.findIndex(function(l) {
-                return (l.dTag && l.dTag === listing.dTag) || l.id === listing.id;
-            });
+            const idx = _marketplaceListings.findIndex(l =>
+                (l.dTag && l.dTag === listing.dTag) || l.id === listing.id
+            );
             if (idx >= 0) _marketplaceListings[idx] = listing;
             else _marketplaceListings.push(listing);
             _renderMarketplaceGrid();
@@ -1308,21 +1363,42 @@ const LBW_NostrBridge = (() => {
     }
 
     function filterMarketplace(cat) {
-        document.querySelectorAll('.offer-card').forEach(c => {
+        document.querySelectorAll('.offer-card:not(.mission-card)').forEach(c => {
             c.style.display = (cat === 'todos' || c.dataset.category === cat) ? '' : 'none';
         });
     }
 
     function _showListingDetail(listing, authorName) {
-        // Build image HTML from media tags
         var media = LBW_Media.extractMediaFromTags(listing.tags);
+        var priceDisplay = _formatPrice(listing);
+        var statusBadge  = _statusBadge(listing.status);
+        var isMine = listing.pubkey === LBW_Nostr.getPubkey();
+
+        // Carrusel de imágenes
         var imageHtml = '';
-        if (media.urls.length > 0) {
+        if (media.urls.length === 1) {
             imageHtml = '<img src="' + _esc(media.urls[0]) + '" alt="' + _esc(listing.title) + '" style="width:100%;height:250px;object-fit:cover;margin-bottom:1rem;border-radius:12px;" onerror="this.style.display=\'none\'">';
+        } else if (media.urls.length > 1) {
+            var thumbs = media.urls.map(function(url, i) {
+                var borderColor = i === 0 ? 'var(--color-gold)' : 'var(--color-border)';
+                return '<img src="' + _esc(url) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid ' + borderColor + ';" onclick="document.getElementById(\'detail-main-img\').src=this.src;[].forEach.call(this.parentElement.querySelectorAll(\'img\'),function(el){el.style.borderColor=\'var(--color-border)\';});this.style.borderColor=\'var(--color-gold)\';" onerror="this.style.display=\'none\'">';
+            }).join('');
+            imageHtml =
+                '<img id="detail-main-img" src="' + _esc(media.urls[0]) + '" alt="' + _esc(listing.title) + '" style="width:100%;height:250px;object-fit:cover;margin-bottom:0.5rem;border-radius:12px;" onerror="this.style.display=\'none\'">' +
+                '<div style="display:flex;gap:0.4rem;margin-bottom:1rem;overflow-x:auto;padding-bottom:0.25rem;">' + thumbs + '</div>';
         }
 
-        var isMine = listing.pubkey === LBW_Nostr.getPubkey();
-        var priceText = (!listing.price || listing.price === '0' || listing.price === 0) ? 'A negociar' : _esc(listing.price) + ' ' + (listing.currency !== 'sats' ? listing.currency : '⚡');
+        // Expiración
+        var expirationHtml = '';
+        var expTag = (listing.tags || []).find(function(t){ return t[0] === 'expiration'; });
+        var expTs  = listing.expiration || (expTag ? parseInt(expTag[1]) : 0);
+        if (expTs > 0) {
+            var expDate  = new Date(expTs * 1000);
+            var daysLeft = Math.ceil((expTs * 1000 - Date.now()) / 86400000);
+            expirationHtml = daysLeft > 0
+                ? '<div style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.5rem;">⏱️ Expira: ' + expDate.toLocaleDateString('es-ES') + ' (' + daysLeft + ' días)</div>'
+                : '<div style="font-size:0.75rem;color:#ff4444;margin-top:0.5rem;">⚠️ Oferta expirada</div>';
+        }
 
         var modal = document.createElement('div');
         modal.className = 'modal active';
@@ -1331,7 +1407,10 @@ const LBW_NostrBridge = (() => {
                 '<button class="modal-close" onclick="this.closest(\'.modal\').remove()">×</button>' +
                 '<div class="modal-header">' +
                     imageHtml +
-                    '<div style="display:inline-block;font-size:0.7rem;background:rgba(229,185,92,0.15);color:var(--color-gold);padding:0.2rem 0.6rem;border-radius:20px;border:1px solid rgba(229,185,92,0.3);">' + _esc(listing.category) + '</div>' +
+                    '<div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-top:0.5rem;">' +
+                        statusBadge +
+                        '<div style="display:inline-block;font-size:0.7rem;background:rgba(229,185,92,0.15);color:var(--color-gold);padding:0.2rem 0.6rem;border-radius:20px;border:1px solid rgba(229,185,92,0.3);">' + _esc(listing.category) + '</div>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="modal-body">' +
                     '<h2 style="color:var(--color-gold);margin-bottom:1rem;">' + _esc(listing.title) + '</h2>' +
@@ -1340,13 +1419,14 @@ const LBW_NostrBridge = (() => {
                         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                             '<div>' +
                                 '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.25rem;">Precio</div>' +
-                                '<div style="font-size:1.5rem;font-weight:700;color:var(--color-gold);">' + priceText + '</div>' +
+                                '<div style="font-size:1.5rem;font-weight:700;color:var(--color-gold);">' + _esc(priceDisplay) + '</div>' +
                             '</div>' +
                             '<div style="text-align:right;">' +
                                 '<div style="font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.25rem;">Publicado por</div>' +
                                 '<div style="font-size:1rem;font-weight:600;color:var(--color-text-primary);">' + _esc(authorName) + '</div>' +
                             '</div>' +
                         '</div>' +
+                        expirationHtml +
                     '</div>' +
                     (!isMine ?
                         '<div style="margin-top:1.5rem;text-align:center;">' +
