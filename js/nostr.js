@@ -90,7 +90,8 @@ const LBW_Nostr = (() => {
         LBW_DELEGATE:   31004,
         LBW_SNAPSHOT:   31005,
         LBW_CONFIG:     31006,
-        APP_STATE:      30078
+        APP_STATE:      30078,
+        REVIEW:         1985     // NIP-85: Reviews
     };
 
     // ── NIP-65 Relay Routing (dynamic) ───────────────────────
@@ -127,7 +128,8 @@ const LBW_Nostr = (() => {
         EVENT_KINDS.METADATA,           // 0 — Perfiles (descubribles)
         EVENT_KINDS.TEXT_NOTE,          // 1 — Posts de comunidad
         EVENT_KINDS.RELAY_LIST,         // 10002 — NIP-65 relay list
-        EVENT_KINDS.MARKETPLACE         // 30402 — Marketplace (visibilidad)
+        EVENT_KINDS.MARKETPLACE,        // 30402 — Marketplace (visibilidad)
+        EVENT_KINDS.REVIEW             // 1985  — NIP-85 Reviews (públicas)
     ]);
 
     function _getRelaysForKind(kind) {
