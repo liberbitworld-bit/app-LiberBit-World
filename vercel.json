@@ -3,6 +3,10 @@
     {
       "source": "/.well-known/lnurlp/aportaciones",
       "destination": "/api/well-known/lnurlp/aportaciones"
+    },
+    {
+      "source": "/api/lnurlp/resolve",
+      "destination": "/api/lnurlp/resolve"
     }
   ]
 }
