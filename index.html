@@ -2117,7 +2117,7 @@
                 </p>
 
                 <!-- Filters -->
-                <div style="display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="filter-btn active" onclick="filterOffers('todos')" data-filter="todos">
                         🌐 Todos
                     </button>
@@ -2138,57 +2138,124 @@
                     </button>
                 </div>
 
+                <!-- Búsqueda por texto libre (Phase 1) -->
+                <div style="position:relative; margin-bottom: 1.5rem;">
+                    <input
+                        type="text"
+                        id="marketSearch"
+                        placeholder="🔍 Buscar por título, descripción o categoría..."
+                        oninput="filterOffersBySearch(this.value)"
+                        style="width:100%; padding:0.75rem 2.5rem 0.75rem 0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display); box-sizing:border-box;"
+                    >
+                    <button
+                        onclick="document.getElementById('marketSearch').value=''; filterOffersBySearch('');"
+                        style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:1.1rem;padding:0;"
+                        title="Limpiar búsqueda"
+                    >✕</button>
+                </div>
+
                 <!-- New Offer Button -->
                 <button class="btn btn-primary" onclick="showNewOfferForm()" style="margin-bottom: 2rem; width: 100%; cursor: pointer; position: relative; z-index: 5;">
                     ➕ Publicar Oferta
                 </button>
 
-                <!-- New Offer Form (hidden by default) -->
+                <!-- New Offer Form Phase 1 (hidden by default) -->
                 <div id="newOfferForm" class="compose-box" style="display: none; margin-bottom: 2rem; position: relative; z-index: 50;">
                     <h3 style="color: var(--color-gold); margin-bottom: 1.5rem;" id="offerFormTitle">Nueva Oferta</h3>
-                    
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">Categoría</label>
-                        <select id="offerCategory" style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display);">
-                            <option value="servicios">💼 Servicios</option>
-                            <option value="productos">🛍️ Productos</option>
-                            <option value="trabajos">💻 Trabajos</option>
-                            <option value="alquileres">🏠 Alquileres</option>
-                        </select>
-                    </div>
 
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">Título</label>
-                        <input type="text" id="offerTitle" placeholder="Ej: Clases de programación" style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display);" maxlength="80">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">Descripción</label>
-                        <textarea id="offerDescription" placeholder="Describe tu oferta..." style="width: 100%; min-height: 100px; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display); resize: vertical;" maxlength="500"></textarea>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">Precio (opcional)</label>
-                        <input type="text" id="offerPrice" placeholder="Ej: 50€ o A negociar" style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display);" maxlength="50">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">Emoji o Icono</label>
-                        <input type="text" id="offerEmoji" placeholder="Ej: 💻 🏡 🛠️" style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display); font-size: 1.5rem;" maxlength="5">
-                        <small style="color: var(--color-text-secondary); font-size: 0.8rem;">Usa un emoji para representar tu oferta</small>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.9rem;">📸 Imagen (opcional)</label>
-                        <input type="file" id="offerImage" accept="image/*" style="display: none;" onchange="previewOfferImage(event)">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('offerImage').click()" style="width: 100%; margin-bottom: 0.75rem;">
-                            📷 Seleccionar Imagen
-                        </button>
-                        <div id="imagePreview" style="display: none; position: relative;">
-                            <img id="previewImg" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 12px; border: 2px solid var(--color-border);">
-                            <button type="button" onclick="removeOfferImage()" style="position: absolute; top: 0.5rem; right: 0.5rem; background: var(--color-error); color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-weight: bold;">×</button>
+                    <!-- Categoría + Subcategoría -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                        <div class="form-group">
+                            <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Categoría *</label>
+                            <select id="offerCategory" onchange="updateSubcategories()" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="servicios">💼 Servicios</option>
+                                <option value="productos">🛍️ Productos</option>
+                                <option value="trabajos">💻 Trabajos</option>
+                                <option value="alquileres">🏠 Alquileres</option>
+                            </select>
                         </div>
-                        <small style="color: var(--color-text-secondary); font-size: 0.8rem;">Imagen del producto/servicio (máx 5MB)</small>
+                        <div class="form-group">
+                            <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Subcategoría</label>
+                            <select id="offerSubcategory" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Título -->
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Título *</label>
+                        <input type="text" id="offerTitle" placeholder="Ej: Clases de programación Bitcoin" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);" maxlength="80">
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Descripción *</label>
+                        <textarea id="offerDescription" placeholder="Describe tu oferta con detalle..." style="width:100%; min-height:100px; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display); resize:vertical;" maxlength="1000"></textarea>
+                    </div>
+
+                    <!-- Precio estructurado -->
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Precio (opcional)</label>
+                        <div style="display:grid; grid-template-columns:1fr auto auto; gap:0.5rem;">
+                            <input type="number" id="offerPriceAmount" placeholder="Importe (dejar vacío = negociable)" min="0" style="padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                            <select id="offerPriceCurrency" style="padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="sats">⚡ sats</option>
+                                <option value="BTC">₿ BTC</option>
+                                <option value="EUR">€ EUR</option>
+                                <option value="USD">$ USD</option>
+                            </select>
+                            <select id="offerPriceFreq" style="padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="">Precio fijo</option>
+                                <option value="/hora">/hora</option>
+                                <option value="/día">/día</option>
+                                <option value="/mes">/mes</option>
+                                <option value="/proyecto">/proyecto</option>
+                            </select>
+                        </div>
+                        <small style="color:var(--color-text-secondary); font-size:0.8rem;">Deja el importe vacío si el precio es negociable</small>
+                    </div>
+
+                    <!-- Estado + Duración -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                        <div class="form-group">
+                            <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Estado</label>
+                            <select id="offerStatus" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="active">✅ Activo</option>
+                                <option value="reserved">🟠 Reservado</option>
+                                <option value="sold">⬜ Vendido</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Duración</label>
+                            <select id="offerDuration" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display);">
+                                <option value="0">Sin expiración</option>
+                                <option value="7">7 días</option>
+                                <option value="14">14 días</option>
+                                <option value="30">30 días</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Emoji -->
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">Emoji / Icono</label>
+                        <input type="text" id="offerEmoji" placeholder="Ej: 💻 🏡 🛠️" style="width:100%; padding:0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display); font-size:1.5rem;" maxlength="5">
+                        <small style="color:var(--color-text-secondary); font-size:0.8rem;">Emoji representativo de la oferta</small>
+                    </div>
+
+                    <!-- Imágenes múltiples (hasta 5) -->
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--color-gold); font-size:0.9rem;">📸 Imágenes (opcional, máx. 5)</label>
+                        <input type="file" id="offerImages" accept="image/*" multiple style="display:none;" onchange="previewOfferImages(event)">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('offerImages').click()" style="width:100%; margin-bottom:0.75rem;">
+                            📷 Seleccionar Imágenes
+                        </button>
+                        <div id="imagesPreview" style="display:none; grid-template-columns: repeat(5, 1fr); gap:0.5rem; margin-bottom:0.5rem;"></div>
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="button" onclick="removeOfferImages()" style="background:none; border:none; color:var(--color-text-secondary); font-size:0.75rem; cursor:pointer; padding:0;">✕ Quitar imágenes</button>
+                        </div>
+                        <small style="color:var(--color-text-secondary); font-size:0.8rem;">La primera imagen será la principal · Máx. 5MB por imagen</small>
                     </div>
 
                     <div class="compose-actions">
@@ -2483,7 +2550,7 @@
     </script>
 
     <script src="js/posts.js?v=phase1b"></script>
-    <script src="js/marketplace.js?v=phase1"></script>
+    <script src="js/marketplace.js?v=phase1b"></script>
     <script src="js/notifications.js?v=phase1"></script>
     <script src="js/chat.js?v=debate2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2584,33 +2651,42 @@
     <!-- Nostr Marketplace Helper -->
     <script>
         async function handleNostrPublishOffer() {
-            const title = document.getElementById('offerTitle')?.value?.trim();
-            const desc = document.getElementById('offerDescription')?.value?.trim();
-            const category = document.getElementById('offerCategory')?.value || 'servicios';
-            const price = document.getElementById('offerPrice')?.value?.trim() || 'A negociar';
-            const emoji = document.getElementById('offerEmoji')?.value?.trim() || '🏪';
-            const imageInput = document.getElementById('offerImage');
-            const imageFile = imageInput?.files?.[0] || null;
+            const title       = document.getElementById('offerTitle')?.value?.trim();
+            const desc        = document.getElementById('offerDescription')?.value?.trim();
+            const category    = document.getElementById('offerCategory')?.value || 'servicios';
+            const subcategory = document.getElementById('offerSubcategory')?.value || 'general';
+            const priceAmount = document.getElementById('offerPriceAmount')?.value?.trim();
+            const currency    = document.getElementById('offerPriceCurrency')?.value || 'sats';
+            const priceFreq   = document.getElementById('offerPriceFreq')?.value || '';
+            const status      = document.getElementById('offerStatus')?.value || 'active';
+            const durationDays = parseInt(document.getElementById('offerDuration')?.value || '0');
+            const emoji       = document.getElementById('offerEmoji')?.value?.trim() || '🏪';
+            const imagesInput = document.getElementById('offerImages');
+            const imageFiles  = imagesInput?.files ? Array.from(imagesInput.files) : [];
 
             if (!title) { alert('Introduce un título'); return; }
-            if (!desc) { alert('Introduce una descripción'); return; }
+            if (!desc)  { alert('Introduce una descripción'); return; }
+
+            // Precio: si hay importe, usarlo; si no, "A negociar"
+            const price = priceAmount ? priceAmount : 'A negociar';
+
+            // Expiración en timestamp Unix
+            const expiration = durationDays > 0
+                ? Math.floor(Date.now() / 1000) + durationDays * 86400
+                : 0;
 
             const btn = document.getElementById('publishOfferBtn');
-            if (btn) { btn.disabled = true; btn.textContent = '⏳ Subiendo...'; }
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Publicando...'; }
 
             try {
                 await LBW_NostrBridge.publishOffer({
-                    title, description: desc, category, price,
-                    emoji, imageFile, currency: 'sats'
+                    title, description: desc, category, subcategory,
+                    price, priceAmount, currency, priceFreq,
+                    status, expiration,
+                    emoji, imageFiles
                 });
-                // Reset form
-                ['offerTitle', 'offerDescription', 'offerPrice', 'offerEmoji'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.value = '';
-                });
-                const form = document.getElementById('newOfferForm');
-                if (form) form.style.display = 'none';
-                alert('✅ Oferta publicada en la red Nostr');
+                cancelOfferForm();
+                showNotification('✅ Oferta publicada en la red Nostr', 'success');
             } catch (e) {
                 alert('❌ Error: ' + e.message);
             } finally {
