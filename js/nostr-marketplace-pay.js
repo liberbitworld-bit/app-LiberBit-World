@@ -138,6 +138,26 @@
         if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.refreshMarketplace) {
             LBW_NostrBridge.refreshMarketplace();
         }
+
+        // 5. Ofrecer reseña post-pago (solo si no es autopago y el módulo está cargado)
+        if (!isSelf && typeof LBW_Reviews !== 'undefined') {
+            setTimeout(async () => {
+                try {
+                    // Comprador reseña al vendedor
+                    if (!LBW_Reviews.hasReviewed(listing, buyerPubkey)) {
+                        const sellerName = await LBW_NostrBridge.resolveName(sellerPubkey);
+                        LBW_Reviews.showReviewModal({
+                            listing,
+                            reviewedPubkey: sellerPubkey,
+                            reviewedName:   sellerName,
+                            role:           'buyer'
+                        });
+                    }
+                } catch (e) {
+                    console.warn('[MarketPay] Review prompt error:', e.message);
+                }
+            }, 1500); // pequeño delay para que el usuario vea la confirmación primero
+        }
     }
 
     // ── Modal de pago ─────────────────────────────────────────
