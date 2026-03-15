@@ -975,6 +975,58 @@ const LBW_Merits = (() => {
     }
 
     // ── Public API ───────────────────────────────────────────
+    // ── Marketplace merit auto-award (Phase 2) ────────────────
+    // Se llama después de un pago Lightning verificado.
+    // No requiere que el caller sea Gobernador — el pago es la prueba.
+    async function awardMarketplaceMerit(sellerPubkey, listing, paymentHash) {
+        if (!sellerPubkey) throw new Error('sellerPubkey requerido');
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido');
+
+        // Deduplicación: una sola primera venta por vendedor
+        const dedupeKey = 'lbw_firstsale_' + sellerPubkey.substring(0, 16);
+        const alreadyAwarded = localStorage.getItem(dedupeKey);
+
+        if (!alreadyAwarded) {
+            const nowSecs = Math.floor(Date.now() / 1000);
+            const dTag = 'merit-market-firstsale-' + sellerPubkey.substring(0, 8) + '-' + nowSecs;
+            const reason = 'Primera venta completada en el Marketplace — Pago Lightning verificado' +
+                (paymentHash ? ' (' + paymentHash.substring(0, 12) + '...)' : '');
+
+            const content = JSON.stringify({
+                reason,
+                amount: 5,
+                awardedBy: 'marketplace-auto',
+                paymentHash: paymentHash || '',
+                listingId: listing.id || listing.dTag || '',
+                timestamp: nowSecs
+            });
+
+            const tags = [
+                ['d', dTag],
+                ['p', sellerPubkey],
+                ['amount', '5'],
+                ['category', 'economico'],
+                ['reason', reason],
+                ['awarded-by', 'marketplace-auto'],
+                ['source', 'marketplace'],
+                ['ref', listing.id || listing.dTag || ''],
+                ['payment_hash', paymentHash || ''],
+                ['t', 'lbw-merits'],
+                ['t', 'lbw-merit-award'],
+                ['t', 'marketplace'],
+                ['client', 'LiberBit World']
+            ];
+
+            await LBW_Nostr.publishEvent({ kind: KIND.MERIT, content, tags });
+            localStorage.setItem(dedupeKey, nowSecs.toString());
+            console.log('[Merits] Primera venta: +5 economico -> ' + sellerPubkey.substring(0, 12));
+            return { awarded: true };
+        }
+
+        console.log('[Merits] Primera venta ya contabilizada para ' + sellerPubkey.substring(0, 12));
+        return { awarded: false, alreadyAwarded: true };
+    }
+
     return {
         // Constants
         KIND,
@@ -986,6 +1038,7 @@ const LBW_Merits = (() => {
         // Publish
         submitContribution,
         awardMerit,
+        awardMarketplaceMerit,
         publishSnapshot,
         bootstrapFounder,
 
