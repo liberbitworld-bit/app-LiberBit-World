@@ -1258,6 +1258,19 @@ const LBW_Nostr = (() => {
             ['client', 'LiberBit World']
         ];
 
+        // Fase 1: precio estructurado — frecuencia
+        if (listing.priceFreq) tags.push(['price-freq', listing.priceFreq]);
+
+        // Fase 1: subcategoría
+        if (listing.subcategory && listing.subcategory !== 'general') {
+            tags.push(['t', listing.subcategory]);
+        }
+
+        // Fase 1: expiración automática
+        if (listing.expiration && listing.expiration > 0) {
+            tags.push(['expiration', String(listing.expiration)]);
+        }
+
         // Media tags: multi-URL + SHA-256 integrity
         if (listing.mediaTags && listing.mediaTags.length > 0) {
             // Built by LBW_Media.buildImageTags()
@@ -1269,6 +1282,11 @@ const LBW_Nostr = (() => {
         }
 
         if (listing.location) tags.push(['location', listing.location]);
+
+        // Fase 1: tags extra genéricos (ej. hashtags libres)
+        if (listing.extraTags && Array.isArray(listing.extraTags)) {
+            listing.extraTags.forEach(t => tags.push(t));
+        }
 
         return publishEvent({ kind: EVENT_KINDS.MARKETPLACE, content: listing.description || '', tags });
     }
