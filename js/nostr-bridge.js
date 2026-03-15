@@ -1455,6 +1455,11 @@ const LBW_NostrBridge = (() => {
                             '<button class="btn btn-primary" onclick="this.closest(\'.modal\').remove(); LBW_NostrBridge.startDMWith(\'' + listing.pubkey + '\')">💬 Enviar Mensaje Privado</button>' +
                         '</div>'
                     : '') +
+                    // Bloque de reseñas (se carga async tras render)
+                    '<div style="margin-top:1.5rem;">' +
+                        '<h4 style="color:var(--color-gold);font-size:0.9rem;margin-bottom:0.6rem;">⭐ Reseñas del vendedor</h4>' +
+                        '<div id="lbwDetailReviews-' + listing.id.substring(0, 8) + '"></div>' +
+                    '</div>' +
                 '</div>' +
             '</div>';
 
@@ -1462,6 +1467,15 @@ const LBW_NostrBridge = (() => {
         modal.addEventListener('click', function(e) {
             if (e.target === modal) modal.remove();
         });
+
+        // Cargar reseñas async una vez el modal está en el DOM
+        var reviewContainerId = 'lbwDetailReviews-' + listing.id.substring(0, 8);
+        if (typeof LBW_Reviews !== 'undefined') {
+            LBW_Reviews.renderReviewsBlock(listing.pubkey, reviewContainerId);
+        } else {
+            var rc = document.getElementById(reviewContainerId);
+            if (rc) rc.style.display = 'none';
+        }
     }
 
     // ── Profile Resolution (cache-first via SyncEngine) ──────
@@ -1666,6 +1680,7 @@ const LBW_NostrBridge = (() => {
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
         _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
+        resolveName: _resolveName,
         // Nuevos métodos para integración con chat.js
         getConversations, getUnreadDMCount
     };
