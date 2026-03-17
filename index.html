@@ -316,6 +316,81 @@
                     </div>
                 </div>
                 
+                <!-- ═══ PIONEER DASHBOARD ═══ -->
+                <div id="pioneerDashboard" style="margin-bottom: 2rem; display: none;">
+
+                    <!-- Top 4 stat cards -->
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+
+                        <!-- Mis Mérits -->
+                        <div style="background: linear-gradient(135deg, rgba(229,185,92,0.15) 0%, rgba(229,185,92,0.04) 100%); border: 1px solid rgba(229,185,92,0.4); border-radius: 14px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">🏅</div>
+                            <div id="pdMyMerits" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800; color: var(--color-gold); line-height: 1;">0</div>
+                            <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Mis Mérits</div>
+                            <div id="pdMyLevel" style="font-size: 0.7rem; color: var(--color-gold); margin-top: 0.2rem; font-weight: 600;">—</div>
+                        </div>
+
+                        <!-- Posición ranking -->
+                        <div style="background: linear-gradient(135deg, rgba(44,95,111,0.4) 0%, rgba(44,95,111,0.1) 100%); border: 1px solid rgba(44,95,111,0.6); border-radius: 14px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">🏆</div>
+                            <div id="pdMyRank" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800; color: #5bc4d4; line-height: 1;">—</div>
+                            <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Mi Posición</div>
+                            <div id="pdRankStatus" style="font-size: 0.7rem; color: #5bc4d4; margin-top: 0.2rem; font-weight: 600;">—</div>
+                        </div>
+
+                        <!-- Peso en gobernanza -->
+                        <div style="background: linear-gradient(135deg, rgba(82,196,26,0.12) 0%, rgba(82,196,26,0.03) 100%); border: 1px solid rgba(82,196,26,0.3); border-radius: 14px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">🗳️</div>
+                            <div id="pdVotingPower" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800; color: #52c41a; line-height: 1;">0%</div>
+                            <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Peso Gobernanza</div>
+                            <div id="pdVotingBloc" style="font-size: 0.7rem; color: #52c41a; margin-top: 0.2rem; font-weight: 600;">—</div>
+                        </div>
+
+                        <!-- Total ecosistema -->
+                        <div style="background: linear-gradient(135deg, rgba(255,152,0,0.12) 0%, rgba(255,152,0,0.03) 100%); border: 1px solid rgba(255,152,0,0.3); border-radius: 14px; padding: 1rem; text-align: center;">
+                            <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">⚡</div>
+                            <div id="pdTotalMerits" style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 800; color: #FFB74D; line-height: 1;">0</div>
+                            <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Total Ecosistema</div>
+                            <div id="pdTotalParticipants" style="font-size: 0.7rem; color: #FFB74D; margin-top: 0.2rem; font-weight: 600;">— participantes</div>
+                        </div>
+                    </div>
+
+                    <!-- Pioneer race banner -->
+                    <div style="background: linear-gradient(135deg, rgba(229,185,92,0.1) 0%, rgba(44,95,111,0.2) 100%); border: 1px solid rgba(229,185,92,0.35); border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-gold); letter-spacing: 0.08em; text-transform: uppercase;">🏠 Carrera Primeros Pobladores</div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-secondary); margin-top: 0.2rem;">Top 20 recibirán una vivienda Tipo C en IberAtlas</div>
+                            </div>
+                            <div id="pdPioneerStatus" style="font-size: 0.8rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 20px; background: rgba(229,185,92,0.15); color: var(--color-gold); white-space: nowrap; border: 1px solid rgba(229,185,92,0.3);">
+                                Cargando...
+                            </div>
+                        </div>
+                        <!-- Progress bar to top 20 -->
+                        <div id="pdProgressWrap" style="margin-top: 0.75rem; display: none;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--color-text-secondary); margin-bottom: 0.3rem;">
+                                <span id="pdProgressLabel">Progreso hacia top 20</span>
+                                <span id="pdProgressPct" style="color: var(--color-gold);">0%</span>
+                            </div>
+                            <div style="background: rgba(229,185,92,0.15); border-radius: 8px; height: 6px; overflow: hidden;">
+                                <div id="pdProgressFill" style="background: linear-gradient(90deg, var(--color-gold), #d4a84e); height: 100%; width: 0%; transition: width 0.6s ease; border-radius: 8px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top 20 leaderboard -->
+                    <div style="background: var(--color-bg-card); border: 1px solid var(--color-border); border-radius: 14px; overflow: hidden;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--color-border);">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-text-primary);">🏆 Ranking Pioneros — Top 20</span>
+                            <span style="font-size: 0.65rem; color: var(--color-text-secondary);">Se congela con licencia de construcción</span>
+                        </div>
+                        <div id="pdLeaderboard" style="max-height: 320px; overflow-y: auto;">
+                            <div style="padding: 1.5rem; text-align: center; color: var(--color-text-secondary); font-size: 0.8rem;">Cargando ranking...</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ═══ END PIONEER DASHBOARD ═══ -->
+
                 <h2>Selecciona una Aplicación</h2>
                 
                 <div class="apps-grid">
