@@ -32,8 +32,7 @@ function showMainMenu() {
     initializeUserProfile();
     updateAllBadges(); // Update notification badges
     loadAllNotifications(); // Load notification center
-    // Pioneer dashboard — slight delay so merits have time to load from relay/cache
-    setTimeout(updatePioneerDashboard, 800);
+    // Pioneer dashboard moved to Merits → Ranking Pioneros tab
 }
 
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect fill='%232C5F6F' width='60' height='60' rx='30'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='28' fill='%23E5B95C'%3E👤%3C/text%3E%3C/svg%3E";
@@ -178,11 +177,7 @@ function updatePioneerDashboard() {
     const panel = document.getElementById('pioneerDashboard');
     if (!panel) return;
 
-    // Only visible when logged in
-    if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.isLoggedIn()) {
-        panel.style.display = 'none';
-        return;
-    }
+    // Merits section already requires login — no need to check here
     panel.style.display = 'block';
 
     // ── 1. User merits ───────────────────────────────────────
