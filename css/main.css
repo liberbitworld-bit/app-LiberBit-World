@@ -2666,6 +2666,22 @@
             display: block;
         }
 
+        .ledger-filter-btn {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            background: var(--color-bg-dark);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ledger-filter-btn:hover,
+        .ledger-filter-btn.active {
+            background: rgba(229,185,92,0.15);
+            color: var(--color-gold);
+            border-color: rgba(229,185,92,0.4);
+        }
         .ledger-table {
             width: 100%;
             border-collapse: collapse;
