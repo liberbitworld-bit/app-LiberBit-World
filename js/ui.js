@@ -173,7 +173,7 @@ function updateBadge(appName, count) {
 // Muestra stats del usuario, peso en gobernanza, ranking top 20.
 // Llamado desde showMainMenu() cada vez que se vuelve al dashboard.
 // ═══════════════════════════════════════════════════════════════
-function updatePioneerDashboard() {
+async function updatePioneerDashboard() {
     const panel = document.getElementById('pioneerDashboard');
     if (!panel) return;
 
@@ -196,26 +196,40 @@ function updatePioneerDashboard() {
     if (elMyMerits) elMyMerits.textContent = myTotal.toLocaleString();
     if (elMyLevel)  elMyLevel.textContent  = myLevel;
 
-    // ── 2. Leaderboard & rank ────────────────────────────────
-    let leaderboard = [];
+    // ── 2. Leaderboard from Supabase (includes activity merits) ──
+    let lbWithActivity = [];
     let totalMeritsEco = 0;
-    if (typeof LBW_Merits !== 'undefined') {
-        leaderboard = LBW_Merits.getLeaderboard(200) || [];
-        totalMeritsEco = leaderboard.reduce((s, e) => s + e.total, 0);
+
+    if (typeof LBW_MeritsSync !== 'undefined' && LBW_MeritsSync.loadSupabaseLedger) {
+        const ledger = await LBW_MeritsSync.loadSupabaseLedger({ limit: 200, orderBy: 'total' });
+        if (ledger && ledger.users) {
+            lbWithActivity = ledger.users.map(u => ({
+                pubkey: u.pubkey,
+                npub: u.npub || '',
+                displayTotal: u.total || 0,
+                nivel: u.nivel || '',
+                nivel_emoji: u.nivel_emoji || '👋'
+            }));
+            totalMeritsEco = ledger.stats.totalMerits;
+        }
     }
 
-    // Merge activity merits into leaderboard for fair ranking
-    // (leaderboard only has kind-31002 merits; we add activity cap for current user)
-    const myPubkey = LBW_Nostr.getPubkey();
-    const lbWithActivity = leaderboard.map(e => {
-        if (e.pubkey === myPubkey && typeof getUnifiedMerits === 'function') {
-            return { ...e, displayTotal: getUnifiedMerits().total };
-        }
-        return { ...e, displayTotal: e.total };
-    }).sort((a, b) => b.displayTotal - a.displayTotal);
+    // Fallback to local Nostr leaderboard if Supabase returned nothing
+    if (lbWithActivity.length === 0 && typeof LBW_Merits !== 'undefined') {
+        const lb = LBW_Merits.getLeaderboard(200) || [];
+        totalMeritsEco = lb.reduce((s, e) => s + e.total, 0);
+        lbWithActivity = lb.map(e => ({
+            pubkey: e.pubkey,
+            npub: e.npub || '',
+            displayTotal: e.total,
+            nivel: e.level?.name || '',
+            nivel_emoji: e.level?.emoji || '👋'
+        }));
+    }
 
     // My rank in full list
-    const myRankIdx = lbWithActivity.findIndex(e => e.pubkey === myPubkey);
+    const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) ? LBW_Nostr.getPubkey() : null;
+    const myRankIdx = myPubkey ? lbWithActivity.findIndex(e => e.pubkey === myPubkey) : -1;
     myRank = myRankIdx >= 0 ? myRankIdx + 1 : lbWithActivity.length + 1;
 
     const elMyRank = document.getElementById('pdMyRank');
@@ -276,7 +290,7 @@ function updatePioneerDashboard() {
 
     // ── 3. Voting power ──────────────────────────────────────
     let votingPct = '0%', votingBloc = '—';
-    if (typeof LBW_Merits !== 'undefined') {
+    if (typeof LBW_Merits !== 'undefined' && myPubkey) {
         const vp = LBW_Merits.getUserVotingPower(myPubkey);
         if (vp) {
             votingPct = vp.power > 0 ? (vp.power * 100).toFixed(2) + '%' : '< 0.01%';
@@ -301,14 +315,14 @@ function updatePioneerDashboard() {
     const top = lbWithActivity.slice(0, 20);
 
     if (top.length === 0) {
-        lbContainer.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--color-text-secondary);font-size:0.8rem;">Aún no hay datos en el relay</div>';
+        lbContainer.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--color-text-secondary);font-size:0.8rem;">Aún no hay datos</div>';
         return;
     }
 
     const rows = top.map((entry, i) => {
         const pos = i + 1;
-        const isMe = entry.pubkey === myPubkey;
-        const lvl = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(entry.displayTotal) : { emoji: '👋', name: '' };
+        const isMe = myPubkey && entry.pubkey === myPubkey;
+        const lvl = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(entry.displayTotal) : { emoji: entry.nivel_emoji || '👋', name: entry.nivel || '' };
         const npubShort = entry.npub ? entry.npub.substring(0, 10) + '…' : entry.pubkey.substring(0, 10) + '…';
         const medalEmoji = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--color-text-secondary);">#${pos}</span>`;
         const rowBg = isMe ? 'rgba(229,185,92,0.1)' : 'transparent';
@@ -330,7 +344,7 @@ function updatePioneerDashboard() {
 
     // If user is not in top 20, add separator + their row
     let myRowExtra = '';
-    if (!inTop20 && myRank > 0) {
+    if (!inTop20 && myRank > 0 && myPubkey) {
         const myEntry = lbWithActivity[myRankIdx];
         const myLvl = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(myTotal) : { emoji: '👋', name: '' };
         const myNpub = myEntry?.npub ? myEntry.npub.substring(0, 10) + '…' : myPubkey.substring(0, 10) + '…';
