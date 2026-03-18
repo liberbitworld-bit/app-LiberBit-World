@@ -1845,52 +1845,75 @@
                 <!-- ═══════════════════════════════════════════════ -->
                 <div class="lbwm-tab-content" id="lbwm-tab-ledger">
                     <div class="lbwm-card">
-                        <h3 style="color: var(--color-gold); font-size: 1.2rem;">📖 Ledger Maestro LBWM</h3>
-                        <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.85rem;">
-                            Registro público y auditable de todas las emisiones de mérito
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.5rem;">
+                            <h3 style="color: var(--color-gold); font-size: 1.2rem; margin:0;">📖 Ledger Maestro LBWM</h3>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                <span id="ledgerSourceBadge" style="font-size:0.65rem;padding:0.2rem 0.6rem;border-radius:20px;background:rgba(44,95,111,0.4);color:#5bc4d4;border:1px solid rgba(91,196,212,0.3);">⏳ Cargando</span>
+                                <button onclick="loadLedgerFromSupabase()" style="font-size:0.7rem;padding:0.25rem 0.6rem;background:rgba(229,185,92,0.1);color:var(--color-gold);border:1px solid rgba(229,185,92,0.3);border-radius:8px;cursor:pointer;">🔄 Actualizar</button>
+                            </div>
+                        </div>
+                        <p style="color: var(--color-text-secondary); margin-bottom: 1rem; font-size: 0.8rem;">
+                            Mérits emitidos por usuario · Sincronizado con Supabase desde eventos Nostr
                         </p>
-                        
-                        <div style="overflow-x: auto;">
-                            <table class="ledger-table">
+
+                        <!-- Stats row -->
+                        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;margin-bottom:1.25rem;" class="mobile-grid-2col">
+                            <div style="background:var(--color-bg-dark);border-radius:10px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:1.4rem;font-weight:800;color:var(--color-gold);font-family:var(--font-mono);" id="ledger_total_emitido">0</div>
+                                <div style="font-size:0.7rem;color:var(--color-text-secondary);margin-top:0.2rem;">LBWM Emitidos</div>
+                            </div>
+                            <div style="background:var(--color-bg-dark);border-radius:10px;padding:0.75rem;text-align:center;">
+                                <div style="font-size:1.4rem;font-weight:800;color:#5bc4d4;font-family:var(--font-mono);" id="ledger_aportantes">0</div>
+                                <div style="font-size:0.7rem;color:var(--color-text-secondary);margin-top:0.2rem;">Usuarios con Mérits</div>
+                            </div>
+                        </div>
+
+                        <!-- Category totals bar -->
+                        <div style="background:var(--color-bg-dark);border-radius:10px;padding:0.75rem;margin-bottom:1.25rem;">
+                            <div style="font-size:0.75rem;font-weight:600;color:var(--color-text-secondary);margin-bottom:0.6rem;">DISTRIBUCIÓN POR CATEGORÍA</div>
+                            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.4rem;" id="ledgerCatTotals">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;" id="ledgerFilterPills">
+                            <button onclick="loadLedgerFromSupabase('total')"      class="ledger-filter-btn active" data-col="total">          Todos</button>
+                            <button onclick="loadLedgerFromSupabase('economica')"  class="ledger-filter-btn" data-col="economica">  💰 Económica</button>
+                            <button onclick="loadLedgerFromSupabase('productiva')" class="ledger-filter-btn" data-col="productiva"> 🛠️ Productiva</button>
+                            <button onclick="loadLedgerFromSupabase('responsabilidad')" class="ledger-filter-btn" data-col="responsabilidad">🔐 Resp.</button>
+                            <button onclick="loadLedgerFromSupabase('financiada')" class="ledger-filter-btn" data-col="financiada">  ⏳ Financiada</button>
+                            <button onclick="loadLedgerFromSupabase('fundacional')" class="ledger-filter-btn" data-col="fundacional">🏗️ Fundacional</button>
+                        </div>
+
+                        <!-- Main table -->
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
                                 <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Fecha</th>
-                                        <th>Identidad</th>
-                                        <th>Tipo</th>
-                                        <th>Descripción</th>
-                                        <th style="text-align: right;">Valor</th>
-                                        <th style="text-align: center;">Peso</th>
-                                        <th style="text-align: right;">LBWM</th>
-                                        <th style="text-align: center;">Estado</th>
+                                    <tr style="border-bottom:2px solid rgba(229,185,92,0.3);">
+                                        <th style="text-align:left;padding:0.5rem 0.4rem;color:var(--color-gold);font-size:0.7rem;white-space:nowrap;">#</th>
+                                        <th style="text-align:left;padding:0.5rem 0.4rem;color:var(--color-gold);font-size:0.7rem;">Nivel</th>
+                                        <th style="text-align:left;padding:0.5rem 0.4rem;color:var(--color-gold);font-size:0.7rem;">Identidad</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:var(--color-gold);font-size:0.7rem;">Total</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:#FFB74D;font-size:0.7rem;" title="Económica">💰</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:#81C784;font-size:0.7rem;" title="Productiva">🛠️</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:#CE93D8;font-size:0.7rem;" title="Responsabilidad">🔐</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:#80DEEA;font-size:0.7rem;" title="Financiada">⏳</th>
+                                        <th style="text-align:right;padding:0.5rem 0.4rem;color:#FFCC80;font-size:0.7rem;" title="Fundacional">🏗️</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ledgerTableBody">
                                     <tr>
-                                        <td colspan="9" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
-                                            Cargando datos del ledger...
+                                        <td colspan="9" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">
+                                            Cargando ledger...
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: var(--color-bg-dark); border-radius: 12px;">
-                            <h4 style="color: var(--color-gold); margin-bottom: 0.75rem; font-size: 0.95rem;">📊 Estadísticas del Ledger</h4>
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;" class="mobile-grid-3col">
-                                <div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Total Emitido</div>
-                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_total_emitido">0 LBWM</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Emisiones</div>
-                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_emisiones">0</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Aportantes</div>
-                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);" id="ledger_aportantes">0</div>
-                                </div>
-                            </div>
+                        <div id="ledgerEmptyMsg" style="display:none;text-align:center;padding:2rem;color:var(--color-text-secondary);font-size:0.85rem;">
+                            <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
+                            <p>Aún no hay datos en Supabase.<br>Se sincronizarán automáticamente al recibir mérits del relay Nostr.</p>
                         </div>
                     </div>
                 </div>
@@ -2658,6 +2681,8 @@
     <script src="js/nostr-merits.js?v=phase1"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
     <script src="js/merits.js?v=phase1"></script>
+    <!-- supabase-merits-sync: sincroniza merit events Nostr → Supabase -->
+    <script src="js/supabase-merits-sync.js?v=1.0"></script>
     <script src="js/nostr-reviews.js?v=phase2"></script>
     <script src="js/nostr-marketplace-pay.js?v=phase2"></script>
     <script src="js/nostr-bridge.js?v=phase2f"></script>
@@ -2959,6 +2984,11 @@
             }
             
             if (typeof showMainMenu === 'function' && currentUser) showMainMenu();
+
+            // Init Supabase merit sync after login (non-blocking)
+            if (typeof LBW_MeritsSync !== 'undefined') {
+                setTimeout(() => LBW_MeritsSync.init(), 1000);
+            }
         }
         // Make it globally accessible
         window.continueAfterLogin = continueAfterLogin;
