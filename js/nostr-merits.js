@@ -1,5 +1,5 @@
 // ============================================================
-// LiberBit World — LBWM Merit System v2.0 (nostr-merits.js)
+// LiberBit World — LBWM Merit System v2.1 (nostr-merits.js)
 //
 // Decentralized merit tracking over Nostr protocol.
 // Contributions (kind 31003) → Merits (kind 31002)
@@ -603,6 +603,7 @@ const LBW_Merits = (() => {
 
             return {
                 id: event.id,
+                dTag: g('d') || '',
                 pubkey: g('p') || event.pubkey,
                 amount: parseFloat(g('amount')) || parsed.amount || 0,
                 category: _normalizeCategory(g('category')),
@@ -674,7 +675,7 @@ const LBW_Merits = (() => {
 
     // ── Process Merit Record ─────────────────────────────────
     function _processMerit(merit) {
-        const { pubkey, amount, category, created_at, source, id } = merit;
+        const { pubkey, amount, category, created_at, source, id, dTag } = merit;
 
         if (!_merits.has(pubkey)) {
             _merits.set(pubkey, {
@@ -687,10 +688,24 @@ const LBW_Merits = (() => {
 
         const userData = _merits.get(pubkey);
 
-        // Dedup
+        // Dedup by event id
         if (userData.records.some(r => r.id === id)) return;
 
-        userData.records.push({ id, amount, category, created_at, source });
+        // NIP-33: parameterized replaceable events — same d-tag = same logical event.
+        // Keep only the newest (highest created_at).
+        if (dTag) {
+            const existingIdx = userData.records.findIndex(r => r.dTag === dTag);
+            if (existingIdx !== -1) {
+                const existing = userData.records[existingIdx];
+                if (created_at <= existing.created_at) return;   // incoming is older, skip
+                // Replace: remove old record from totals, then add new one below
+                userData.total -= existing.amount;
+                userData.byCategory[existing.category] = (userData.byCategory[existing.category] || 0) - existing.amount;
+                userData.records.splice(existingIdx, 1);
+            }
+        }
+
+        userData.records.push({ id, dTag, amount, category, created_at, source });
         userData.total += amount;
         userData.byCategory[category] = (userData.byCategory[category] || 0) + amount;
 
