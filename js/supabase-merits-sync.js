@@ -1,5 +1,5 @@
 // ================================================================
-// LiberBit World — supabase-merits-sync.js  v1.2
+// LiberBit World — supabase-merits-sync.js  v1.3
 // Sincroniza eventos de mérito Nostr (kind 31002) → Supabase.
 // ================================================================
 
@@ -127,8 +127,10 @@ const LBW_MeritsSync = (() => {
 
         let synced = 0;
         for (const entry of lb) {
-            if (!entry.records || entry.records.length === 0) continue;
-            for (const record of entry.records) {
+            const userData = LBW_Merits.getUserMerits(entry.pubkey);
+            const records = userData?.records || entry.records || [];
+            if (records.length === 0) continue;
+            for (const record of records) {
                 await syncMeritEvent({
                     id:         record.id,
                     pubkey:     entry.pubkey,
@@ -218,7 +220,7 @@ const LBW_MeritsSync = (() => {
         }
         LBW_Merits.subscribeMerits((merit) => { syncMeritEvent(merit); });
         setTimeout(bootstrapSync, 5000);
-        console.log('[MeritsSync] ✅ Inicializado v1.2');
+        console.log('[MeritsSync] ✅ Inicializado v1.3');
     }
 
     return { init, syncMeritEvent, bootstrapSync, loadSupabaseLedger, diagnose };
