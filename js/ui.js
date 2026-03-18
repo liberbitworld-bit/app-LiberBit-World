@@ -319,11 +319,19 @@ async function updatePioneerDashboard() {
         return;
     }
 
+    // Resolve display names for all entries
+    const canResolve = typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.resolveName;
+    const namePromises = top.map(entry =>
+        canResolve ? LBW_NostrBridge.resolveName(entry.pubkey).catch(() => '') : Promise.resolve('')
+    );
+    const names = await Promise.all(namePromises);
+
     const rows = top.map((entry, i) => {
         const pos = i + 1;
         const isMe = myPubkey && entry.pubkey === myPubkey;
         const lvl = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(entry.displayTotal) : { emoji: entry.nivel_emoji || '👋', name: entry.nivel || '' };
         const npubShort = entry.npub ? entry.npub.substring(0, 10) + '…' : entry.pubkey.substring(0, 10) + '…';
+        const displayName = names[i] || npubShort;
         const medalEmoji = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `<span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--color-text-secondary);">#${pos}</span>`;
         const rowBg = isMe ? 'rgba(229,185,92,0.1)' : 'transparent';
         const border = isMe ? 'border-left: 3px solid var(--color-gold);' : 'border-left: 3px solid transparent;';
@@ -332,8 +340,8 @@ async function updatePioneerDashboard() {
             <div style="width:28px;text-align:center;flex-shrink:0;">${medalEmoji}</div>
             <div style="font-size:1rem;flex-shrink:0;">${lvl.emoji || '👋'}</div>
             <div style="flex:1;min-width:0;">
-                <div style="font-size:0.75rem;color:${isMe ? 'var(--color-gold)' : 'var(--color-text-primary)'};font-weight:${isMe ? '700' : '400'};font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                    ${isMe ? 'Tú · ' : ''}${npubShort}
+                <div style="font-size:0.75rem;color:${isMe ? 'var(--color-gold)' : 'var(--color-text-primary)'};font-weight:${isMe ? '700' : '400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    ${isMe ? 'Tú · ' : ''}${displayName}
                 </div>
                 <div style="font-size:0.65rem;color:var(--color-text-secondary);">${lvl.name || ''}</div>
             </div>
@@ -347,14 +355,15 @@ async function updatePioneerDashboard() {
     if (!inTop20 && myRank > 0 && myPubkey) {
         const myEntry = lbWithActivity[myRankIdx];
         const myLvl = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getCitizenshipLevel(myTotal) : { emoji: '👋', name: '' };
-        const myNpub = myEntry?.npub ? myEntry.npub.substring(0, 10) + '…' : myPubkey.substring(0, 10) + '…';
+        const myName = canResolve ? await LBW_NostrBridge.resolveName(myPubkey).catch(() => '') : '';
+        const myDisplay = myName || (myEntry?.npub ? myEntry.npub.substring(0, 10) + '…' : myPubkey.substring(0, 10) + '…');
         myRowExtra = `
             <div style="padding:0.3rem 1rem;background:rgba(229,185,92,0.05);border-top:1px dashed rgba(229,185,92,0.2);text-align:center;font-size:0.65rem;color:var(--color-text-secondary);">· · · tu posición · · ·</div>
             <div style="display:flex;align-items:center;gap:0.6rem;padding:0.55rem 1rem;background:rgba(229,185,92,0.08);border-left:3px solid var(--color-gold);">
                 <div style="width:28px;text-align:center;flex-shrink:0;font-family:var(--font-mono);font-size:0.75rem;color:var(--color-text-secondary);">#${myRank}</div>
                 <div style="font-size:1rem;flex-shrink:0;">${myLvl.emoji || '👋'}</div>
                 <div style="flex:1;min-width:0;">
-                    <div style="font-size:0.75rem;color:var(--color-gold);font-weight:700;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Tú · ${myNpub}</div>
+                    <div style="font-size:0.75rem;color:var(--color-gold);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Tú · ${myDisplay}</div>
                     <div style="font-size:0.65rem;color:var(--color-text-secondary);">${myLvl.name || ''}</div>
                 </div>
                 <div style="font-family:var(--font-mono);font-size:0.85rem;font-weight:700;color:var(--color-gold);flex-shrink:0;">${myTotal.toLocaleString()}</div>
