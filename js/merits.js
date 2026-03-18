@@ -638,6 +638,9 @@ function switchLbwmTab(tabName) {
         const badge = document.getElementById('tabBadgeMissions');
         if (badge) { const n = LBW_Missions.getOpenCount(); badge.textContent = n; badge.style.display = n > 0 ? 'inline-flex' : 'none'; }
     }
+    if (tabName === 'ranking-pioneros') {
+        if (typeof updatePioneerDashboard === 'function') updatePioneerDashboard();
+    }
 }
 
 function toggleFinanciada() {
