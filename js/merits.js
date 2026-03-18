@@ -386,7 +386,136 @@ async function loadLeaderboard() {
 // ═══════════════════════════════════════════════════════════════
 // Ledger (unchanged, compatible)
 // ═══════════════════════════════════════════════════════════════
+// ── loadLedgerFromSupabase — nueva función para el tab Ledger ─
+async function loadLedgerFromSupabase(orderBy = 'total') {
+    const body     = document.getElementById('ledgerTableBody');
+    const emptyMsg = document.getElementById('ledgerEmptyMsg');
+    const badge    = document.getElementById('ledgerSourceBadge');
+
+    if (body) body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">⏳ Cargando desde Supabase...</td></tr>`;
+    if (emptyMsg) emptyMsg.style.display = 'none';
+
+    // Update active filter pill
+    document.querySelectorAll('.ledger-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.col === orderBy);
+    });
+
+    // Try Supabase first
+    let result = null;
+    if (typeof LBW_MeritsSync !== 'undefined') {
+        result = await LBW_MeritsSync.loadSupabaseLedger({ limit: 200, orderBy });
+    }
+
+    // Fallback to Nostr in-memory if Supabase empty
+    if (!result || result.users.length === 0) {
+        _renderLedgerFromNostr(orderBy);
+        if (badge) { badge.textContent = '⚡ Nostr (local)'; badge.style.color = '#FFB74D'; }
+        return;
+    }
+
+    if (badge) { badge.textContent = '✅ Supabase'; badge.style.color = '#52c41a'; }
+
+    const { users, stats } = result;
+
+    // Stats
+    const el = id => document.getElementById(id);
+    if (el('ledger_total_emitido')) el('ledger_total_emitido').textContent = stats.totalMerits.toLocaleString();
+    if (el('ledger_aportantes'))    el('ledger_aportantes').textContent    = stats.totalUsers;
+
+    // Category totals bar
+    const catEl = el('ledgerCatTotals');
+    if (catEl) {
+        const cats = [
+            { key: 'economica',       emoji: '💰', color: '#FFB74D', label: 'Econ.' },
+            { key: 'productiva',      emoji: '🛠️', color: '#81C784', label: 'Prod.' },
+            { key: 'responsabilidad', emoji: '🔐', color: '#CE93D8', label: 'Resp.' },
+            { key: 'financiada',      emoji: '⏳', color: '#80DEEA', label: 'Fin.' },
+            { key: 'fundacional',     emoji: '🏗️', color: '#FFCC80', label: 'Fund.' }
+        ];
+        catEl.innerHTML = cats.map(c => `
+            <div style="background:var(--color-bg-medium);border-radius:8px;padding:0.5rem;text-align:center;border:1px solid rgba(255,255,255,0.05);">
+                <div style="font-size:0.9rem;">${c.emoji}</div>
+                <div style="font-family:var(--font-mono);font-size:0.75rem;font-weight:700;color:${c.color};">${(stats.byCategory[c.key] || 0).toLocaleString()}</div>
+                <div style="font-size:0.6rem;color:var(--color-text-secondary);">${c.label}</div>
+            </div>`).join('');
+    }
+
+    if (users.length === 0) {
+        if (body) body.innerHTML = '';
+        if (emptyMsg) emptyMsg.style.display = 'block';
+        return;
+    }
+
+    const myPubkey = typeof LBW_Nostr !== 'undefined' ? LBW_Nostr.getPubkey() : '';
+
+    if (body) {
+        body.innerHTML = users.map((u, i) => {
+            const isMe = u.pubkey === myPubkey;
+            const npubShort = u.npub ? u.npub.substring(0, 14) + '…' : u.pubkey.substring(0, 14) + '…';
+            const rowStyle = isMe ? 'background:rgba(229,185,92,0.1);border-left:3px solid var(--color-gold);' : '';
+            return `<tr style="${rowStyle}">
+                <td style="padding:0.45rem 0.4rem;font-family:var(--font-mono);font-size:0.7rem;color:var(--color-text-secondary);">${i + 1}</td>
+                <td style="padding:0.45rem 0.4rem;font-size:0.9rem;">${u.nivel_emoji || '👋'}</td>
+                <td style="padding:0.45rem 0.4rem;font-family:var(--font-mono);font-size:0.7rem;color:${isMe ? 'var(--color-gold)' : 'var(--color-text-primary)'};max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${u.npub || u.pubkey}">
+                    ${isMe ? '★ ' : ''}${npubShort}
+                </td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--color-gold);">${(u.total || 0).toLocaleString()}</td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#FFB74D;">${u.economica || 0}</td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#81C784;">${u.productiva || 0}</td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#CE93D8;">${u.responsabilidad || 0}</td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#80DEEA;">${u.financiada || 0}</td>
+                <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#FFCC80;">${u.fundacional || 0}</td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+// Fallback: render ledger from Nostr in-memory data
+function _renderLedgerFromNostr(orderBy = 'total') {
+    const body = document.getElementById('ledgerTableBody');
+    if (!body) return;
+    if (typeof LBW_Merits === 'undefined') return;
+
+    const lb = LBW_Merits.getLeaderboard(200);
+    if (!lb || lb.length === 0) {
+        body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">Sin datos en relay aún</td></tr>`;
+        return;
+    }
+
+    const myPubkey = typeof LBW_Nostr !== 'undefined' ? LBW_Nostr.getPubkey() : '';
+    const sorted = [...lb].sort((a, b) => (b.byCategory[orderBy] || b.total || 0) - (a.byCategory[orderBy] || a.total || 0));
+
+    body.innerHTML = sorted.map((u, i) => {
+        const isMe = u.pubkey === myPubkey;
+        const npubShort = u.npub ? u.npub.substring(0, 14) + '…' : u.pubkey.substring(0, 14) + '…';
+        const rowStyle = isMe ? 'background:rgba(229,185,92,0.1);border-left:3px solid var(--color-gold);' : '';
+        return `<tr style="${rowStyle}">
+            <td style="padding:0.45rem 0.4rem;font-family:var(--font-mono);font-size:0.7rem;color:var(--color-text-secondary);">${i + 1}</td>
+            <td style="padding:0.45rem 0.4rem;font-size:0.9rem;">${u.level?.emoji || '👋'}</td>
+            <td style="padding:0.45rem 0.4rem;font-family:var(--font-mono);font-size:0.7rem;color:${isMe ? 'var(--color-gold)' : 'var(--color-text-primary)'};max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                ${isMe ? '★ ' : ''}${npubShort}
+            </td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--color-gold);">${(u.total || 0).toLocaleString()}</td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#FFB74D;">${u.byCategory?.economica || 0}</td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#81C784;">${u.byCategory?.productiva || 0}</td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#CE93D8;">${u.byCategory?.responsabilidad || 0}</td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#80DEEA;">${u.byCategory?.financiada || 0}</td>
+            <td style="padding:0.45rem 0.4rem;text-align:right;font-family:var(--font-mono);color:#FFCC80;">${u.byCategory?.fundacional || 0}</td>
+        </tr>`;
+    }).join('');
+
+    const el = id => document.getElementById(id);
+    const totalMerits = lb.reduce((s, u) => s + u.total, 0);
+    if (el('ledger_total_emitido')) el('ledger_total_emitido').textContent = totalMerits.toLocaleString();
+    if (el('ledger_aportantes'))    el('ledger_aportantes').textContent    = lb.length;
+}
+
 function loadLedgerData() {
+    // Redirect to Supabase-backed loader. loadLedgerData() kept for backward compat.
+    loadLedgerFromSupabase('total');
+}
+
+function _loadLedgerDataLegacy() {
     const myContribs = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getMyContributions() : [];
 
     // Legacy fallback: solo lectura, sin escritura. Se eliminará tras confirmar migración completa.
