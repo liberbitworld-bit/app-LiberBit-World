@@ -391,7 +391,7 @@
                 ${isMine ? `
                 <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
                     <button onclick="LBW_Stalls.showAddProductForm('${_esc(stall.dTag)}');document.getElementById('stallDetailModal').remove();" style="padding:0.4rem 1rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.8rem;font-weight:600;">➕ Añadir producto</button>
-                    <button onclick="LBW_Stalls.showEditStallForm(LBW_Stalls.getAllStalls().find(s=>s.stallKey==='${_esc(stall.stallKey)}'));document.getElementById('stallDetailModal').remove();" style="padding:0.4rem 1rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.8rem;">✏️ Editar tienda</button>
+                    <button onclick="LBW_Stalls.showEditMyStall();document.getElementById('stallDetailModal').remove();" style="padding:0.4rem 1rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.8rem;">✏️ Editar tienda</button>
                 </div>` : ''}
 
                 <hr style="border-color:var(--color-border);margin:1rem 0;">
@@ -434,7 +434,12 @@
             </div>`;
     }
 
-    // ── Formulario: Crear / Editar Tienda ─────────────────────
+    // ── Editar mi tienda (helper sin argumentos para onclick inline) ──
+    function showEditMyStall() {
+        const stall = getMyStall();
+        if (!stall) { showCreateStallForm(); return; }
+        showEditStallForm(stall);
+    }
     function showCreateStallForm() {
         const myStall = getMyStall();
         showEditStallForm(myStall);
@@ -666,6 +671,7 @@
         showStallDetail,
         showCreateStallForm,
         showEditStallForm,
+        showEditMyStall,
         showAddProductForm,
         showStallsView,
         showOffersView,
