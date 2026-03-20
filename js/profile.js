@@ -335,6 +335,25 @@ function updateProfileDisplay() {
         }
     }
 
+    // [Phase 2] Marketplace reputation badge
+    const repBadgeEl = document.getElementById('profileReputationBadge');
+    if (repBadgeEl && typeof LBW_Reviews !== 'undefined' && LBW_Reviews.getScoreBadgeHtml) {
+        const pubKey = currentUser.pubkey || currentUser.publicKey;
+        // Convert to hex if npub
+        let pubkeyHex = pubKey;
+        if (typeof isNpubFormat === 'function' && isNpubFormat(pubKey)) {
+            pubkeyHex = npubToHex(pubKey) || pubKey;
+        }
+        LBW_Reviews.getScoreBadgeHtml(pubkeyHex).then(html => {
+            if (html) {
+                repBadgeEl.style.display = 'inline-block';
+                repBadgeEl.innerHTML = html;
+            } else {
+                repBadgeEl.style.display = 'none';
+            }
+        }).catch(() => { repBadgeEl.style.display = 'none'; });
+    }
+
     // [v2.0] Merit source breakdown
     const meritSourceEl = document.getElementById('profileMeritSource');
     if (meritSourceEl) {
