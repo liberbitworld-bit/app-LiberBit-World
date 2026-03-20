@@ -191,4 +191,33 @@ function loadOffers() {
 
 function displayOffers() { loadOffers(); }
 
-console.log('✅ Marketplace Phase 1 listo');
+// ── Phase 3: NIP-15 Stalls — Tab switcher ─────────────────
+function switchMarketTab(tab) {
+    document.querySelectorAll('.market-tab-btn').forEach(btn => btn.classList.remove('active'));
+    const activeTab = document.querySelector(`[data-market-tab="${tab}"]`);
+    if (activeTab) activeTab.classList.add('active');
+
+    if (tab === 'tiendas') {
+        if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showStallsView();
+        const searchBar = document.getElementById('marketSearchBar');
+        const filterBar = document.getElementById('marketFilterBar');
+        if (searchBar) searchBar.style.display = 'none';
+        if (filterBar) filterBar.style.display = 'none';
+    } else {
+        if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showOffersView();
+        const searchBar = document.getElementById('marketSearchBar');
+        const filterBar = document.getElementById('marketFilterBar');
+        if (searchBar) searchBar.style.display = '';
+        if (filterBar) filterBar.style.display = '';
+    }
+}
+
+function openCreateStall() {
+    if (!window.LBW_Nostr || !LBW_Nostr.isLoggedIn()) {
+        showNotification('Debes iniciar sesion para crear una tienda', 'warning');
+        return;
+    }
+    if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showCreateStallForm();
+}
+
+console.log('Marketplace Phase 1 + Phase 3 (NIP-15 Stalls) listo');
