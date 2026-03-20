@@ -111,7 +111,44 @@ async function loadAllNotifications() {
             }
         }
 
-        // ── 4. Notificaciones de meritos desde localStorage (legado) ─────────
+        // ── 4. Reseñas recibidas en el marketplace (kind:1985, NIP-85) ──────
+        if (typeof LBW_Reviews !== 'undefined' && LBW_Reviews.getReviewsForUser) {
+            const myPubkeyForReviews = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
+                ? LBW_Nostr.getPubkey() : null;
+            const lastVisitMarket = parseInt(localStorage.getItem('lastVisit_marketplace') || '0');
+
+            if (myPubkeyForReviews) {
+                try {
+                    const reviews = await LBW_Reviews.getReviewsForUser(myPubkeyForReviews);
+                    reviews
+                        .filter(r => (r.created_at * 1000) > lastVisitMarket)
+                        .forEach(review => {
+                            const notifId = 'review_' + review.id;
+                            if (!dismissed.has(notifId)) {
+                                const rating = parseInt(review.rating) || 0;
+                                const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                                const comment = (review.comment || review.content || '').substring(0, 100);
+                                allNotifications.push({
+                                    id: notifId,
+                                    type: 'marketplace',
+                                    title: `Nueva reseña recibida ${stars}`,
+                                    content: comment || 'Sin comentario',
+                                    timestamp: review.created_at * 1000,
+                                    unread: true,
+                                    action: () => {
+                                        closeNotificationCenter();
+                                        setTimeout(() => openSubApp('marketplace'), 50);
+                                    }
+                                });
+                            }
+                        });
+                } catch (e) {
+                    console.warn('[Notifications] Error cargando reseñas:', e);
+                }
+            }
+        }
+
+        // ── 5. Notificaciones de meritos desde localStorage (legado) ─────────
         const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
         meritNotifs.forEach(notif => {
             if (!notif.read && !dismissed.has('merit_' + notif.id)) {
@@ -144,15 +181,18 @@ async function loadAllNotifications() {
 }
 
 function updateNotificationBadges() {
-    const messageCount = allNotifications.filter(n => n.type === 'messages').length;
+    const messageCount    = allNotifications.filter(n => n.type === 'messages').length;
     const governanceCount = allNotifications.filter(n => n.type === 'governance').length;
-    const meritsCount = allNotifications.filter(n => n.type === 'merits').length;
-    const totalCount = allNotifications.length;
+    const meritsCount     = allNotifications.filter(n => n.type === 'merits').length;
+    const marketplaceCount = allNotifications.filter(n => n.type === 'marketplace').length;
+    const totalCount      = allNotifications.length;
 
     // Update inbox summary
     document.getElementById('notifCountMessages').textContent = messageCount;
     document.getElementById('notifCountGovernance').textContent = governanceCount;
     document.getElementById('notifCountMerits').textContent = meritsCount;
+    const notifCountMarket = document.getElementById('notifCountMarketplace');
+    if (notifCountMarket) notifCountMarket.textContent = marketplaceCount;
 
     // Update bell badge
     const bellBadge = document.getElementById('totalNotificationsBadge');
@@ -168,6 +208,8 @@ function updateNotificationBadges() {
     document.getElementById('tabBadgeMessages').textContent = messageCount;
     document.getElementById('tabBadgeGovernance').textContent = governanceCount;
     document.getElementById('tabBadgeMerits').textContent = meritsCount;
+    const tabBadgeMarket = document.getElementById('tabBadgeMarketplace');
+    if (tabBadgeMarket) tabBadgeMarket.textContent = marketplaceCount;
 }
 
 function filterNotifications(filter) {
@@ -204,7 +246,8 @@ function displayNotifications() {
     // Use notif.id (not positional index) so buttons work regardless of filter state
     container.innerHTML = filteredNotifications.map(notif => {
         const icon = notif.type === 'messages' ? '💬' :
-                     notif.type === 'governance' ? '🏛️' : '🏅';
+                     notif.type === 'governance' ? '🏛️' :
+                     notif.type === 'marketplace' ? '🏪' : '🏅';
         const safeId = CSS.escape(String(notif.id));
         return `
             <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escapeHtml(String(notif.id))}" onclick="handleNotificationById('${safeId}')">
