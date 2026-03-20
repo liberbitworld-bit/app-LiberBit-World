@@ -299,6 +299,11 @@
                                     <span class="notification-type-count" id="notifCountMerits">0</span>
                                     <span class="notification-type-label">Méritos</span>
                                 </div>
+                                <div class="notification-type" id="notif-marketplace">
+                                    <span class="notification-type-icon">🏪</span>
+                                    <span class="notification-type-count" id="notifCountMarketplace">0</span>
+                                    <span class="notification-type-label">Marketplace</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2412,6 +2417,8 @@
                             </div>
                             <!-- [v2.0] Governor badge -->
                             <div id="profileGovernorBadge" style="display:none;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;background:rgba(156,39,176,0.15);color:#CE93D8;border:1px solid rgba(156,39,176,0.3);margin-top:0.4rem;"></div>
+                            <!-- [Phase 2] Marketplace reputation badge -->
+                            <div id="profileReputationBadge" style="display:none;margin-top:0.4rem;"></div>
                             <button class="profile-edit-btn" onclick="showCitizenshipModal()">
                                 ✏️ Editar Ciudadanía
                             </button>
@@ -3439,6 +3446,10 @@
                 <div class="notification-tab" onclick="filterNotifications('merits')" data-filter="merits">
                     <span>🏅 Méritos</span>
                     <span class="notification-tab-badge" id="tabBadgeMerits">0</span>
+                </div>
+                <div class="notification-tab" onclick="filterNotifications('marketplace')" data-filter="marketplace">
+                    <span>🏪 Marketplace</span>
+                    <span class="notification-tab-badge" id="tabBadgeMarketplace">0</span>
                 </div>
             </div>
 
