@@ -1260,7 +1260,7 @@ const LBW_NostrBridge = (() => {
                         <p style="color:var(--color-text-secondary);font-size:0.8rem;margin-bottom:0.75rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${_esc(listing.description)}</p>
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(priceDisplay)}</span>
-                            <span style="font-size:0.7rem;color:var(--color-text-secondary);">${_esc(name)}</span>
+                            <span style="font-size:0.7rem;color:var(--color-text-secondary);" id="seller-name-${listing.id.substring(0,8)}">${_esc(name)}</span>
                         </div>
                         <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;" class="card-actions">
                             ${(!isMine && listing.price && listing.price !== 'A negociar' && !isNaN(parseInt(listing.price)) && listing.status === 'active')
@@ -1278,6 +1278,17 @@ const LBW_NostrBridge = (() => {
                 });
 
                 grid.appendChild(card);
+
+                // [Phase 2] Inject reputation badge next to seller name (async, non-blocking)
+                if (typeof LBW_Reviews !== 'undefined' && LBW_Reviews.getScoreBadgeHtml) {
+                    LBW_Reviews.getScoreBadgeHtml(listing.pubkey).then(badgeHtml => {
+                        if (!badgeHtml) return;
+                        const nameEl = card.querySelector(`#seller-name-${listing.id.substring(0,8)}`);
+                        if (nameEl) {
+                            nameEl.innerHTML = `${_esc(name)} ${badgeHtml}`;
+                        }
+                    }).catch(() => {});
+                }
             });
         });
     }
