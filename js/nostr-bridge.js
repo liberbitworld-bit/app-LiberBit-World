@@ -1159,10 +1159,17 @@ const LBW_NostrBridge = (() => {
             });
             if (changed) _renderMarketplaceGrid();
         });
+
+        // [Phase 3] Arrancar módulo de Stalls NIP-15
+        if (typeof LBW_Stalls !== 'undefined') {
+            LBW_Stalls.start();
+            console.log('[Bridge] 🏪 LBW_Stalls (NIP-15) iniciado');
+        }
     }
 
     function stopMarketplace() {
         if (_marketFeedId) { LBW_Sync.unsyncFeed(_marketFeedId); _marketFeedId = null; }
+        if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.stop();
     }
 
     // ── Helpers de precio y estado ────────────────────────────
