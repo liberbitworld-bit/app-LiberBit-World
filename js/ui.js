@@ -399,6 +399,7 @@ async function openApp(appName) {
             LBW_Missions.onNetworkingOpen();
         }
         markAsRead('networking');
+        localStorage.setItem('lastVisit_marketplace', Date.now().toString());
     } else if (appName === 'directMessages') {
         showSection('chatSection');
         switchChatTab('private');
