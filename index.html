@@ -2223,12 +2223,24 @@
                 <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
                 
                 <h2 style="color: var(--color-gold); margin-bottom: 1rem;">🤝 Networking P2P</h2>
-                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
                     Marketplace descentralizado via Nostr (NIP-99) — Tus ofertas viven en la red
                 </p>
 
-                <!-- Filters -->
-                <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <!-- Phase 3: Tabs Anuncios / Tiendas -->
+                <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;border-bottom:2px solid var(--color-border);padding-bottom:0.75rem;">
+                    <button class="market-tab-btn active" data-market-tab="anuncios" onclick="switchMarketTab('anuncios')"
+                        style="padding:0.5rem 1.2rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.85rem;font-weight:600;">
+                        📋 Anuncios
+                    </button>
+                    <button class="market-tab-btn" data-market-tab="tiendas" onclick="switchMarketTab('tiendas')"
+                        style="padding:0.5rem 1.2rem;background:transparent;border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;font-size:0.85rem;">
+                        🏪 Tiendas
+                    </button>
+                </div>
+
+                <!-- Filters (Phase 1 — ocultar en tab Tiendas) -->
+                <div id="marketFilterBar" style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
                     <button class="filter-btn active" onclick="filterOffers('todos')" data-filter="todos">
                         🌐 Todos
                     </button>
@@ -2250,7 +2262,7 @@
                 </div>
 
                 <!-- Búsqueda por texto libre (Phase 1) -->
-                <div style="position:relative; margin-bottom: 1.5rem;">
+                <div id="marketSearchBar" style="position:relative; margin-bottom: 1.5rem;">
                     <input
                         type="text"
                         id="marketSearch"
@@ -2266,8 +2278,11 @@
                 </div>
 
                 <!-- New Offer Button -->
-                <button class="btn btn-primary" onclick="showNewOfferForm()" style="margin-bottom: 2rem; width: 100%; cursor: pointer; position: relative; z-index: 5;">
+                <button id="newOfferBtn" class="btn btn-primary" onclick="showNewOfferForm()" style="margin-bottom: 2rem; width: 100%; cursor: pointer; position: relative; z-index: 5;">
                     ➕ Publicar Oferta
+                </button>
+                <button id="newStallBtn" class="btn btn-primary" onclick="openCreateStall()" style="display:none;margin-bottom: 2rem; width: 100%; cursor: pointer; position: relative; z-index: 5; background:rgba(229,185,92,0.15);border:2px solid var(--color-gold);color:var(--color-gold);">
+                    🏪 Crear Mi Tienda
                 </button>
 
                 <!-- New Offer Form Phase 1 (hidden by default) -->
@@ -2380,6 +2395,14 @@
                     <div class="placeholder">
                         <h3>🏪 Marketplace Vacío</h3>
                         <p>Sé el primero en publicar una oferta</p>
+                    </div>
+                </div>
+
+                <!-- Phase 3: Grid de Tiendas NIP-15 (oculto por defecto) -->
+                <div id="stallsGrid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.5rem;">
+                    <div class="placeholder">
+                        <h3>🏪 Sin Tiendas</h3>
+                        <p>Sé el primero en crear tu tienda permanente en Nostr</p>
                     </div>
                 </div>
             </div>
@@ -2700,6 +2723,7 @@
     <script src="js/supabase-merits-sync.js?v=1.4"></script>
     <script src="js/nostr-reviews.js?v=phase2"></script>
     <script src="js/nostr-marketplace-pay.js?v=phase2"></script>
+    <script src="js/nostr-stalls.js?v=phase3"></script>
     <script src="js/nostr-bridge.js?v=phase2f"></script>
     <script src="js/debate.js?v=1.2"></script>
     <script src="js/avatar-fix.js?v=2"></script>
