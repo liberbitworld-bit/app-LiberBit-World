@@ -82,6 +82,9 @@ const LBW_Nostr = (() => {
         RELAY_LIST:     10002,   // NIP-65: Relay list metadata
         // NIP-99: Classified listings (marketplace)
         MARKETPLACE:    30402,
+        // NIP-15: Permanent stalls + products
+        STALL:          30017,
+        PRODUCT:        30018,
         // LiberBit Governance Kinds
         LBW_PROPOSAL:   31000,
         LBW_VOTE:       31001,
@@ -129,6 +132,8 @@ const LBW_Nostr = (() => {
         EVENT_KINDS.TEXT_NOTE,          // 1 — Posts de comunidad
         EVENT_KINDS.RELAY_LIST,         // 10002 — NIP-65 relay list
         EVENT_KINDS.MARKETPLACE,        // 30402 — Marketplace (visibilidad)
+        EVENT_KINDS.STALL,              // 30017 — NIP-15 Tiendas
+        EVENT_KINDS.PRODUCT,            // 30018 — NIP-15 Productos
         EVENT_KINDS.REVIEW             // 1985  — NIP-85 Reviews (públicas)
     ]);
 
@@ -1402,7 +1407,10 @@ const LBW_Nostr = (() => {
 
         // Getters
         getPubkey, getNpub, getNsec, getPrivkey, getProfile,
-        isUsingExtension, isLoggedIn, getEventKinds
+        isUsingExtension, isLoggedIn, getEventKinds,
+        // Pool / relay access for NIP-15 stalls module
+        getPool: () => _getPool(),
+        getReadRelays: () => [..._getUserReadRelays()]
     };
 })();
 
