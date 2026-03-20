@@ -197,6 +197,9 @@
     }
 
     function _upsertStall(stall) {
+        // Dedup 1: mismo event.id (mismo evento llegando de dos relays)
+        if (_stalls.find(s => s.id === stall.id)) return;
+        // Dedup 2: mismo (dTag + pubkey) = versión más nueva del mismo stall
         const idx = _stalls.findIndex(s => s.dTag === stall.dTag && s.pubkey === stall.pubkey);
         if (idx >= 0) {
             if (stall.created_at >= _stalls[idx].created_at) _stalls[idx] = stall;
@@ -209,6 +212,9 @@
     function _upsertProduct(product) {
         const key = product.stallKey;
         if (!_products[key]) _products[key] = [];
+        // Dedup 1: mismo event.id (mismo evento llegando de dos relays)
+        if (_products[key].find(p => p.id === product.id)) return;
+        // Dedup 2: mismo (dTag + pubkey) = versión más nueva del mismo producto
         const idx = _products[key].findIndex(p => p.dTag === product.dTag && p.pubkey === product.pubkey);
         if (idx >= 0) {
             if (product.created_at >= _products[key][idx].created_at) _products[key][idx] = product;
