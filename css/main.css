@@ -2275,6 +2275,17 @@
             border-color: var(--color-gold);
         }
 
+        /* Phase 3: market tab buttons */
+        .market-tab-btn {
+            transition: all 0.2s;
+        }
+        .market-tab-btn.active {
+            background: rgba(229,185,92,0.15) !important;
+            border-color: var(--color-gold) !important;
+            color: var(--color-gold) !important;
+            font-weight: 700;
+        }
+
         .offer-card {
             background: var(--color-bg-card);
             border-radius: 16px;
