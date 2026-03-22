@@ -27,9 +27,9 @@ const LBW_Nostr = (() => {
     // System relays: defaults when user has no NIP-65 relay list.
     // PRIVATE: LiberBit infrastructure only (governance, DMs, merits)
     const SYSTEM_PRIVATE_RELAYS = [
-        'wss://relay.liberbitworld.org'
-        // Futuros relays de redundancia:
-        // 'wss://relay2.liberbitworld.org',
+        'wss://relay.liberbitworld.org',
+        'wss://relay2.liberbitworld.org'
+        // Futuro relay de redundancia:
         // 'wss://relay3.liberbitworld.org'
     ];
 
