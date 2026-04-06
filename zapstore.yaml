@@ -1,0 +1,38 @@
+# zapstore.yaml — LiberBit World
+# Colocar en la raíz del repo (app-LiberBit-World)
+# Documentación: https://github.com/zapstore/zsp
+
+# Repositorio fuente (GitHub)
+repository: https://github.com/liberbitworld/app-LiberBit-World
+
+# Tu npub Nostr (el mismo que firmas los eventos)
+pubkey: npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5
+
+# Metadatos de la app
+name: LiberBit World
+summary: Ecosistema descentralizado soberano — comunidad Nostr, mercado Lightning, gobernanza Bitcoin-native
+description: |
+  LiberBit World es una plataforma comunitaria descentralizada construida sobre Nostr.
+  Incluye méritos ciudadanos (LBWM), gobernanza soberana con votación ponderada,
+  marketplace con pagos Lightning, mensajes cifrados y red de ciudades soberanas.
+  Bitcoin-native. Sin custodia. Sin censura.
+
+# Categorías Zapstore
+tags:
+  - bitcoin
+  - nostr
+  - lightning
+  - decentralized
+  - governance
+  - marketplace
+  - community
+
+# Licencia
+license: MIT
+
+# URL de la app desplegada
+url: https://liberbitworld.org
+
+# Fuente del APK — se generará con PWABuilder (TWA wrapper)
+# Actualizar esta ruta tras generar el APK
+# release_source: ./build/liberbit-world.apk
