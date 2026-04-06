@@ -1307,6 +1307,22 @@ const LBW_Nostr = (() => {
         return publishEvent({ kind: EVENT_KINDS.REACTION, content: reaction, tags: [['e', eventId], ['p', pubkey]] });
     }
 
+    function subscribeToReactions(onReaction) {
+        if (!_pubkey) return null;
+        return subscribe(
+            { kinds: [EVENT_KINDS.REACTION], '#p': [_pubkey], limit: 100 },
+            event => {
+                onReaction({
+                    id: event.id,
+                    pubkey: event.pubkey,
+                    content: event.content,
+                    created_at: event.created_at,
+                    eventId: (event.tags.find(t => t[0] === 'e') || [])[1] || null,
+                });
+            }
+        );
+    }
+
     // ── Governance ───────────────────────────────────────────
     async function publishProposal(proposal) {
         const dTag = `proposal-${Date.now()}`;
@@ -1403,7 +1419,7 @@ const LBW_Nostr = (() => {
         subscribeMarketplace, publishMarketplaceListing, deleteMarketplaceListing, uploadImage,
 
         // Reactions + Governance
-        reactToEvent, publishProposal, publishVote,
+        reactToEvent, subscribeToReactions, publishProposal, publishVote,
 
         // Getters
         getPubkey, getNpub, getNsec, getPrivkey, getProfile,
