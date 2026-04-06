@@ -1722,6 +1722,22 @@
             color: var(--color-gold);
         }
 
+        .chat-zap-btn {
+            font-size: 1rem;
+            padding: 4px 8px;
+        }
+
+        .chat-zap-btn--sent {
+            color: #f7c948 !important;
+            text-shadow: 0 0 8px rgba(247, 201, 72, 0.7);
+            cursor: default;
+        }
+
+        .chat-zap-btn--sent:hover {
+            background: none;
+            color: #f7c948 !important;
+        }
+
         @keyframes msgFadeIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
