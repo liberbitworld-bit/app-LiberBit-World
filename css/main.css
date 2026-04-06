@@ -1738,6 +1738,32 @@
             color: #f7c948 !important;
         }
 
+        .chat-msg-zaps {
+            min-height: 0;
+            padding: 0 0.1rem;
+        }
+
+        .chat-zap-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.75rem;
+            background: rgba(247, 201, 72, 0.08);
+            border: 1px solid rgba(247, 201, 72, 0.25);
+            color: var(--color-text-secondary);
+            border-radius: 20px;
+            padding: 2px 8px;
+            cursor: default;
+            transition: all 0.2s;
+        }
+
+        .chat-zap-badge--mine {
+            background: rgba(247, 201, 72, 0.18);
+            border-color: rgba(247, 201, 72, 0.5);
+            color: #f7c948;
+            text-shadow: 0 0 6px rgba(247, 201, 72, 0.5);
+        }
+
         @keyframes msgFadeIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
