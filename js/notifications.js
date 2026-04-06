@@ -6,6 +6,7 @@ let currentNotificationFilter = 'all';
 function openNotificationCenter() {
     document.getElementById('notificationModal').classList.add('active');
     localStorage.setItem('lastZapCheck', Date.now().toString());
+    localStorage.setItem('lastReplyCheck', Date.now().toString());
     loadAllNotifications();
 }
 
@@ -190,7 +191,58 @@ async function loadAllNotifications() {
             });
         }
 
-        // ── 6. Notificaciones de meritos desde localStorage (legado) ─────────
+        // ── 6. Respuestas a mis mensajes del chat comunitario ────────────────
+        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
+            const myPubkeyForReplies = LBW_Nostr.getPubkey();
+            const lastReplyCheck = parseInt(localStorage.getItem('lastReplyCheck') || '0');
+            await new Promise(resolve => {
+                const collected = [];
+                const sub = LBW_Nostr.subscribe(
+                    { kinds: [1], '#p': [myPubkeyForReplies], '#t': ['liberbit'], limit: 50 },
+                    event => {
+                        // Solo replies (tienen tag 'e'), no menciones sueltas
+                        const hasReplyTag = event.tags.some(t => t[0] === 'e');
+                        if (!hasReplyTag) return;
+                        // No notificar mis propias respuestas
+                        if (event.pubkey === myPubkeyForReplies) return;
+                        if ((event.created_at * 1000) > lastReplyCheck) {
+                            collected.push(event);
+                        }
+                    }
+                );
+                setTimeout(async () => {
+                    if (sub && LBW_Nostr.unsubscribe) LBW_Nostr.unsubscribe(sub);
+                    for (const event of collected) {
+                        const notifId = 'reply_' + event.id;
+                        if (dismissed.has(notifId)) continue;
+                        let senderName = event.pubkey.substring(0, 8) + '...';
+                        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge._resolveProfileData) {
+                            try {
+                                const p = await LBW_NostrBridge._resolveProfileData(event.pubkey);
+                                if (p && p.name) senderName = p.name;
+                            } catch(e) {}
+                        }
+                        const preview = (event.content || '').substring(0, 80);
+                        allNotifications.push({
+                            id: notifId,
+                            type: 'replies',
+                            title: '↩️ ' + senderName + ' respondió a tu mensaje',
+                            content: preview + (event.content.length > 80 ? '…' : ''),
+                            timestamp: event.created_at * 1000,
+                            unread: true,
+                            action: () => {
+                                closeNotificationCenter();
+                                showSection('chatSection');
+                                if (typeof switchChatTab === 'function') switchChatTab('community');
+                            }
+                        });
+                    }
+                    resolve();
+                }, 2000);
+            });
+        }
+
+        // ── 7. Notificaciones de meritos desde localStorage (legado) ─────────
         const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
         meritNotifs.forEach(notif => {
             if (!notif.read && !dismissed.has('merit_' + notif.id)) {
@@ -291,7 +343,8 @@ function displayNotifications() {
         const icon = notif.type === 'messages' ? '💬' :
                      notif.type === 'governance' ? '🏛️' :
                      notif.type === 'marketplace' ? '🏪' :
-                     notif.type === 'zaps' ? '⚡' : '🏅';
+                     notif.type === 'zaps' ? '⚡' :
+                     notif.type === 'replies' ? '↩️' : '🏅';
         const safeId = CSS.escape(String(notif.id));
         return `
             <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escapeHtml(String(notif.id))}" onclick="handleNotificationById('${safeId}')">
