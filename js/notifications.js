@@ -5,9 +5,15 @@ let currentNotificationFilter = 'all';
 
 function openNotificationCenter() {
     document.getElementById('notificationModal').classList.add('active');
-    localStorage.setItem('lastZapCheck', Date.now().toString());
-    localStorage.setItem('lastReplyCheck', Date.now().toString());
-    loadAllNotifications();
+    loadAllNotifications().then(() => {
+        // Marcar como vistos una vez cargadas
+        localStorage.setItem('lastZapCheck', Date.now().toString());
+        localStorage.setItem('lastReplyCheck', Date.now().toString());
+        if (typeof LBW_NostrBridge !== 'undefined') {
+            if (LBW_NostrBridge.clearIncomingZaps) LBW_NostrBridge.clearIncomingZaps();
+            if (LBW_NostrBridge.clearIncomingReplies) LBW_NostrBridge.clearIncomingReplies();
+        }
+    });
 }
 
 function closeNotificationCenter() {
@@ -150,96 +156,63 @@ async function loadAllNotifications() {
             }
         }
 
-        // ── 5. Zaps recibidos (kind:7 con ⚡ dirigidos al usuario) ────────────
-        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn() && LBW_Nostr.subscribeToReactions) {
+        // ── 5. Zaps recibidos en mis mensajes ────────────────────────────────
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getIncomingZaps) {
             const lastZapCheck = parseInt(localStorage.getItem('lastZapCheck') || '0');
-            await new Promise(resolve => {
-                const collected = [];
-                const sub = LBW_Nostr.subscribeToReactions(reaction => {
-                    if (reaction.content === '⚡' && (reaction.created_at * 1000) > lastZapCheck) {
-                        collected.push(reaction);
-                    }
+            const zaps = LBW_NostrBridge.getIncomingZaps();
+            for (const zap of zaps) {
+                if ((zap.created_at * 1000) <= lastZapCheck) continue;
+                const notifId = 'zap_' + zap.id;
+                if (dismissed.has(notifId)) continue;
+                let senderName = zap.pubkey.substring(0, 8) + '...';
+                if (LBW_NostrBridge._resolveProfileData) {
+                    try {
+                        const p = await LBW_NostrBridge._resolveProfileData(zap.pubkey);
+                        if (p && p.name) senderName = p.name;
+                    } catch(e) {}
+                }
+                allNotifications.push({
+                    id: notifId,
+                    type: 'zaps',
+                    title: '⚡ ' + senderName + ' te hizo un zap',
+                    content: 'Reaccionó a uno de tus mensajes en el chat',
+                    timestamp: zap.created_at * 1000,
+                    unread: true,
+                    action: () => { closeNotificationCenter(); showSection('chatSection'); }
                 });
-                // Esperar EOSE o timeout de 2s
-                setTimeout(async () => {
-                    if (sub && LBW_Nostr.unsubscribe) LBW_Nostr.unsubscribe(sub);
-                    for (const zap of collected) {
-                        const notifId = 'zap_' + zap.id;
-                        if (dismissed.has(notifId)) continue;
-                        let senderName = zap.pubkey.substring(0, 8) + '...';
-                        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge._resolveProfileData) {
-                            try {
-                                const p = await LBW_NostrBridge._resolveProfileData(zap.pubkey);
-                                if (p && p.name) senderName = p.name;
-                            } catch(e) {}
-                        }
-                        allNotifications.push({
-                            id: notifId,
-                            type: 'zaps',
-                            title: '⚡ ' + senderName + ' te hizo un zap',
-                            content: 'Reaccionó a uno de tus mensajes en el chat comunitario',
-                            timestamp: zap.created_at * 1000,
-                            unread: true,
-                            action: () => {
-                                closeNotificationCenter();
-                                showSection('chatSection');
-                            }
-                        });
-                    }
-                    resolve();
-                }, 2000);
-            });
+            }
         }
 
         // ── 6. Respuestas a mis mensajes del chat comunitario ────────────────
-        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
-            const myPubkeyForReplies = LBW_Nostr.getPubkey();
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getIncomingReplies) {
             const lastReplyCheck = parseInt(localStorage.getItem('lastReplyCheck') || '0');
-            await new Promise(resolve => {
-                const collected = [];
-                const sub = LBW_Nostr.subscribe(
-                    { kinds: [1], '#p': [myPubkeyForReplies], '#t': ['liberbit'], limit: 50 },
-                    event => {
-                        // Solo replies (tienen tag 'e'), no menciones sueltas
-                        const hasReplyTag = event.tags.some(t => t[0] === 'e');
-                        if (!hasReplyTag) return;
-                        // No notificar mis propias respuestas
-                        if (event.pubkey === myPubkeyForReplies) return;
-                        if ((event.created_at * 1000) > lastReplyCheck) {
-                            collected.push(event);
-                        }
+            const replies = LBW_NostrBridge.getIncomingReplies();
+            for (const event of replies) {
+                if ((event.created_at * 1000) <= lastReplyCheck) continue;
+                const notifId = 'reply_' + event.id;
+                if (dismissed.has(notifId)) continue;
+                let senderName = event.pubkey.substring(0, 8) + '...';
+                if (LBW_NostrBridge._resolveProfileData) {
+                    try {
+                        const p = await LBW_NostrBridge._resolveProfileData(event.pubkey);
+                        if (p && p.name) senderName = p.name;
+                    } catch(e) {}
+                }
+                const preview = (event.content || '').substring(0, 80);
+                allNotifications.push({
+                    id: notifId,
+                    type: 'replies',
+                    title: '↩️ ' + senderName + ' respondió a tu mensaje',
+                    content: preview + (event.content.length > 80 ? '…' : ''),
+                    timestamp: event.created_at * 1000,
+                    unread: true,
+                    action: () => {
+                        closeNotificationCenter();
+                        showSection('chatSection');
+                        if (typeof switchChatTab === 'function') switchChatTab('community');
                     }
-                );
-                setTimeout(async () => {
-                    if (sub && LBW_Nostr.unsubscribe) LBW_Nostr.unsubscribe(sub);
-                    for (const event of collected) {
-                        const notifId = 'reply_' + event.id;
-                        if (dismissed.has(notifId)) continue;
-                        let senderName = event.pubkey.substring(0, 8) + '...';
-                        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge._resolveProfileData) {
-                            try {
-                                const p = await LBW_NostrBridge._resolveProfileData(event.pubkey);
-                                if (p && p.name) senderName = p.name;
-                            } catch(e) {}
-                        }
-                        const preview = (event.content || '').substring(0, 80);
-                        allNotifications.push({
-                            id: notifId,
-                            type: 'replies',
-                            title: '↩️ ' + senderName + ' respondió a tu mensaje',
-                            content: preview + (event.content.length > 80 ? '…' : ''),
-                            timestamp: event.created_at * 1000,
-                            unread: true,
-                            action: () => {
-                                closeNotificationCenter();
-                                showSection('chatSection');
-                                if (typeof switchChatTab === 'function') switchChatTab('community');
-                            }
-                        });
-                    }
-                    resolve();
-                }, 2000);
-            });
+                });
+            }
         }
 
         // ── 7. Notificaciones de meritos desde localStorage (legado) ─────────
