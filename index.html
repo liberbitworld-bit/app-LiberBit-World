@@ -23,6 +23,22 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
     <link rel="stylesheet" href="css/main.css?v=zap1">
+
+    <!-- PWA MANIFEST + SERVICE WORKER -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/icons/icon-96.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[LBW] SW registrado:', reg.scope))
+            .catch(err => console.warn('[LBW] SW error:', err));
+        });
+      }
+    </script>
 </head>
 <body>
     <div class="bg-animated">
