@@ -21,8 +21,11 @@ const LBW_NostrBridge = (() => {
     let _chatFeedId = null;
     let _dmFeedId = null;
     let _marketFeedId = null;
-    let _reactionSub = null;                    // suscripción a reacciones ⚡ del chat
-    let _zapsByEvent = {};                       // eventId -> Set de pubkeys que han zapado
+    let _reactionSub = null;
+    let _replySub = null;
+    let _zapsByEvent = {};
+    let _incomingZaps = [];      // zaps ⚡ recibidos en mis mensajes
+    let _incomingReplies = [];   // replies a mis mensajes
 
     // ── Data ─────────────────────────────────────────────────
     let _dmConversations = {};     // pubkey -> [messages]
@@ -511,6 +514,8 @@ const LBW_NostrBridge = (() => {
         _seenMarketIds.clear();
         _myChatCount = 0;
         _activeDMPubkey = null;
+        _incomingZaps = [];
+        _incomingReplies = [];
         if (typeof LBW_Governance !== 'undefined') LBW_Governance.reset();
         if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
         _updateLoginModeUI(null);
@@ -783,10 +788,12 @@ const LBW_NostrBridge = (() => {
             }
         );
 
-        // Suscribirse a reacciones ⚡ del chat comunitario
+        const myPubkey = LBW_Nostr.getPubkey();
+
+        // ── Suscripción a reacciones ⚡ (todas, filtrar por eventId en callback) ──
         if (_reactionSub) { try { LBW_Nostr.unsubscribe(_reactionSub); } catch(e) {} }
         _reactionSub = LBW_Nostr.subscribe(
-            { kinds: [7], '#t': ['liberbit', 'lbw'], limit: 200 },
+            { kinds: [7], limit: 200 },
             event => {
                 if (event.content !== '⚡') return;
                 const eTag = event.tags.find(t => t[0] === 'e');
@@ -795,13 +802,50 @@ const LBW_NostrBridge = (() => {
                 if (!_zapsByEvent[eventId]) _zapsByEvent[eventId] = new Set();
                 _zapsByEvent[eventId].add(event.pubkey);
                 _updateZapBadge(eventId);
+
+                // Si el zap va dirigido a un mensaje mío, guardar para notificaciones
+                const pTag = event.tags.find(t => t[0] === 'p');
+                if (pTag && pTag[1] === myPubkey && event.pubkey !== myPubkey) {
+                    const alreadyStored = _incomingZaps.some(z => z.id === event.id);
+                    if (!alreadyStored) {
+                        _incomingZaps.push({
+                            id: event.id,
+                            pubkey: event.pubkey,
+                            eventId,
+                            created_at: event.created_at
+                        });
+                    }
+                }
             }
         );
+
+        // ── Suscripción a replies a mis mensajes (kind:1 con #p: [myPubkey]) ──
+        if (_replySub) { try { LBW_Nostr.unsubscribe(_replySub); } catch(e) {} }
+        if (myPubkey) {
+            _replySub = LBW_Nostr.subscribe(
+                { kinds: [1], '#p': [myPubkey], '#t': ['liberbit'], limit: 50 },
+                event => {
+                    if (event.pubkey === myPubkey) return; // ignorar mis propios replies
+                    const hasReplyTag = event.tags.some(t => t[0] === 'e');
+                    if (!hasReplyTag) return;
+                    const alreadyStored = _incomingReplies.some(r => r.id === event.id);
+                    if (!alreadyStored) {
+                        _incomingReplies.push({
+                            id: event.id,
+                            pubkey: event.pubkey,
+                            content: event.content,
+                            created_at: event.created_at
+                        });
+                    }
+                }
+            );
+        }
     }
 
     function stopCommunityChat() {
         if (_chatFeedId) { LBW_Sync.unsyncFeed(_chatFeedId); _chatFeedId = null; }
         if (_reactionSub) { try { LBW_Nostr.unsubscribe(_reactionSub); } catch(e) {} _reactionSub = null; }
+        if (_replySub)    { try { LBW_Nostr.unsubscribe(_replySub);    } catch(e) {} _replySub = null; }
     }
 
     function _renderCommunityMessage(msg) {
@@ -1755,6 +1799,11 @@ const LBW_NostrBridge = (() => {
         }
     }
 
+    function getIncomingZaps() { return [..._incomingZaps]; }
+    function getIncomingReplies() { return [..._incomingReplies]; }
+    function clearIncomingZaps() { _incomingZaps = []; }
+    function clearIncomingReplies() { _incomingReplies = []; }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
@@ -1767,7 +1816,8 @@ const LBW_NostrBridge = (() => {
         _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
         resolveName: _resolveName,
         // Nuevos métodos para integración con chat.js
-        getConversations, getUnreadDMCount
+        getConversations, getUnreadDMCount,
+        getIncomingZaps, getIncomingReplies, clearIncomingZaps, clearIncomingReplies
     };
 })();
 
