@@ -29,6 +29,7 @@ const LBW_NostrBridge = (() => {
     let _nameCache = {};           // pubkey -> resolved display name
     let _marketplaceListings = [];
     let _replyToEventId = null;
+    let _replyToAuthorPubkey = null;
     let _activeDMPubkey = null;
     let _seenChatIds = new Set();  // dedup chat render
     let _seenMarketIds = new Set();
@@ -904,6 +905,8 @@ const LBW_NostrBridge = (() => {
 
     function replyToMessage(eventId, authorName) {
         _replyToEventId = eventId;
+        // Obtener pubkey del autor desde el dataset del elemento del mensaje
+        _replyToAuthorPubkey = document.getElementById(`msg-${eventId}`)?.dataset.pubkey || null;
         const preview = document.getElementById('replyPreview');
         const authorEl = document.getElementById('replyToAuthor');
         if (preview) preview.style.display = 'flex';
@@ -913,6 +916,7 @@ const LBW_NostrBridge = (() => {
 
     function cancelReply() {
         _replyToEventId = null;
+        _replyToAuthorPubkey = null;
         const preview = document.getElementById('replyPreview');
         if (preview) preview.style.display = 'none';
     }
@@ -925,7 +929,7 @@ const LBW_NostrBridge = (() => {
         const btn = document.getElementById('publishPostBtn');
         if (btn) btn.disabled = true;
         try {
-            await LBW_Nostr.publishCommunityMessage(content, _replyToEventId);
+            await LBW_Nostr.publishCommunityMessage(content, _replyToEventId, _replyToAuthorPubkey);
             ta.value = '';
             cancelReply();
         } catch (e) {
