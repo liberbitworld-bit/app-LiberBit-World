@@ -5,6 +5,7 @@ let currentNotificationFilter = 'all';
 
 function openNotificationCenter() {
     document.getElementById('notificationModal').classList.add('active');
+    localStorage.setItem('lastZapCheck', Date.now().toString());
     loadAllNotifications();
 }
 
@@ -148,7 +149,48 @@ async function loadAllNotifications() {
             }
         }
 
-        // ── 5. Notificaciones de meritos desde localStorage (legado) ─────────
+        // ── 5. Zaps recibidos (kind:7 con ⚡ dirigidos al usuario) ────────────
+        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn() && LBW_Nostr.subscribeToReactions) {
+            const lastZapCheck = parseInt(localStorage.getItem('lastZapCheck') || '0');
+            await new Promise(resolve => {
+                const collected = [];
+                const sub = LBW_Nostr.subscribeToReactions(reaction => {
+                    if (reaction.content === '⚡' && (reaction.created_at * 1000) > lastZapCheck) {
+                        collected.push(reaction);
+                    }
+                });
+                // Esperar EOSE o timeout de 2s
+                setTimeout(async () => {
+                    if (sub && LBW_Nostr.unsubscribe) LBW_Nostr.unsubscribe(sub);
+                    for (const zap of collected) {
+                        const notifId = 'zap_' + zap.id;
+                        if (dismissed.has(notifId)) continue;
+                        let senderName = zap.pubkey.substring(0, 8) + '...';
+                        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge._resolveProfileData) {
+                            try {
+                                const p = await LBW_NostrBridge._resolveProfileData(zap.pubkey);
+                                if (p && p.name) senderName = p.name;
+                            } catch(e) {}
+                        }
+                        allNotifications.push({
+                            id: notifId,
+                            type: 'zaps',
+                            title: '⚡ ' + senderName + ' te hizo un zap',
+                            content: 'Reaccionó a uno de tus mensajes en el chat comunitario',
+                            timestamp: zap.created_at * 1000,
+                            unread: true,
+                            action: () => {
+                                closeNotificationCenter();
+                                showSection('chatSection');
+                            }
+                        });
+                    }
+                    resolve();
+                }, 2000);
+            });
+        }
+
+        // ── 6. Notificaciones de meritos desde localStorage (legado) ─────────
         const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
         meritNotifs.forEach(notif => {
             if (!notif.read && !dismissed.has('merit_' + notif.id)) {
@@ -185,6 +227,7 @@ function updateNotificationBadges() {
     const governanceCount = allNotifications.filter(n => n.type === 'governance').length;
     const meritsCount     = allNotifications.filter(n => n.type === 'merits').length;
     const marketplaceCount = allNotifications.filter(n => n.type === 'marketplace').length;
+    const zapsCount       = allNotifications.filter(n => n.type === 'zaps').length;
     const totalCount      = allNotifications.length;
 
     // Update inbox summary
@@ -247,7 +290,8 @@ function displayNotifications() {
     container.innerHTML = filteredNotifications.map(notif => {
         const icon = notif.type === 'messages' ? '💬' :
                      notif.type === 'governance' ? '🏛️' :
-                     notif.type === 'marketplace' ? '🏪' : '🏅';
+                     notif.type === 'marketplace' ? '🏪' :
+                     notif.type === 'zaps' ? '⚡' : '🏅';
         const safeId = CSS.escape(String(notif.id));
         return `
             <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escapeHtml(String(notif.id))}" onclick="handleNotificationById('${safeId}')">
