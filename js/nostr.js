@@ -1016,9 +1016,10 @@ const LBW_Nostr = (() => {
         });
     }
 
-    async function publishCommunityMessage(content, replyToEventId = null) {
+    async function publishCommunityMessage(content, replyToEventId = null, replyToAuthorPubkey = null) {
         const tags = [['t', 'liberbit'], ['t', 'lbw'], ['client', 'LiberBit World']];
         if (replyToEventId) tags.push(['e', replyToEventId, '', 'reply']);
+        if (replyToAuthorPubkey) tags.push(['p', replyToAuthorPubkey]);
         return publishEvent({ kind: EVENT_KINDS.TEXT_NOTE, content, tags });
     }
 
