@@ -826,7 +826,7 @@ const LBW_NostrBridge = (() => {
                 <div class="chat-msg-body">${_esc(msg.content)}</div>
                 <div class="chat-msg-actions">
                     <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
-                    <button data-react-id="${msg.id}" data-react-pk="${msg.pubkey}" onclick="LBW_Nostr.reactToEvent(this.dataset.reactId, this.dataset.reactPk,'🤙')" class="chat-msg-action-btn">🤙 Zap</button>
+                    <button data-zap-id="${msg.id}" data-zap-pk="${msg.pubkey}" onclick="LBW_NostrBridge.zapMessage(this.dataset.zapId, this.dataset.zapPk, this)" class="chat-msg-action-btn chat-zap-btn">⚡</button>
                 </div>`;
 
             // Insert sorted DESCENDING (newest first)
@@ -1688,11 +1688,36 @@ const LBW_NostrBridge = (() => {
         return _myChatCount;
     }
 
+    // ── Zap (⚡ reacción NIP-25 + notificación al autor) ─────────────────────────
+    async function zapMessage(eventId, pubkey, btnEl) {
+        if (!LBW_Nostr.isLoggedIn()) {
+            showNotification('Conéctate con Nostr para enviar un zap ⚡', 'error');
+            return;
+        }
+        if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.textContent = '⏳';
+        }
+        try {
+            await LBW_Nostr.reactToEvent(eventId, pubkey, '⚡');
+            if (btnEl) {
+                btnEl.textContent = '⚡';
+                btnEl.classList.add('chat-zap-btn--sent');
+                btnEl.disabled = true; // ya zapado, no repetir
+            }
+            showNotification('⚡ Zap enviado', 'success');
+        } catch (err) {
+            console.error('[Bridge] Error enviando zap:', err);
+            if (btnEl) { btnEl.disabled = false; btnEl.textContent = '⚡'; }
+            showNotification('Error al enviar el zap', 'error');
+        }
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
         handleNIP07Login, handlePrivateKeyLogin, handleCreateIdentity, handleLogout, restoreSession,
-        publishCommunityPost, replyToMessage, cancelReply, startCommunityChat, stopCommunityChat,
+        publishCommunityPost, replyToMessage, cancelReply, zapMessage, startCommunityChat, stopCommunityChat,
         sendDM, startDMWith, openDMConversation, startDirectMessages, stopDirectMessages,
         publishOffer, deleteListing, filterMarketplace, buyListing, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
