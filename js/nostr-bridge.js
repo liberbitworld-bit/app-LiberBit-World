@@ -21,6 +21,8 @@ const LBW_NostrBridge = (() => {
     let _chatFeedId = null;
     let _dmFeedId = null;
     let _marketFeedId = null;
+    let _reactionSub = null;                    // suscripción a reacciones ⚡ del chat
+    let _zapsByEvent = {};                       // eventId -> Set de pubkeys que han zapado
 
     // ── Data ─────────────────────────────────────────────────
     let _dmConversations = {};     // pubkey -> [messages]
@@ -767,23 +769,38 @@ const LBW_NostrBridge = (() => {
         if (_chatFeedId) LBW_Sync.unsyncFeed(_chatFeedId);
         _seenChatIds.clear();
         _myChatCount = 0;
+        _zapsByEvent = {};
 
         _chatFeedId = await LBW_Sync.syncCommunityChat(
             (msg) => {
-                // Dedup render (cache + relay may overlap)
                 if (_seenChatIds.has(msg.id)) return;
                 _seenChatIds.add(msg.id);
                 _renderCommunityMessage(msg);
             },
             (cachedEvents) => {
-                // After cache hydration: log
                 console.log(`[Bridge] 💬 Chat: ${cachedEvents.length} mensajes desde cache`);
+            }
+        );
+
+        // Suscribirse a reacciones ⚡ del chat comunitario
+        if (_reactionSub) { try { LBW_Nostr.unsubscribe(_reactionSub); } catch(e) {} }
+        _reactionSub = LBW_Nostr.subscribe(
+            { kinds: [7], '#t': ['liberbit', 'lbw'], limit: 200 },
+            event => {
+                if (event.content !== '⚡') return;
+                const eTag = event.tags.find(t => t[0] === 'e');
+                if (!eTag) return;
+                const eventId = eTag[1];
+                if (!_zapsByEvent[eventId]) _zapsByEvent[eventId] = new Set();
+                _zapsByEvent[eventId].add(event.pubkey);
+                _updateZapBadge(eventId);
             }
         );
     }
 
     function stopCommunityChat() {
         if (_chatFeedId) { LBW_Sync.unsyncFeed(_chatFeedId); _chatFeedId = null; }
+        if (_reactionSub) { try { LBW_Nostr.unsubscribe(_reactionSub); } catch(e) {} _reactionSub = null; }
     }
 
     function _renderCommunityMessage(msg) {
@@ -824,6 +841,7 @@ const LBW_NostrBridge = (() => {
                 </div>
                 ${replyHtml}
                 <div class="chat-msg-body">${_esc(msg.content)}</div>
+                <div class="chat-msg-zaps" id="zaps-${msg.id}"></div>
                 <div class="chat-msg-actions">
                     <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
                     <button data-zap-id="${msg.id}" data-zap-pk="${msg.pubkey}" onclick="LBW_NostrBridge.zapMessage(this.dataset.zapId, this.dataset.zapPk, this)" class="chat-msg-action-btn chat-zap-btn">⚡</button>
@@ -1688,6 +1706,18 @@ const LBW_NostrBridge = (() => {
         return _myChatCount;
     }
 
+    // ── Actualizar badge ⚡ en el mensaje ─────────────────────────────────────
+    function _updateZapBadge(eventId) {
+        const zappers = _zapsByEvent[eventId];
+        const el = document.getElementById(`zaps-${eventId}`);
+        if (!el) return;
+        const count = zappers ? zappers.size : 0;
+        if (count === 0) { el.innerHTML = ''; return; }
+        const myPubkey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : null;
+        const iMine = myPubkey && zappers && zappers.has(myPubkey);
+        el.innerHTML = `<span class="chat-zap-badge ${iMine ? 'chat-zap-badge--mine' : ''}">⚡${count > 1 ? ' ' + count : ''}</span>`;
+    }
+
     // ── Zap (⚡ reacción NIP-25 + notificación al autor) ─────────────────────────
     async function zapMessage(eventId, pubkey, btnEl) {
         if (!LBW_Nostr.isLoggedIn()) {
@@ -1700,10 +1730,18 @@ const LBW_NostrBridge = (() => {
         }
         try {
             await LBW_Nostr.reactToEvent(eventId, pubkey, '⚡');
+
+            // Actualizar estado local
+            const myPubkey = LBW_Nostr.getPubkey();
+            if (!_zapsByEvent[eventId]) _zapsByEvent[eventId] = new Set();
+            _zapsByEvent[eventId].add(myPubkey);
+            _updateZapBadge(eventId);
+
             if (btnEl) {
                 btnEl.textContent = '⚡';
                 btnEl.classList.add('chat-zap-btn--sent');
-                btnEl.disabled = true; // ya zapado, no repetir
+                btnEl.disabled = true;
+                btnEl.title = 'Ya zapado ⚡';
             }
             showNotification('⚡ Zap enviado', 'success');
         } catch (err) {
