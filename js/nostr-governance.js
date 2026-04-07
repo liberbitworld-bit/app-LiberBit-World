@@ -933,7 +933,7 @@ const LBW_Governance = (() => {
 
         // Must be a Governor
         if (typeof LBW_Merits !== 'undefined' && !LBW_Merits.isGovernor()) {
-            throw new Error('Solo los Gobernadores pueden verificar ejecuciones.');
+            throw new Error('Solo los Génesis pueden verificar ejecuciones.');
         }
 
         const proposal = _proposals.get(dTag);
