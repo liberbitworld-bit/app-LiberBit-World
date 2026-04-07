@@ -734,10 +734,10 @@ function updateFlowIndicator() {
         flowEl.style.background = 'rgba(156,39,176,0.1)';
         flowEl.style.border = '1px solid rgba(156,39,176,0.3)';
         flowEl.style.color = '#CE93D8';
-        flowEl.innerHTML = `<strong>👑 Verificación por Gobernador</strong><br/>
-            Un Gobernador (≥3.000 méritos) revisará la prueba de pago y confirmará la recepción antes de emitir méritos.`;
-        if (submitBtn) submitBtn.textContent = '👑 Enviar a Gobernador';
-        if (approvalNote) approvalNote.textContent = 'Pendiente de verificación por Gobernador';
+        flowEl.innerHTML = `<strong>👑 Verificación por Génesis</strong><br/>
+            Un Génesis (≥3.000 méritos) revisará la prueba de pago y confirmará la recepción antes de emitir méritos.`;
+        if (submitBtn) submitBtn.textContent = '👑 Enviar a Génesis';
+        if (approvalNote) approvalNote.textContent = 'Pendiente de verificación por Génesis';
     } else {
         flowEl.style.background = 'rgba(156,39,176,0.1)';
         flowEl.style.border = '1px solid rgba(156,39,176,0.3)';
@@ -823,7 +823,7 @@ async function submitContribution(event) {
                 showNotification('✅ Pago verificado automáticamente. Méritos emitidos.', 'success');
             } else {
                 // Step 2b: Pending governor verification
-                showNotification('📨 Aportación registrada. Pendiente de verificación por Gobernador.', 'success');
+                showNotification('📨 Aportación registrada. Pendiente de verificación por Génesis.', 'success');
             }
         } else {
             // ── PROPOSAL FLOW (productiva, responsabilidad, financiada) ──
@@ -877,7 +877,7 @@ async function submitContribution(event) {
 
 async function verifyDeposit(contribId) {
     if (!getUnifiedMerits().isGovernor) {
-        showNotification('Solo los Gobernadores (≥3.000 méritos) pueden verificar aportaciones.', 'error');
+        showNotification('Solo los Génesis (≥3.000 méritos) pueden verificar aportaciones.', 'error');
         return;
     }
 
@@ -898,13 +898,13 @@ async function verifyDeposit(contribId) {
 
         const governorPubkey = LBW_Nostr.getPubkey();
         if (contrib.pubkey === governorPubkey) {
-            showNotification('Un Gobernador no puede verificar sus propias aportaciones.', 'error');
+            showNotification('Un Génesis no puede verificar sus propias aportaciones.', 'error');
             return;
         }
 
         await LBW_Merits.awardMerit(
             contrib.pubkey, contrib.amount, contrib.category,
-            '👑 Verificado por Gobernador'
+            '👑 Verificado por Génesis'
         );
 
         showNotification('✅ Aportación verificada. Méritos emitidos.', 'success');
@@ -923,7 +923,7 @@ async function verifyDeposit(contribId) {
 
 async function rejectDeposit(contribId) {
     if (!getUnifiedMerits().isGovernor) {
-        showNotification('Solo los Gobernadores pueden rechazar aportaciones.', 'error');
+        showNotification('Solo los Génesis pueden rechazar aportaciones.', 'error');
         return;
     }
 
@@ -941,7 +941,7 @@ async function rejectDeposit(contribId) {
 
         const governorPubkey = LBW_Nostr.getPubkey();
         if (contrib.pubkey === governorPubkey) {
-            showNotification('Un Gobernador no puede rechazar sus propias aportaciones.', 'error');
+            showNotification('Un Génesis no puede rechazar sus propias aportaciones.', 'error');
             return;
         }
 
@@ -951,7 +951,7 @@ async function rejectDeposit(contribId) {
             kind: 31003,
             content: JSON.stringify({
                 action: 'reject',
-                reason: 'No verificado por Gobernador',
+                reason: 'No verificado por Génesis',
                 contribId,
                 governor: governorPubkey,
                 timestamp: Math.floor(Date.now() / 1000)
@@ -1073,7 +1073,7 @@ function loadMyContributions() {
 
 // GAUGE_LEVELS derivado de LBW_Merits.CITIZENSHIP_LEVELS (fuente única de verdad)
 // shortLabel: etiqueta corta para el canvas del gauge
-const GAUGE_SHORT_LABELS = ['Amigo', 'E-Res.', 'Colabor.', 'C.Senior', 'Embajad.', 'Gobern.'];
+const GAUGE_SHORT_LABELS = ['Amigo', 'E-Res.', 'Colabor.', 'C.Senior', 'Custod.', 'Génesis'];
 const GAUGE_LEVELS = (typeof LBW_Merits !== 'undefined' ? LBW_Merits.CITIZENSHIP_LEVELS : []).map((l, i) => ({
     name: l.name,
     shortLabel: GAUGE_SHORT_LABELS[i] || l.name,
@@ -1609,7 +1609,7 @@ function renderFounderBootstrapPanel() {
         '<span style="font-size:1.5rem;">🏗️</span>' +
         '<div>' +
             '<div style="font-weight:700;color:var(--color-gold);">Bootstrap Fundacional Pendiente</div>' +
-            '<div style="font-size:0.8rem;color:var(--color-text-secondary);">No se han detectado méritos fundacionales en el relay. Activa tu estado de Gobernador.</div>' +
+            '<div style="font-size:0.8rem;color:var(--color-text-secondary);">No se han detectado méritos fundacionales en el relay. Activa tu estado de Génesis.</div>' +
         '</div>' +
     '</div>' +
     '<button onclick="manualFounderBootstrap()" style="background:var(--color-gold);color:#0d171e;font-weight:700;border:none;border-radius:8px;padding:0.6rem 1.25rem;cursor:pointer;font-size:0.9rem;">🚀 Ejecutar Bootstrap (3.000 LBWM)</button>';
