@@ -6,8 +6,8 @@
 // LBWM v2.0 Citizenship Scale (auto-calculated)
 // ============================================
 function getCitizenshipLevel(merits) {
-    if (merits >= 3000) return { level: 6, title: 'Gobernador', icon: '👑', bloc: 'Gobernanza' };
-    if (merits >= 2000) return { level: 5, title: 'Embajador', icon: '🌍', bloc: 'Ciudadanía' };
+    if (merits >= 3000) return { level: 6, title: 'Génesis', icon: '👑', bloc: 'Gobernanza' };
+    if (merits >= 2000) return { level: 5, title: 'Custodio', icon: '🌍', bloc: 'Ciudadanía' };
     if (merits >= 1000) return { level: 4, title: 'Ciudadano Senior', icon: '🛂', bloc: 'Ciudadanía' };
     if (merits >= 500)  return { level: 3, title: 'Colaborador', icon: '🤝', bloc: 'Comunidad' };
     if (merits >= 100)  return { level: 2, title: 'E-Residency', icon: '🪪', bloc: 'Comunidad' };
@@ -24,8 +24,8 @@ const GAUGE_SEGS = [
     { label:'E-Residency',      shortLabel:'E-Res.',   icon:'🪪', color:'#8BC34A', bloc:'Comunidad',  min:100 },
     { label:'Colaborador',      shortLabel:'Colabor.',  icon:'🤝', color:'#CDDC39', bloc:'Comunidad',  min:500 },
     { label:'Ciudadano Senior', shortLabel:'C.Senior', icon:'🛂', color:'#FF9800', bloc:'Ciudadanía', min:1000 },
-    { label:'Embajador',        shortLabel:'Embajad.', icon:'🌍', color:'#FF5722', bloc:'Ciudadanía', min:2000 },
-    { label:'Gobernador',       shortLabel:'Gobern.',  icon:'👑', color:'#9C27B0', bloc:'Gobernanza', min:3000 },
+    { label:'Custodio',         shortLabel:'Custod.',  icon:'🌍', color:'#FF5722', bloc:'Ciudadanía', min:2000 },
+    { label:'Génesis',          shortLabel:'Génesis',  icon:'👑', color:'#9C27B0', bloc:'Gobernanza', min:3000 },
 ];
 const GAUGE_THRESH = GAUGE_SEGS.map(s=>s.min);
 const GAUGE_RANGES = [100,400,500,1000,1000,500];
@@ -328,8 +328,8 @@ function updateProfileDisplay() {
                 ? LBW_Merits.hasFoundationalMerits() : false;
             govBadge.style.display = 'inline-flex';
             govBadge.innerHTML = isFounder
-                ? '🏗️ Fundador · 👑 Gobernador · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>'
-                : '👑 Gobernador · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>';
+                ? '🏗️ Fundador · 👑 Génesis · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>'
+                : '👑 Génesis · <span style="font-size:0.75rem;opacity:0.7;">Verificador activo</span>';
         } else {
             govBadge.style.display = 'none';
         }
