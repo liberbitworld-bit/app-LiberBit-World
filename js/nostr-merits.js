@@ -7,7 +7,7 @@
 //
 // v2.0 Changes:
 //   - 4 categories: Económica(1.0), Productiva(1.0), Responsabilidad(1.2), Financiada(0.6)
-//   - 6 citizenship levels: Amigo → Gobernador
+//   - 6 citizenship levels: Amigo → Génesis
 //   - 3 voting blocks: Gobernanza(51%), Ciudadanía(29%), Comunidad(20%)
 //   - Governor merit cap: min(total, 3000) for voting
 //   - Responsabilidad requires 1000+ merits in other categories
@@ -76,8 +76,8 @@ const LBW_Merits = (() => {
         { name: 'E-Residency',        minMerits: 100,   emoji: '🪪', color: '#8BC34A',  bloc: 'Comunidad' },
         { name: 'Colaborador',        minMerits: 500,   emoji: '🤝', color: '#CDDC39',  bloc: 'Comunidad' },
         { name: 'Ciudadano Senior',   minMerits: 1000,  emoji: '🛂', color: '#FF9800',  bloc: 'Ciudadanía' },
-        { name: 'Embajador',          minMerits: 2000,  emoji: '🌍', color: '#FF5722',  bloc: 'Ciudadanía' },
-        { name: 'Gobernador',         minMerits: 3000,  emoji: '👑', color: '#9C27B0',  bloc: 'Gobernanza' }
+        { name: 'Custodio',            minMerits: 2000,  emoji: '🌍', color: '#FF5722',  bloc: 'Ciudadanía' },
+        { name: 'Génesis',             minMerits: 3000,  emoji: '👑', color: '#9C27B0',  bloc: 'Gobernanza' }
     ];
 
     // ── Voting Blocks (v2.0) ───────────────────────────────────
@@ -254,7 +254,7 @@ const LBW_Merits = (() => {
             const callerData = _merits.get(pubkey);
             const callerTotal = callerData ? callerData.total : 0;
             if (callerTotal < 3000) {
-                throw new Error(`Solo los Gobernadores (≥3.000 méritos) pueden emitir méritos. Tienes ${callerTotal}.`);
+                throw new Error(`Solo los Génesis (≥3.000 méritos) pueden emitir méritos. Tienes ${callerTotal}.`);
             }
         }
 
@@ -300,7 +300,7 @@ const LBW_Merits = (() => {
         const callerData = _merits.get(pubkey);
         const callerTotal = callerData ? callerData.total : 0;
         if (callerTotal < 3000) {
-            throw new Error(`Solo los Gobernadores (≥3.000 méritos) pueden publicar snapshots. Tienes ${callerTotal}.`);
+            throw new Error(`Solo los Génesis (≥3.000 méritos) pueden publicar snapshots. Tienes ${callerTotal}.`);
         }
 
         const nowSecs = Math.floor(Date.now() / 1000);
@@ -808,13 +808,13 @@ const LBW_Merits = (() => {
                 };
             }
         }
-        return null; // Already at max level (Gobernador)
+        return null; // Already at max level (Génesis)
     }
 
     // ── Voting Power (v2.0) ──────────────────────────────────
     // 3-block system:
     //   Gobernanza (Gobernadores): min 51%, equitable distribution
-    //   Ciudadanía (Ciudadano Senior + Embajador): max 29%, proportional
+    //   Ciudadanía (Ciudadano Senior + Custodio): max 29%, proportional
     //   Comunidad (Amigo + E-Residency + Colaborador): max 20%, proportional
 
     function calculateVotingPower(voters) {
@@ -929,7 +929,7 @@ const LBW_Merits = (() => {
     async function bootstrapFounder(founderPubkey, amount, reason) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         if (!founderPubkey) throw new Error('Pubkey del fundador requerida.');
-        if (!amount || amount < 3000) throw new Error('Los méritos fundacionales deben ser ≥3000 para habilitar Gobernador.');
+        if (!amount || amount < 3000) throw new Error('Los méritos fundacionales deben ser ≥3000 para habilitar Génesis.');
 
         // Check if founder already has merits (prevent duplicate bootstrap)
         const existing = _merits.get(founderPubkey);
@@ -992,7 +992,7 @@ const LBW_Merits = (() => {
     // ── Public API ───────────────────────────────────────────
     // ── Marketplace merit auto-award (Phase 2) ────────────────
     // Se llama después de un pago Lightning verificado.
-    // No requiere que el caller sea Gobernador — el pago es la prueba.
+    // No requiere que el caller sea Génesis — el pago es la prueba.
     async function awardMarketplaceMerit(sellerPubkey, listing, paymentHash) {
         if (!sellerPubkey) throw new Error('sellerPubkey requerido');
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido');
