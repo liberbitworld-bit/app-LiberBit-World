@@ -246,11 +246,11 @@ function _renderResultBadge(result, proposal) {
         const recalcBtn = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
             ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${dTagId}')"
                   style="margin-top:0.4rem;background:#faad14;color:#000;border:none;border-radius:6px;padding:0.25rem 0.7rem;font-size:0.78rem;cursor:pointer;font-weight:700;">
-                  🔄 Recalcular — voté como Gobernador
+                  🔄 Recalcular — voté como Génesis
               </button>`
             : '';
         return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:0.5rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
-            ${icon} Sin quórum — ningún Gobernador participó
+            ${icon} Sin quórum — ningún Génesis participó
             ${recalcBtn}
         </div>`;
     }
@@ -437,7 +437,7 @@ function _renderResultSection(result, proposal) {
             recalcSection = `
                 <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(250,173,20,0.3);">
                     <div style="font-size:0.82rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">
-                        ⚠️ Detectado: votaste como Gobernador pero el resultado no lo registró.<br>
+                        ⚠️ Detectado: votaste como Génesis pero el resultado no lo registró.<br>
                         Esto ocurre por un desfase de sincronización de méritos. Puedes recalcular:
                     </div>
                     <button onclick="recalculateGovResult('${dTagId}')"
@@ -492,7 +492,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
             <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);margin-top:1.5rem;" id="executionReportSection">
                 <h3 style="color:var(--color-gold);margin-bottom:1rem;">📋 Reportar Ejecución</h3>
                 <p style="color:var(--color-text-secondary);font-size:0.9rem;margin-bottom:1rem;">
-                    Tu propuesta fue aprobada. Una vez implementada, reporta la ejecución para que los Gobernadores puedan verificarla.
+                    Tu propuesta fue aprobada. Una vez implementada, reporta la ejecución para que los Génesis puedan verificarla.
                 </p>
                 <textarea id="executionDescription" placeholder="Describe cómo se implementó la propuesta, qué se logró..." 
                     style="width:100%;min-height:100px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;resize:vertical;"></textarea>
@@ -540,7 +540,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
             <div style="background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.4);border-radius:12px;padding:1.25rem;margin-top:1.5rem;text-align:center;">
                 <div style="font-size:1.5rem;margin-bottom:0.5rem;">🏆</div>
                 <div style="font-weight:700;color:#CE93D8;">Ejecución Verificada</div>
-                <div style="color:var(--color-text-secondary);font-size:0.85rem;margin-top:0.25rem;">Un Gobernador ha confirmado la correcta implementación de esta propuesta</div>
+                <div style="color:var(--color-text-secondary);font-size:0.85rem;margin-top:0.25rem;">Un Génesis ha confirmado la correcta implementación de esta propuesta</div>
             </div>
         `;
     }
@@ -575,7 +575,7 @@ function _renderMeritInfo(proposal, result, myVote, isAuthor) {
     }
 
     if (isAuthor && ['approved', 'in_execution'].includes(proposal.status)) {
-        lines.push(`🏆 Méritos por ejecución verificada: +${mc.EXEC_VERIFIED.amount} Productiva (pendiente verificación de Gobernador)`);
+        lines.push(`🏆 Méritos por ejecución verificada: +${mc.EXEC_VERIFIED.amount} Productiva (pendiente verificación de Génesis)`);
     }
 
     if (lines.length === 0) return '';
@@ -584,7 +584,7 @@ function _renderMeritInfo(proposal, result, myVote, isAuthor) {
         <div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.25);border-radius:12px;padding:1.25rem;margin-top:1.5rem;">
             <div style="font-size:0.8rem;color:var(--color-gold);font-weight:600;margin-bottom:0.75rem;letter-spacing:0.05em;">MÉRITOS LBWM</div>
             ${lines.map(l => `<div style="color:var(--color-text-secondary);font-size:0.88rem;margin-bottom:0.4rem;">${l}</div>`).join('')}
-            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-top:0.5rem;opacity:0.7;">Los méritos requieren verificación de un Gobernador para acreditarse.</div>
+            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-top:0.5rem;opacity:0.7;">Los méritos requieren verificación de un Génesis para acreditarse.</div>
         </div>
     `;
 }
@@ -653,7 +653,7 @@ async function submitExecutionReport(proposalDTag) {
 
     try {
         await LBW_Governance.publishExecution(proposalDTag, { description, links });
-        showNotification('✅ Reporte de ejecución publicado. Los Gobernadores pueden verificarlo.', 'success');
+        showNotification('✅ Reporte de ejecución publicado. Los Génesis pueden verificarlo.', 'success');
         const modal = document.querySelector('.modal.active');
         if (modal) modal.remove();
         setTimeout(displayProposals, 500);
