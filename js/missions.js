@@ -20,7 +20,7 @@ const LBW_Missions = (function () {
         financiada:      { emoji: '⏳', label: 'Financiada',      color: '#FFB74D', weight: '×0.6' }
     };
 
-    const MIN_CITIZENSHIP_TO_CREATE = 'Ciudadano Senior'; // Ciudadano Senior, Embajador, Gobernador
+    const MIN_CITIZENSHIP_TO_CREATE = 'Ciudadano Senior'; // Ciudadano Senior, Custodio, Génesis
     const MIN_MERITS_TO_CREATE = 1000;
 
     // ── Helpers ──────────────────────────────────────────────
@@ -186,7 +186,7 @@ const LBW_Missions = (function () {
     }
 
     async function approveMission(missionId) {
-        if (!_isGovernor()) throw new Error('Solo los Gobernadores pueden aprobar misiones.');
+        if (!_isGovernor()) throw new Error('Solo los Génesis pueden aprobar misiones.');
         const pubkey = _myPubkey();
 
         const mission = _missions.find(m => m.id === missionId);
@@ -208,7 +208,7 @@ const LBW_Missions = (function () {
         // If approving a pending_review mission (awarding merits)
         if (mission.status === 'pending_review') {
             if (mission.creator_pubkey === pubkey && !_isFounder()) {
-                throw new Error('Un Gobernador no puede aprobar sus propias misiones.');
+                throw new Error('Un Génesis no puede aprobar sus propias misiones.');
             }
 
             // Award merits to the claimant
@@ -236,7 +236,7 @@ const LBW_Missions = (function () {
     }
 
     async function cancelMission(missionId) {
-        if (!_isGovernor()) throw new Error('Solo los Gobernadores pueden cancelar misiones.');
+        if (!_isGovernor()) throw new Error('Solo los Génesis pueden cancelar misiones.');
 
         const { data: updated, error } = await supabaseClient
             .from('missions')
@@ -287,7 +287,7 @@ const LBW_Missions = (function () {
     function _minMeritsForCitizenship(level) {
         const map = {
             'Amigo': 0, 'E-Residency': 100, 'Colaborador': 500,
-            'Ciudadano Senior': 1000, 'Embajador': 2000, 'Gobernador': 3000
+            'Ciudadano Senior': 1000, 'Custodio': 2000, 'Génesis': 3000
         };
         return map[level] || 0;
     }
@@ -622,7 +622,7 @@ const LBW_Missions = (function () {
                             <option value="E-Residency">🪪 E-Residency (100+)</option>
                             <option value="Colaborador">🤝 Colaborador (500+)</option>
                             <option value="Ciudadano Senior">🛂 Ciudadano Senior (1000+)</option>
-                            <option value="Embajador">🌍 Embajador (2000+)</option>
+                            <option value="Custodio">🌍 Custodio (2000+)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -636,7 +636,7 @@ const LBW_Missions = (function () {
                     <textarea id="missionDeliveryInstructions" maxlength="300" rows="2" placeholder="Ej: Subir a GitHub y enviar el link, o contactar por DM..." style="width:100%;padding:0.7rem;background:var(--color-bg-dark);border:2px solid var(--color-border);border-radius:8px;color:var(--color-text-primary);resize:vertical;"></textarea>
                 </div>
 
-                ${!_isGovernor() ? `<div style="padding:0.75rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;margin-bottom:1.25rem;font-size:0.8rem;color:#FFB74D;">⚠️ Tu misión quedará <strong>pendiente de aprobación</strong> por un Gobernador antes de publicarse.</div>` : ''}
+                ${!_isGovernor() ? `<div style="padding:0.75rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;margin-bottom:1.25rem;font-size:0.8rem;color:#FFB74D;">⚠️ Tu misión quedará <strong>pendiente de aprobación</strong> por un Génesis antes de publicarse.</div>` : ''}
 
                 <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
                     <button onclick="document.getElementById('missionCreateModal').remove()" class="btn btn-secondary">Cancelar</button>
@@ -665,7 +665,7 @@ const LBW_Missions = (function () {
         try {
             await createMission({ title, description, merit_category: category, merit_amount: amount, min_citizenship: minCitizenship, deadline: deadline || null, delivery_instructions: deliveryInstructions });
             document.getElementById('missionCreateModal')?.remove();
-            showNotification(_isGovernor() ? '🎯 ¡Misión publicada!' : '📤 Misión enviada, pendiente de aprobación por un Gobernador.', 'success');
+            showNotification(_isGovernor() ? '🎯 ¡Misión publicada!' : '📤 Misión enviada, pendiente de aprobación por un Génesis.', 'success');
             renderMissionsTab();
             // Refresh networking if visible
             if (document.getElementById('networkingSection')?.classList.contains('active')) {
@@ -693,7 +693,7 @@ const LBW_Missions = (function () {
             <div class="modal-content" style="max-width:500px;padding:2rem;">
                 <button class="modal-close" onclick="document.getElementById('missionDeliveryModal').remove()">✕</button>
                 <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">📤 Entregar: ${_esc(m.title)}</h3>
-                <p style="font-size:0.82rem;color:var(--color-text-secondary);margin-bottom:1.25rem;">Adjunta el link a tu entrega para que un Gobernador la revise y apruebe los méritos.</p>
+                <p style="font-size:0.82rem;color:var(--color-text-secondary);margin-bottom:1.25rem;">Adjunta el link a tu entrega para que un Génesis la revise y apruebe los méritos.</p>
                 ${m.delivery_instructions ? `<div style="padding:0.75rem;background:rgba(38,166,154,0.08);border-radius:8px;margin-bottom:1rem;font-size:0.8rem;color:var(--color-teal-light);"><strong>📋 Instrucciones:</strong> ${_esc(m.delivery_instructions)}</div>` : ''}
                 <div class="form-group" style="margin-bottom:1.25rem;">
                     <label style="display:block;margin-bottom:0.4rem;color:var(--color-gold);font-size:0.85rem;">URL de entrega *</label>
@@ -718,7 +718,7 @@ const LBW_Missions = (function () {
         try {
             await submitDelivery(missionId, url);
             document.getElementById('missionDeliveryModal')?.remove();
-            showNotification('✅ Entrega enviada. Un Gobernador la revisará y aprobará los méritos.', 'success');
+            showNotification('✅ Entrega enviada. Un Génesis la revisará y aprobará los méritos.', 'success');
             renderMissionsTab();
         } catch (e) {
             showNotification('❌ ' + e.message, 'error');
