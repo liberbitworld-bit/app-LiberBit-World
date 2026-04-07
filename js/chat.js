@@ -671,7 +671,7 @@ async function _renderDebateMessage(msg, msgMap) {
                 </div>
                 ${replyBlock}
                 <div style="background:${isMe ? 'rgba(38,166,154,0.15)' : 'var(--color-bg-card)'}; border:1px solid ${isMe ? 'rgba(38,166,154,0.3)' : 'var(--color-border)'}; border-radius:${isMe ? '12px 2px 12px 12px' : '2px 12px 12px 12px'}; padding:0.5rem 0.75rem; font-size:0.85rem; line-height:1.5; color:var(--color-text-primary); word-wrap:break-word;">
-                    ${escapeHtml(msg.content).replace(/\n/g, '<br>')}
+                    ${typeof LBW_ChatAttach !== 'undefined' ? LBW_ChatAttach.renderContent(msg.content) : escapeHtml(msg.content).replace(/\n/g, '<br>')}
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.25rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
                     <button onclick="replyToDebateMessage('${msg.id}', '${escapeHtml(authorName)}')"
