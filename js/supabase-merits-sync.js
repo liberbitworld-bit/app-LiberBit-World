@@ -15,8 +15,8 @@ const LBW_MeritsSync = (() => {
         { name: 'E-Residency',      minMerits: 100,  emoji: '🪪' },
         { name: 'Colaborador',      minMerits: 500,  emoji: '🤝' },
         { name: 'Ciudadano Senior', minMerits: 1000, emoji: '🛂' },
-        { name: 'Embajador',        minMerits: 2000, emoji: '🌍' },
-        { name: 'Gobernador',       minMerits: 3000, emoji: '👑' }
+        { name: 'Custodio',          minMerits: 2000, emoji: '🌍' },
+        { name: 'Génesis',           minMerits: 3000, emoji: '👑' }
     ];
 
     function _getCitizenshipLevel(total) {
