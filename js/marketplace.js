@@ -191,24 +191,62 @@ function loadOffers() {
 
 function displayOffers() { loadOffers(); }
 
-// ── Phase 3: NIP-15 Stalls — Tab switcher ─────────────────
+// ── Phase 3: NIP-15 Stalls + P2P Exchange — Tab switcher ─────────────────
 function switchMarketTab(tab) {
-    document.querySelectorAll('.market-tab-btn').forEach(btn => btn.classList.remove('active'));
-    const activeTab = document.querySelector(`[data-market-tab="${tab}"]`);
-    if (activeTab) activeTab.classList.add('active');
+    document.querySelectorAll('.market-tab-btn').forEach(btn => {
+        const isActive = btn.dataset.marketTab === tab;
+        btn.classList.toggle('active', isActive);
+        // Update visual style
+        btn.style.background = isActive ? 'rgba(229,185,92,0.15)' : 'transparent';
+        btn.style.borderColor = isActive ? 'var(--color-gold)' : 'var(--color-border)';
+        btn.style.color = isActive ? 'var(--color-gold)' : 'var(--color-text-secondary)';
+        btn.style.fontWeight = isActive ? '600' : '400';
+    });
+
+    const searchBar  = document.getElementById('marketSearchBar');
+    const filterBar  = document.getElementById('marketFilterBar');
+    const offerBtn   = document.getElementById('newOfferBtn');
+    const stallBtn   = document.getElementById('newStallBtn');
+    const offersGrid = document.getElementById('offersGrid');
+    const stallsGrid = document.getElementById('stallsGrid');
+    const p2pView    = document.getElementById('p2pExchangeView');
+    const newOfferForm = document.getElementById('newOfferForm');
 
     if (tab === 'tiendas') {
         if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showStallsView();
-        const searchBar = document.getElementById('marketSearchBar');
-        const filterBar = document.getElementById('marketFilterBar');
         if (searchBar) searchBar.style.display = 'none';
         if (filterBar) filterBar.style.display = 'none';
-    } else {
+        if (offerBtn)  offerBtn.style.display = 'none';
+        if (stallBtn)  stallBtn.style.display = '';
+        if (offersGrid) offersGrid.style.display = 'none';
+        if (p2pView)   p2pView.style.display = 'none';
+        if (newOfferForm) newOfferForm.style.display = 'none';
+        // Stop P2P subscription when leaving tab
+        if (typeof LBW_P2P !== 'undefined') LBW_P2P.stop();
+    } else if (tab === 'p2p') {
+        // Hide marketplace elements
+        if (searchBar) searchBar.style.display = 'none';
+        if (filterBar) filterBar.style.display = 'none';
+        if (offerBtn)  offerBtn.style.display = 'none';
+        if (stallBtn)  stallBtn.style.display = 'none';
+        if (offersGrid) offersGrid.style.display = 'none';
+        if (stallsGrid) stallsGrid.style.display = 'none';
+        if (newOfferForm) newOfferForm.style.display = 'none';
+        // Show P2P view and start subscription
+        if (p2pView) p2pView.style.display = 'block';
+        if (typeof LBW_P2P !== 'undefined') LBW_P2P.start();
         if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showOffersView();
-        const searchBar = document.getElementById('marketSearchBar');
-        const filterBar = document.getElementById('marketFilterBar');
+    } else {
+        // tab === 'anuncios' (default)
+        if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showOffersView();
         if (searchBar) searchBar.style.display = '';
         if (filterBar) filterBar.style.display = '';
+        if (offerBtn)  offerBtn.style.display = '';
+        if (stallBtn)  stallBtn.style.display = 'none';
+        if (offersGrid) offersGrid.style.display = '';
+        if (p2pView)   p2pView.style.display = 'none';
+        // Stop P2P subscription when leaving tab
+        if (typeof LBW_P2P !== 'undefined') LBW_P2P.stop();
     }
 }
 
@@ -220,4 +258,4 @@ function openCreateStall() {
     if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showCreateStallForm();
 }
 
-console.log('Marketplace Phase 1 + Phase 3 (NIP-15 Stalls) listo');
+console.log('Marketplace Phase 1 + Phase 3 (NIP-15 Stalls) + P2P Exchange (NIP-69) listo');
