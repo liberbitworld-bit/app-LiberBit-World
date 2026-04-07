@@ -511,7 +511,7 @@
                                 
                                 <div class="chat-main-compose-inner" style="position: relative;">
                                     <button class="chat-compose-action" title="Emoji" onclick="toggleEmojiPicker('communityEmojiPicker', 'newPostContent')">😊</button>
-                                    <button class="chat-compose-action" title="Adjuntar (próximamente)" onclick="alert('📎 Adjuntar archivos — Próximamente')">📎</button>
+                                    <button class="chat-compose-action" title="Adjuntar imagen" onclick="LBW_ChatAttach.attach('newPostContent')">📎</button>
                                     <textarea 
                                         id="newPostContent" 
                                         placeholder="Escribe a la comunidad..." 
@@ -601,6 +601,7 @@
                                 <div class="chat-main-compose">
                                     <div class="chat-main-compose-inner" style="position:relative;">
                                         <button class="chat-compose-action" title="Emoji" onclick="toggleEmojiPicker('debateEmojiPicker', 'debateInput')">😊</button>
+                                        <button class="chat-compose-action" title="Adjuntar imagen" onclick="LBW_ChatAttach.attach('debateInput')">📎</button>
                                         <textarea
                                             id="debateInput"
                                             placeholder="Escribe tu argumento..."
@@ -663,7 +664,7 @@
                                 <div class="chat-main-compose">
                                     <div class="chat-main-compose-inner" style="position: relative;">
                                         <button class="chat-compose-action" title="Emoji" onclick="toggleEmojiPicker('dmEmojiPicker', 'dmContent')">😊</button>
-                                        <button class="chat-compose-action" title="Adjuntar (próximamente)" onclick="alert('📎 Adjuntar archivos — Próximamente')">📎</button>
+                                        <button class="chat-compose-action" title="Adjuntar imagen" onclick="LBW_ChatAttach.attach('dmContent')">📎</button>
                                         <textarea 
                                             id="dmContent" 
                                             placeholder="Mensaje cifrado E2E..." 
@@ -2723,7 +2724,7 @@
     <script src="js/posts.js?v=phase1b"></script>
     <script src="js/marketplace.js?v=phase3"></script>
     <script src="js/notifications.js?v=zap3"></script>
-    <script src="js/chat.js?v=debate2"></script>
+    <script src="js/chat.js?v=debate2-img1"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/lightning.js?v=phase2"></script>
     <script src="js/governance.js?v=debate1"></script>
@@ -2733,6 +2734,7 @@
     <!-- Nostr Integration Layer: debe cargarse ANTES que los modulos UI que dependen de el -->
     <script src="js/nostr-store.js?v=phase1"></script>
     <script src="js/nostr-media.js?v=phase1"></script>
+    <script src="js/chat-attachments.js?v=1"></script>
     <script src="js/nostr.js?v=zap2"></script>
     <script src="js/nostr-dm.js?v=phase1"></script>
     <script src="js/nostr-sync.js?v=phase1"></script>
@@ -2745,7 +2747,7 @@
     <script src="js/nostr-reviews.js?v=phase2"></script>
     <script src="js/nostr-marketplace-pay.js?v=phase2"></script>
     <script src="js/nostr-stalls.js?v=phase3"></script>
-    <script src="js/nostr-bridge.js?v=zap3"></script>
+    <script src="js/nostr-bridge.js?v=zap3-img1"></script>
     <script src="js/debate.js?v=1.2"></script>
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->
