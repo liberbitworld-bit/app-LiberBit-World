@@ -885,7 +885,7 @@ const LBW_NostrBridge = (() => {
                     <span class="chat-msg-time">${time}</span>
                 </div>
                 ${replyHtml}
-                <div class="chat-msg-body">${_esc(msg.content)}</div>
+                <div class="chat-msg-body">${typeof LBW_ChatAttach !== 'undefined' ? LBW_ChatAttach.renderContent(msg.content) : _esc(msg.content)}</div>
                 <div class="chat-msg-zaps" id="zaps-${msg.id}"></div>
                 <div class="chat-msg-actions">
                     <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
@@ -1116,7 +1116,7 @@ const LBW_NostrBridge = (() => {
         if (msg.id) el.dataset.msgId = msg.id;
         el.innerHTML = `
             <div class="chat-bubble ${mine ? 'chat-bubble-warning' : 'chat-bubble-info'}" style="min-width:60px;">
-                <div class="text-sm" style="word-break:break-word;">${_esc(msg.content)}</div>
+                <div class="text-sm" style="word-break:break-word;">${typeof LBW_ChatAttach !== 'undefined' ? LBW_ChatAttach.renderContent(msg.content) : _esc(msg.content)}</div>
             </div>
             <div class="chat-footer opacity-50 text-xs flex items-center gap-1 mt-0.5">
                 <span class="badge ${nipBadge} gap-0.5" style="font-size:0.55rem; height:14px; min-height:14px; padding:0 4px;" title="NIP-${nipLabel} cifrado">🔐${nipLabel}</span>
