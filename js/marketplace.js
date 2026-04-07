@@ -235,7 +235,6 @@ function switchMarketTab(tab) {
         // Show P2P view and start subscription
         if (p2pView) p2pView.style.display = 'block';
         if (typeof LBW_P2P !== 'undefined') LBW_P2P.start();
-        if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showOffersView();
     } else {
         // tab === 'anuncios' (default)
         if (typeof LBW_Stalls !== 'undefined') LBW_Stalls.showOffersView();
