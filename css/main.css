@@ -1995,7 +1995,8 @@
             .chat-sidebar {
                 width: 100%;
                 min-width: 100%;
-                max-height: 220px;
+                max-height: none;
+                flex: 1;
                 border-right: none;
                 border-bottom: 1px solid var(--color-border);
             }
@@ -2004,12 +2005,36 @@
                 display: none;
             }
 
+            .chat-main {
+                flex: 1;
+                height: 100%;
+            }
+
             .chat-main.main-hidden {
                 display: none;
             }
 
             .chat-header-back {
                 display: flex;
+            }
+
+            .chat-main-header {
+                padding: 0.5rem 0.75rem;
+                min-height: 44px;
+            }
+
+            .chat-main-header h3 {
+                font-size: 0.9rem;
+            }
+
+            .chat-main-header-sub {
+                font-size: 0.65rem;
+            }
+
+            .chat-header-avatar {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
             }
 
             .chat-main-compose textarea {
@@ -3681,7 +3706,7 @@
             }
 
             .chat-sidebar {
-                max-height: 160px !important;
+                max-height: none !important;
             }
 
             .chat-sidebar-tab {
@@ -3690,18 +3715,18 @@
             }
 
             .chat-main-header {
-                padding: 0.6rem 0.85rem !important;
-                min-height: 48px !important;
+                padding: 0.4rem 0.65rem !important;
+                min-height: 40px !important;
             }
 
             .chat-main-header h3 {
-                font-size: 0.92rem !important;
+                font-size: 0.85rem !important;
             }
 
             .chat-header-avatar {
-                width: 32px !important;
-                height: 32px !important;
-                font-size: 0.85rem !important;
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 0.8rem !important;
             }
 
             .chat-main-compose {
