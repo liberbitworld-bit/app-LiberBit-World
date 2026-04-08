@@ -386,6 +386,11 @@ async function openApp(appName) {
         showSection('chatSection');
         switchChatTab('community');
         markAsRead('chat');
+        // En móvil: volver al sidebar al abrir el chat
+        if (window.innerWidth <= 768) {
+            document.getElementById('chatSidebar').classList.remove('sidebar-hidden');
+            document.getElementById('chatMain').classList.add('main-hidden');
+        }
         // Refresh badges every 15 seconds while in chat
         if (window.chatBadgeInterval) clearInterval(window.chatBadgeInterval);
         window.chatBadgeInterval = setInterval(updateChatBadges, 15000);
