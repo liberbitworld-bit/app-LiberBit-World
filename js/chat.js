@@ -87,6 +87,18 @@ function switchChatTab(tab) {
     
     // Update the OTHER tabs' badges
     updateChatBadges();
+
+    // En móvil: ocultar sidebar y mostrar chat
+    if (window.innerWidth <= 768) {
+        document.getElementById('chatSidebar').classList.add('sidebar-hidden');
+        document.getElementById('chatMain').classList.remove('main-hidden');
+    }
+}
+
+// ── Volver al sidebar en móvil ──────────────────────────────
+function showChatSidebar() {
+    document.getElementById('chatSidebar').classList.remove('sidebar-hidden');
+    document.getElementById('chatMain').classList.add('main-hidden');
 }
 
 function updateChatTabBadge(tab, count) {
