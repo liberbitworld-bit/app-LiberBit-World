@@ -456,6 +456,25 @@ function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(sectionId).classList.add('active');
     window.scrollTo(0, 0);
+
+    // Mostrar contadores solo en el home
+    const statsIds = [
+        'activeNodesCounterHeader',
+        'identitiesCounterHeader',
+        'relaysCounterHeader',
+        'citiesCounterHeader',
+        'activeCitiesCounterHeader'
+    ];
+    const isHome = sectionId === 'mainMenuSection';
+    statsIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (isHome) {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
 }
 
 function showRegisterForm() {
