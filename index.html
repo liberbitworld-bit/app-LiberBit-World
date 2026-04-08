@@ -22,7 +22,7 @@
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
-    <link rel="stylesheet" href="css/main.css?v=zap2">
+    <link rel="stylesheet" href="css/main.css?v=zap3">
 
     <!-- PWA MANIFEST + SERVICE WORKER -->
     <link rel="manifest" href="/manifest.json">
@@ -477,7 +477,14 @@
 
                     <!-- ═══ MAIN CHAT AREA ═══ -->
                     <div class="chat-main" id="chatMain">
-                        
+
+                        <!-- ─── Tab strip (visible en móvil) ─── -->
+                        <div class="chat-main-tabstrip" id="chatMainTabstrip">
+                            <button class="chat-main-tab active" id="mainTabCommunity" onclick="switchChatTab('community')">🌐 Comunidad</button>
+                            <button class="chat-main-tab" id="mainTabDebates"   onclick="switchChatTab('debates')">🗳️ Debates</button>
+                            <button class="chat-main-tab" id="mainTabPrivate"   onclick="switchChatTab('private')">🔒 Privados</button>
+                        </div>
+
                         <!-- ─── Community View (default) ─── -->
                         <div id="communityView" style="display: flex; flex-direction: column; height: 100%;">
                             <!-- Header -->
@@ -2736,7 +2743,7 @@
     <!-- JavaScript Modules -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=phase2"></script>
     <script src="js/auth.js?v=phase2"></script>
-    <script src="js/ui.js?v=phase4b"></script>
+    <script src="js/ui.js?v=phase4c"></script>
     <!-- SOS Functions -->
     <script>
         function selectSOSType(type) {
@@ -2752,7 +2759,7 @@
     <script src="js/marketplace.js?v=phase4"></script>
     <script src="js/p2p-exchange.js?v=1"></script>
     <script src="js/notifications.js?v=zap3"></script>
-    <script src="js/chat.js?v=debate2-img2"></script>
+    <script src="js/chat.js?v=debate2-img3"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/lightning.js?v=phase2"></script>
     <script src="js/governance.js?v=debate1"></script>
