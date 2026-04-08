@@ -64,11 +64,19 @@ function switchChatTab(tab) {
         updateChatTabBadge('debates', 0);
     }
     
-    // Update tab buttons
+    // Update tab buttons (sidebar)
     document.getElementById('tabCommunity').classList.toggle('active', tab === 'community');
     document.getElementById('tabDebates').classList.toggle('active', tab === 'debates');
     document.getElementById('tabPrivate').classList.toggle('active', tab === 'private');
-    
+
+    // Update tab strip (chat-main)
+    const mtc = document.getElementById('mainTabCommunity');
+    const mtd = document.getElementById('mainTabDebates');
+    const mtp = document.getElementById('mainTabPrivate');
+    if (mtc) mtc.classList.toggle('active', tab === 'community');
+    if (mtd) mtd.classList.toggle('active', tab === 'debates');
+    if (mtp) mtp.classList.toggle('active', tab === 'private');
+
     // Update main view
     document.getElementById('communityView').style.display = tab === 'community' ? 'flex' : 'none';
     document.getElementById('debatesView').style.display  = tab === 'debates'   ? 'flex' : 'none';
@@ -88,10 +96,17 @@ function switchChatTab(tab) {
     // Update the OTHER tabs' badges
     updateChatBadges();
 
-    // En móvil: ocultar sidebar y mostrar chat
+    // En móvil: Comunidad → ocultar sidebar | Debates/Privados → mostrar sidebar para elegir
     if (window.innerWidth <= 768) {
-        document.getElementById('chatSidebar').classList.add('sidebar-hidden');
-        document.getElementById('chatMain').classList.remove('main-hidden');
+        const sidebar = document.getElementById('chatSidebar');
+        const chatMain = document.getElementById('chatMain');
+        if (tab === 'community') {
+            sidebar.classList.add('sidebar-hidden');
+            chatMain.classList.remove('main-hidden');
+        } else {
+            sidebar.classList.remove('sidebar-hidden');
+            chatMain.classList.remove('main-hidden');
+        }
     }
 }
 
