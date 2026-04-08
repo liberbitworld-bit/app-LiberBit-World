@@ -169,12 +169,14 @@ const LBW_P2P = (() => {
         return `<span style="font-size:0.6rem;background:${p.color}22;color:${p.color};padding:0.1rem 0.4rem;border-radius:10px;border:1px solid ${p.color}44;font-weight:600;">${_esc(p.label)}</span>`;
     }
 
-    // ── Type badge (buy/sell) ────────────────────────────────
+    // ── Type badge (taker perspective: what the user can DO) ─
     function _typeBadge(type) {
         if (type === 'sell') {
-            return `<span style="font-size:0.7rem;background:rgba(76,175,80,0.15);color:#4CAF50;padding:0.15rem 0.5rem;border-radius:20px;border:1px solid #4CAF5044;font-weight:600;">VENTA</span>`;
+            // Maker sells → taker can BUY
+            return `<span style="font-size:0.7rem;background:rgba(76,175,80,0.15);color:#4CAF50;padding:0.15rem 0.5rem;border-radius:20px;border:1px solid #4CAF5044;font-weight:600;">COMPRAR</span>`;
         }
-        return `<span style="font-size:0.7rem;background:rgba(33,150,243,0.15);color:#2196F3;padding:0.15rem 0.5rem;border-radius:20px;border:1px solid #2196F344;font-weight:600;">COMPRA</span>`;
+        // Maker buys → taker can SELL
+        return `<span style="font-size:0.7rem;background:rgba(33,150,243,0.15);color:#2196F3;padding:0.15rem 0.5rem;border-radius:20px;border:1px solid #2196F344;font-weight:600;">VENDER</span>`;
     }
 
     // ── Payment methods pills ────────────────────────────────
@@ -331,8 +333,8 @@ const LBW_P2P = (() => {
         statsBar.style.cssText = 'grid-column:1/-1;display:flex;gap:1rem;padding:0.5rem 0;font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.5rem;';
         statsBar.innerHTML = `
             <span>📊 ${filtered.length} ${filtered.length === 1 ? 'orden' : 'órdenes'} activas</span>
-            <span style="color:#4CAF50;">🟢 ${sells} ventas</span>
-            <span style="color:#2196F3;">🔵 ${buys} compras</span>
+            <span style="color:#4CAF50;">🟢 ${sells} para comprar</span>
+            <span style="color:#2196F3;">🔵 ${buys} para vender</span>
         `;
         grid.appendChild(statsBar);
 
@@ -378,10 +380,10 @@ const LBW_P2P = (() => {
         container.innerHTML = `
             <!-- Fila 1: Tipo -->
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;align-items:center;">
-                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Tipo:</span>
+                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Quiero:</span>
                 <button onclick="LBW_P2P.filterType('all')"  style="${_btnStyle(_activeType==='all')}">🌐 Todas</button>
-                <button onclick="LBW_P2P.filterType('sell')" style="${_btnStyle(_activeType==='sell','#4CAF50')}">🟢 Ventas</button>
-                <button onclick="LBW_P2P.filterType('buy')"  style="${_btnStyle(_activeType==='buy','#2196F3')}">🔵 Compras</button>
+                <button onclick="LBW_P2P.filterType('sell')" style="${_btnStyle(_activeType==='sell','#4CAF50')}">🟢 Comprar BTC</button>
+                <button onclick="LBW_P2P.filterType('buy')"  style="${_btnStyle(_activeType==='buy','#2196F3')}">🔵 Vender BTC</button>
             </div>
 
             <!-- Fila 2: Plataforma -->
