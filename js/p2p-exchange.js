@@ -21,8 +21,10 @@ const LBW_P2P = (() => {
     let _sub = null;
     let _btcEurPrice = null;
     let _priceLastFetch = 0;
-    let _activeCurrency = 'all';  // 'all' | 'EUR' | 'USD' | ...
-    let _activeType = 'all';      // 'all' | 'buy' | 'sell'
+    let _activeCurrency = 'all';   // 'all' | 'EUR' | 'USD' | ...
+    let _activeType = 'all';       // 'all' | 'buy' | 'sell'
+    let _activePlatform = 'all';   // 'all' | 'mostro' | 'lnp2pbot' | 'robosats'
+    let _activeSort = 'newest';    // 'newest' | 'oldest' | 'premium_asc' | 'premium_desc' | 'amount_asc' | 'amount_desc'
     let _isLoading = false;
 
     // ── Helpers ──────────────────────────────────────────────
@@ -279,8 +281,28 @@ const LBW_P2P = (() => {
             filtered = filtered.filter(o => o.type === _activeType);
         }
 
-        // Sort: newest first
-        filtered.sort((a, b) => b.created_at - a.created_at);
+        // Apply platform filter
+        if (_activePlatform !== 'all') {
+            filtered = filtered.filter(o => (o.platform || '').toLowerCase() === _activePlatform.toLowerCase());
+        }
+
+        // Apply sort
+        filtered.sort((a, b) => {
+            switch (_activeSort) {
+                case 'oldest':
+                    return a.created_at - b.created_at;
+                case 'premium_asc':
+                    return (parseFloat(a.premium) || 0) - (parseFloat(b.premium) || 0);
+                case 'premium_desc':
+                    return (parseFloat(b.premium) || 0) - (parseFloat(a.premium) || 0);
+                case 'amount_asc':
+                    return (parseFloat(a.fiatAmount) || 0) - (parseFloat(b.fiatAmount) || 0);
+                case 'amount_desc':
+                    return (parseFloat(b.fiatAmount) || 0) - (parseFloat(a.fiatAmount) || 0);
+                default: // newest
+                    return b.created_at - a.created_at;
+            }
+        });
 
         if (filtered.length === 0 && !_isLoading) {
             grid.innerHTML = `
@@ -323,29 +345,69 @@ const LBW_P2P = (() => {
         const container = document.getElementById('p2pFilters');
         if (!container) return;
 
-        // Collect unique currencies from active orders
-        const currencies = [...new Set(_orders.filter(o => o.status === 'pending').map(o => o.currency).filter(Boolean))];
+        const pending = _orders.filter(o => o.status === 'pending');
+
+        // Collect unique currencies and platforms from active orders
+        const currencies = [...new Set(pending.map(o => o.currency).filter(Boolean))];
+        const platforms = [...new Set(pending.map(o => (o.platform || '').toLowerCase()).filter(Boolean))];
+
+        const platformMeta = {
+            mostro:    { label: 'Mostro',    color: '#f7931a' },
+            lnp2pbot:  { label: 'LNp2pBot',  color: '#5b9bd5' },
+            robosats:  { label: 'RoboSats',  color: '#7b68ee' },
+        };
+
+        const sortOptions = [
+            { value: 'newest',       label: '🕐 Más recientes' },
+            { value: 'oldest',       label: '🕐 Más antiguas'  },
+            { value: 'premium_asc',  label: '📉 Premium ↑'     },
+            { value: 'premium_desc', label: '📈 Premium ↓'     },
+            { value: 'amount_asc',   label: '💶 Monto ↑'       },
+            { value: 'amount_desc',  label: '💶 Monto ↓'       },
+        ];
+
+        function _btnStyle(active, color) {
+            const c = color || 'var(--color-gold)';
+            const bg = color ? `${color}22` : 'rgba(229,185,92,0.15)';
+            return active
+                ? `padding:0.35rem 0.8rem;background:${bg};border:1px solid ${c};border-radius:8px;color:${c};cursor:pointer;font-size:0.8rem;font-weight:600;`
+                : `padding:0.35rem 0.8rem;background:transparent;border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;font-size:0.8rem;`;
+        }
 
         container.innerHTML = `
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;">
-                <button class="filter-btn ${_activeType === 'all' ? 'active' : ''}" onclick="LBW_P2P.filterType('all')" style="padding:0.35rem 0.8rem;background:${_activeType === 'all' ? 'rgba(229,185,92,0.15)' : 'transparent'};border:1px solid ${_activeType === 'all' ? 'var(--color-gold)' : 'var(--color-border)'};border-radius:8px;color:${_activeType === 'all' ? 'var(--color-gold)' : 'var(--color-text-secondary)'};cursor:pointer;font-size:0.8rem;">
-                    🌐 Todas
-                </button>
-                <button class="filter-btn ${_activeType === 'sell' ? 'active' : ''}" onclick="LBW_P2P.filterType('sell')" style="padding:0.35rem 0.8rem;background:${_activeType === 'sell' ? 'rgba(76,175,80,0.15)' : 'transparent'};border:1px solid ${_activeType === 'sell' ? '#4CAF50' : 'var(--color-border)'};border-radius:8px;color:${_activeType === 'sell' ? '#4CAF50' : 'var(--color-text-secondary)'};cursor:pointer;font-size:0.8rem;">
-                    🟢 Ventas
-                </button>
-                <button class="filter-btn ${_activeType === 'buy' ? 'active' : ''}" onclick="LBW_P2P.filterType('buy')" style="padding:0.35rem 0.8rem;background:${_activeType === 'buy' ? 'rgba(33,150,243,0.15)' : 'transparent'};border:1px solid ${_activeType === 'buy' ? '#2196F3' : 'var(--color-border)'};border-radius:8px;color:${_activeType === 'buy' ? '#2196F3' : 'var(--color-text-secondary)'};cursor:pointer;font-size:0.8rem;">
-                    🔵 Compras
-                </button>
-                <span style="border-left:1px solid var(--color-border);margin:0 0.25rem;"></span>
-                <button class="filter-btn ${_activeCurrency === 'all' ? 'active' : ''}" onclick="LBW_P2P.filterCurrency('all')" style="padding:0.35rem 0.8rem;background:${_activeCurrency === 'all' ? 'rgba(229,185,92,0.15)' : 'transparent'};border:1px solid ${_activeCurrency === 'all' ? 'var(--color-gold)' : 'var(--color-border)'};border-radius:8px;color:${_activeCurrency === 'all' ? 'var(--color-gold)' : 'var(--color-text-secondary)'};cursor:pointer;font-size:0.8rem;">
-                    🌍 Todas
-                </button>
+            <!-- Fila 1: Tipo -->
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;align-items:center;">
+                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Tipo:</span>
+                <button onclick="LBW_P2P.filterType('all')"  style="${_btnStyle(_activeType==='all')}">🌐 Todas</button>
+                <button onclick="LBW_P2P.filterType('sell')" style="${_btnStyle(_activeType==='sell','#4CAF50')}">🟢 Ventas</button>
+                <button onclick="LBW_P2P.filterType('buy')"  style="${_btnStyle(_activeType==='buy','#2196F3')}">🔵 Compras</button>
+            </div>
+
+            <!-- Fila 2: Plataforma -->
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;align-items:center;">
+                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Plataforma:</span>
+                <button onclick="LBW_P2P.filterPlatform('all')" style="${_btnStyle(_activePlatform==='all')}">🌐 Todas</button>
+                ${platforms.map(p => {
+                    const meta = platformMeta[p] || { label: p, color: 'var(--color-teal-light)' };
+                    return `<button onclick="LBW_P2P.filterPlatform('${p}')" style="${_btnStyle(_activePlatform===p, meta.color)}">${_esc(meta.label)}</button>`;
+                }).join('')}
+            </div>
+
+            <!-- Fila 3: Moneda + Ordenar -->
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;align-items:center;">
+                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Moneda:</span>
+                <button onclick="LBW_P2P.filterCurrency('all')" style="${_btnStyle(_activeCurrency==='all')}">🌍 Todas</button>
                 ${currencies.map(c => `
-                    <button class="filter-btn ${_activeCurrency === c ? 'active' : ''}" onclick="LBW_P2P.filterCurrency('${c}')" style="padding:0.35rem 0.8rem;background:${_activeCurrency === c ? 'rgba(229,185,92,0.15)' : 'transparent'};border:1px solid ${_activeCurrency === c ? 'var(--color-gold)' : 'var(--color-border)'};border-radius:8px;color:${_activeCurrency === c ? 'var(--color-gold)' : 'var(--color-text-secondary)'};cursor:pointer;font-size:0.8rem;">
-                        ${_esc(c)}
-                    </button>
+                    <button onclick="LBW_P2P.filterCurrency('${c}')" style="${_btnStyle(_activeCurrency===c)}">${_esc(c)}</button>
                 `).join('')}
+                <span style="flex:1;"></span>
+                <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Ordenar:</span>
+                <select onchange="LBW_P2P.sortBy(this.value)"
+                    style="padding:0.35rem 0.6rem;background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-primary);cursor:pointer;font-size:0.8rem;">
+                    ${sortOptions.map(o =>
+                        `<option value="${o.value}" ${_activeSort===o.value?'selected':''}>${o.label}</option>`
+                    ).join('')}
+                </select>
             </div>
         `;
     }
@@ -496,6 +558,18 @@ const LBW_P2P = (() => {
         _renderGrid();
     }
 
+    function filterPlatform(platform) {
+        _activePlatform = platform;
+        _renderFilterBar();
+        _renderGrid();
+    }
+
+    function sortBy(criterion) {
+        _activeSort = criterion;
+        _renderFilterBar();
+        _renderGrid();
+    }
+
     // ── Refresh ─────────────────────────────────────────────
     function refresh() {
         stop();
@@ -509,6 +583,8 @@ const LBW_P2P = (() => {
         refresh,
         filterCurrency,
         filterType,
+        filterPlatform,
+        sortBy,
         openMostroInfo,
         getOrders: () => [..._orders],
     };
