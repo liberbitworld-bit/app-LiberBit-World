@@ -197,7 +197,8 @@ const LBW_P2P = (() => {
         card.className = 'offer-card p2p-order-card';
         card.dataset.currency = order.currency || '';
         card.dataset.type = order.type || '';
-        card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;';
+        card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;cursor:pointer;';
+        card.onclick = () => LBW_P2P.openMostroInfo();
 
         const satsDisplay = _formatSats(order.amount);
         const fiatDisplay = _formatFiat(order);
