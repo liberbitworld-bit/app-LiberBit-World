@@ -1352,13 +1352,20 @@ const LBW_NostrBridge = (() => {
 
                 grid.appendChild(card);
 
-                // [Phase 2] Inject reputation badge next to seller name (async, non-blocking)
-                if (typeof LBW_Reviews !== 'undefined' && LBW_Reviews.getScoreBadgeHtml) {
-                    LBW_Reviews.getScoreBadgeHtml(listing.pubkey).then(badgeHtml => {
-                        if (!badgeHtml) return;
+                // [Phase 2] Inject citizenship + reputation badges next to seller name (async, non-blocking)
+                if (typeof LBW_Reviews !== 'undefined') {
+                    const citizenBadge = LBW_Reviews.getCitizenshipBadgeHtml
+                        ? LBW_Reviews.getCitizenshipBadgeHtml(listing.pubkey)
+                        : '';
+                    const scoreBadgePromise = LBW_Reviews.getScoreBadgeHtml
+                        ? LBW_Reviews.getScoreBadgeHtml(listing.pubkey)
+                        : Promise.resolve('');
+                    scoreBadgePromise.then(scoreBadge => {
+                        const badges = [citizenBadge, scoreBadge].filter(Boolean).join(' ');
+                        if (!badges) return;
                         const nameEl = card.querySelector(`#seller-name-${listing.id.substring(0,8)}`);
                         if (nameEl) {
-                            nameEl.innerHTML = `${_esc(name)} ${badgeHtml}`;
+                            nameEl.innerHTML = `<span style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;justify-content:flex-end;">${_esc(name)} ${badges}</span>`;
                         }
                     }).catch(() => {});
                 }
