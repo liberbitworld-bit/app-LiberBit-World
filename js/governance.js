@@ -422,7 +422,7 @@ function _renderResultSection(result, proposal) {
     const icon = approved ? '✅' : quorumFailed ? '⚠️' : '❌';
     const label = approved ? 'APROBADA' : quorumFailed ? 'SIN QUÓRUM' : 'RECHAZADA';
     const detail = quorumFailed
-        ? 'No hubo participación de Gobernadores. La propuesta no puede aprobarse sin quórum de Gobernanza.'
+        ? 'No hubo participación de Génesis. La propuesta no puede aprobarse sin quórum de Gobernanza.'
         : approved
             ? `La opción <strong>"${escapeHtml(result.winner)}"</strong> ganó con ${result.total_votes} votos ponderados.`
             : `La opción <strong>"${escapeHtml(result.winner)}"</strong> fue la más votada (propuesta rechazada).`;
