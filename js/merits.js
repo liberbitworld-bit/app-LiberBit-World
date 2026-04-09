@@ -350,7 +350,9 @@ async function loadLeaderboard() {
         leaderboard.forEach((entry, i) => {
             const isMe = entry.pubkey === myPubkey;
             const medal = medals[i] || `${i + 1}`;
-            const name = entry.npub ? entry.npub.substring(0, 16) + '...' : 'Anónimo';
+            // Fallback: npub truncado hasta que se resuelva el nombre real
+            const npubShort = entry.npub ? entry.npub.substring(0, 16) + '...' : 'Anónimo';
+            const nameId = 'lb-name-' + entry.pubkey.substring(0, 8);
             const border = isMe ? 'border: 2px solid var(--color-gold);' : 'border: 1px solid var(--color-border);';
             // [v2.0] Show level & bloc
             const lvl = entry.level || LBW_Merits.getCitizenshipLevel(entry.total);
@@ -358,7 +360,7 @@ async function loadLeaderboard() {
                 <div style="display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1rem; background: ${isMe ? 'rgba(229, 185, 92, 0.1)' : 'var(--color-bg-dark)'}; border-radius: 8px; ${border}">
                     <div style="font-size: 1.2rem; font-weight: 700; color: var(--color-gold); min-width: 36px;">${medal}</div>
                     <div style="flex: 1;">
-                        <div style="color: var(--color-text-primary); font-weight: 600;">${name}</div>
+                        <div id="${nameId}" style="color: var(--color-text-primary); font-weight: 600;">${isMe && currentUser?.name ? currentUser.name : npubShort}</div>
                         <div style="color: var(--color-text-secondary); font-size: 0.75rem;">${lvl?.emoji || '🌐'} ${lvl?.name || 'E-Residency'} <span style="opacity:0.6">· ${lvl?.bloc || 'Comunidad'}</span></div>
                     </div>
                     <div style="text-align: right;">
@@ -372,7 +374,22 @@ async function loadLeaderboard() {
     }
 
     const leaderboardEl = document.getElementById('leaderboardList');
-    if (leaderboardEl) leaderboardEl.innerHTML = html;
+    if (leaderboardEl) {
+        leaderboardEl.innerHTML = html;
+        // Resolve real names asynchronously (non-blocking)
+        if (typeof LBW_Sync !== 'undefined' && LBW_Sync.resolveProfile) {
+            leaderboard.forEach(entry => {
+                if (entry.pubkey === myPubkey && currentUser?.name) return; // already set
+                const nameEl = leaderboardEl.querySelector('#lb-name-' + entry.pubkey.substring(0, 8));
+                if (!nameEl) return;
+                LBW_Sync.resolveProfile(entry.pubkey).then(profile => {
+                    if (!nameEl) return;
+                    const resolved = profile?.display_name || profile?.name;
+                    if (resolved) nameEl.textContent = resolved;
+                }).catch(() => {});
+            });
+        }
+    }
 
     const totalMerits = document.getElementById('userTotalMerits')?.textContent || '0';
     const lbMeritsEl = document.getElementById('leaderboardUserMerits');
