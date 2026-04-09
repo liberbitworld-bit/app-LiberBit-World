@@ -93,6 +93,9 @@ const LBW_Nostr = (() => {
         LBW_DELEGATE:   31004,
         LBW_SNAPSHOT:   31005,
         LBW_CONFIG:     31006,
+        LBW_RESULT:     31010,   // Proposal result tally
+        LBW_EXECUTION:  31011,   // Author execution report
+        LBW_EXEC_VERIFY: 31012,  // Governor execution verification
         APP_STATE:      30078,
         REVIEW:         1985     // NIP-85: Reviews
     };
@@ -123,6 +126,9 @@ const LBW_Nostr = (() => {
         EVENT_KINDS.LBW_DELEGATE,       // 31004 — Delegaciones
         EVENT_KINDS.LBW_SNAPSHOT,       // 31005 — Snapshots
         EVENT_KINDS.LBW_CONFIG,         // 31006 — Configuración
+        EVENT_KINDS.LBW_RESULT,         // 31010 — Resultados de votación
+        EVENT_KINDS.LBW_EXECUTION,      // 31011 — Ejecución de propuestas
+        EVENT_KINDS.LBW_EXEC_VERIFY,    // 31012 — Verificación de ejecución (Génesis)
         EVENT_KINDS.APP_STATE           // 30078 — Estado de la app
     ]);
 
