@@ -108,6 +108,24 @@ const LBW_Merits = (() => {
     let _subContribs = null;
     let _subSnapshots = null;
 
+    // [SEC-22] Buffer of merit events whose issuer is not yet a Genesis (≥3000).
+    // When the issuer crosses the threshold (or is later confirmed via the
+    // founder bootstrap), the buffer is drained and the events reprocessed.
+    // Capped to avoid unbounded memory growth from forged spam.
+    let _pendingMeritEvents = [];   // [{ event, merit }]
+    const PENDING_MERIT_CAP = 500;
+
+    // Lazily-cached founder pubkey in hex form. Computed on first need
+    // because LBW_Nostr.npubToHex may not be ready at module load time.
+    let _founderHexCached = null;
+    function _getFounderHex() {
+        if (_founderHexCached) return _founderHexCached;
+        try {
+            _founderHexCached = LBW_Nostr.npubToHex(FOUNDER_NPUB);
+        } catch (e) { /* not ready yet */ }
+        return _founderHexCached;
+    }
+
     const MERITS_STORAGE_KEY = 'lbw_merits_cache';
     const CONTRIBS_STORAGE_KEY = 'lbw_contribs_cache';
 
@@ -388,6 +406,10 @@ const LBW_Merits = (() => {
                             created_at: Math.floor(Date.now() / 1000),
                             source: 'bootstrap-offline'
                         });
+                        // [SEC-22] Founder is now Genesis in local memory:
+                        // re-evaluate any merit events that were parked
+                        // because their issuer status was unknown.
+                        _drainPendingMerits();
                         console.log('[Merits] Meritos del fundador restaurados en memoria:', FOUNDER_BOOTSTRAP_AMOUNT);
                     }
                 }
@@ -463,8 +485,13 @@ const LBW_Merits = (() => {
                         t => t[0] === 't' && (t[1] === 'lbw-merits' || t[1] === 'lbw-bootstrap' || t[1] === 'lbw-merit-award')
                     );
                     if (!hasLbwTag) return;
-                    const merit = _parseMerit(event);
-                    if (merit) { _processMerit(merit); processed++; }
+                    // [SEC-22] Even relay-filtered author lookups go through
+                    // the central validator so a misbehaving relay cannot
+                    // smuggle in events with a different signer.
+                    const before = _merits.get(founderHex)?.records?.length || 0;
+                    _validateAndProcessMeritEvent(event);
+                    const after = _merits.get(founderHex)?.records?.length || 0;
+                    if (after > before) processed++;
                 },
                 () => {
                     clearTimeout(timeout);
@@ -520,12 +547,9 @@ const LBW_Merits = (() => {
                     t => t[0] === 't' && (t[1] === 'lbw-merits' || t[1] === 'lbw-bootstrap' || t[1] === 'lbw-merit-award')
                 );
                 if (!hasLbwTag) return;
-                const merit = _parseMerit(event);
-                if (!merit) return;
-                _processMerit(merit);
-                _onMeritCallbacks.forEach(cb => {
-                    try { cb(merit); } catch (e) {}
-                });
+                // [SEC-22] All merit events must pass issuer validation.
+                // Callbacks fire from inside _processMerit only on success.
+                _validateAndProcessMeritEvent(event);
             }
         );
 
@@ -693,6 +717,81 @@ const LBW_Merits = (() => {
         return points;
     }
 
+    // ── [SEC-22] Validate Merit Event Issuer ─────────────────
+    // The signing pubkey of a kind:31002 event MUST be authorized to
+    // issue merits. Without this check, any user can forge a merit
+    // event awarding themselves arbitrary merits and become Genesis.
+    //
+    //   - Foundational merits: only the founder may self-bootstrap.
+    //   - All other categories: signer must already be Genesis (≥3000).
+    //
+    // If the signer's status cannot yet be determined (their own merits
+    // haven't arrived from the relay yet), the event is parked in a
+    // bounded buffer and reprocessed when more merit data arrives.
+    function _validateAndProcessMeritEvent(event) {
+        if (!event || !event.pubkey) return;
+
+        const merit = _parseMerit(event);
+        if (!merit) return;
+
+        const issuer = event.pubkey;  // verified signer (already passed verifyEvent)
+
+        // Foundational bootstrap: only the founder, only to themselves.
+        if (merit.category === 'fundacional') {
+            const founderHex = _getFounderHex();
+            if (!founderHex || issuer !== founderHex || merit.pubkey !== founderHex) {
+                console.warn('[SEC-22] Merit fundacional rechazado — emisor no autorizado:',
+                    issuer.substring(0, 12));
+                return;
+            }
+            _processMerit(merit);
+            _drainPendingMerits();   // founder is now Genesis → re-evaluate buffer
+            return;
+        }
+
+        // Regular merit award: issuer must already be Genesis.
+        const issuerData = _merits.get(issuer);
+        const issuerTotal = issuerData ? issuerData.total : 0;
+
+        if (issuerTotal >= 3000) {
+            _processMerit(merit);
+            // Recipient may have just crossed 3000 → could authorize buffered events
+            const recipientData = _merits.get(merit.pubkey);
+            if (recipientData && recipientData.total >= 3000) {
+                _drainPendingMerits();
+            }
+            return;
+        }
+
+        // Issuer not yet known to be Genesis: park the event.
+        // It may become valid later if the issuer's own merit events
+        // arrive from a slower relay.
+        if (_pendingMeritEvents.length < PENDING_MERIT_CAP) {
+            _pendingMeritEvents.push({ event, merit });
+        } else {
+            console.warn('[SEC-22] Pending merit buffer full — dropping event from',
+                issuer.substring(0, 12));
+        }
+    }
+
+    // Re-evaluate parked merit events. Called whenever a new issuer
+    // crosses the Genesis threshold. One pass is enough because we
+    // re-call ourselves transitively from inside _validateAndProcessMeritEvent.
+    let _drainingPending = false;
+    function _drainPendingMerits() {
+        if (_drainingPending) return;   // prevent recursion blow-up
+        _drainingPending = true;
+        try {
+            const queue = _pendingMeritEvents;
+            _pendingMeritEvents = [];
+            for (const { event } of queue) {
+                _validateAndProcessMeritEvent(event);
+            }
+        } finally {
+            _drainingPending = false;
+        }
+    }
+
     // ── Process Merit Record ─────────────────────────────────
     function _processMerit(merit) {
         const { pubkey, amount, category, created_at, source, id, dTag } = merit;
@@ -746,6 +845,10 @@ const LBW_Merits = (() => {
                 try { if (typeof updateProfileDisplay === 'function') updateProfileDisplay(); } catch(e) {}
             }, 50);
         }
+
+        // [SEC-22] Notify subscribers only after the merit has been
+        // accepted by validation and applied to the ledger.
+        _onMeritCallbacks.forEach(cb => { try { cb(merit); } catch (e) {} });
     }
 
     // ── Leaderboard ──────────────────────────────────────────
