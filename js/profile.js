@@ -5,13 +5,22 @@
 // ============================================
 // LBWM v2.0 Citizenship Scale (auto-calculated)
 // ============================================
+// getCitizenshipLevel — delegada a LBW_Merits (fuente única de verdad)
+// Si LBW_Merits no está disponible, fallback local con estructura compatible
 function getCitizenshipLevel(merits) {
-    if (merits >= 3000) return { level: 6, title: 'Génesis', icon: '👑', bloc: 'Gobernanza' };
-    if (merits >= 2000) return { level: 5, title: 'Custodio', icon: '🌍', bloc: 'Ciudadanía' };
+    if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getCitizenshipLevel) {
+        const l = LBW_Merits.getCitizenshipLevel(merits);
+        // Normalise: LBW_Merits returns { name, emoji, color, bloc } — profile.js expects { level, title, icon, bloc }
+        const nameToLevel = { 'Amigo': 1, 'E-Residency': 2, 'Colaborador': 3, 'Ciudadano Senior': 4, 'Custodio': 5, 'Génesis': 6 };
+        return { level: nameToLevel[l.name] || 1, title: l.name, icon: l.emoji, bloc: l.bloc };
+    }
+    // Fallback (carga diferida — nostr-merits.js aún no disponible)
+    if (merits >= 3000) return { level: 6, title: 'Génesis',          icon: '👑', bloc: 'Gobernanza' };
+    if (merits >= 2000) return { level: 5, title: 'Custodio',         icon: '🌍', bloc: 'Ciudadanía' };
     if (merits >= 1000) return { level: 4, title: 'Ciudadano Senior', icon: '🛂', bloc: 'Ciudadanía' };
-    if (merits >= 500)  return { level: 3, title: 'Colaborador', icon: '🤝', bloc: 'Comunidad' };
-    if (merits >= 100)  return { level: 2, title: 'E-Residency', icon: '🪪', bloc: 'Comunidad' };
-    return { level: 1, title: 'Amigo', icon: '👋', bloc: 'Comunidad' };
+    if (merits >= 500)  return { level: 3, title: 'Colaborador',      icon: '🤝', bloc: 'Comunidad' };
+    if (merits >= 100)  return { level: 2, title: 'E-Residency',      icon: '🪪', bloc: 'Comunidad' };
+    return             { level: 1, title: 'Amigo',             icon: '👋', bloc: 'Comunidad' };
 }
 
 // getUnifiedMerits movida a nostr-merits.js (Fase 2 limpieza)
