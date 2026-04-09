@@ -284,7 +284,13 @@ const LBW_Missions = (function () {
         } catch { return false; }
     }
 
+    // _minMeritsForCitizenship — delegada a LBW_Merits (fuente única de verdad)
     function _minMeritsForCitizenship(level) {
+        if (typeof LBW_Merits !== 'undefined' && LBW_Merits.CITIZENSHIP_LEVELS) {
+            const found = LBW_Merits.CITIZENSHIP_LEVELS.find(l => l.name === level);
+            if (found) return found.minMerits;
+        }
+        // Fallback si LBW_Merits no está disponible aún
         const map = {
             'Amigo': 0, 'E-Residency': 100, 'Colaborador': 500,
             'Ciudadano Senior': 1000, 'Custodio': 2000, 'Génesis': 3000
