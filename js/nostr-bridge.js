@@ -737,11 +737,25 @@ const LBW_NostrBridge = (() => {
         if (typeof LBW_Governance === 'undefined') return;
         LBW_Governance.subscribeProposals((proposal, action) => {
             console.log(`[Bridge] 📋 Proposal ${action}: ${proposal.title}`);
-            // Auto-refresh UI if governance section is visible
+            // Auto-refresh UI whenever proposals arrive
             if (typeof displayProposals === 'function') {
                 try { updateGovStats(); displayProposals(); } catch (e) {}
             }
         });
+        // Ensure governance UI is refreshed once relay delivers initial batch
+        // (covers the case where proposals arrive after section was already rendered)
+        setTimeout(() => {
+            try {
+                if (typeof updateGovStats === 'function') updateGovStats();
+                if (typeof displayProposals === 'function') displayProposals();
+            } catch(e) {}
+        }, 4000);
+        setTimeout(() => {
+            try {
+                if (typeof updateGovStats === 'function') updateGovStats();
+                if (typeof displayProposals === 'function') displayProposals();
+            } catch(e) {}
+        }, 9000);
         console.log('[Bridge] ✅ Governance feed started');
     }
 
