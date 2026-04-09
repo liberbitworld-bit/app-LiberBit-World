@@ -518,7 +518,9 @@ const LBW_P2P = (() => {
                             _orders.push(order);
                         }
 
-                        _renderFilterBar();
+                        // Solo actualizar el grid durante la carga — la barra de filtros
+                        // se reconstruye en oneose para que las selecciones del usuario
+                        // no se interrumpan mientras llegan órdenes del relay.
                         _renderGrid();
                     },
                     oneose: () => {
