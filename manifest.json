@@ -1,7 +1,7 @@
 {
   "name": "LiberBit World",
   "short_name": "LiberBit",
-  "description": "Ecosistema descentralizado soberano — comunidad Nostr, mercado Lightning, gobernanza Bitcoin-native",
+  "description": "La red soberana de quienes no están dispuestos a ceder. Libertad, privacidad, propiedad y libre expresión — sin censuras, sin intermediarios, sin permisos.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,26 +9,26 @@
   "background_color": "#0D171E",
   "theme_color": "#0D171E",
   "lang": "es",
-  "categories": ["finance", "social", "utilities"],
+  "categories": ["social", "lifestyle", "productivity"],
   "icons": [
     {
-      "src": "/icon/icon-96.png",
+      "src": "/icons/icon-96.png",
       "sizes": "96x96",
       "type": "image/png"
     },
     {
-      "src": "/icon/icon-144.png",
+      "src": "/icons/icon-144.png",
       "sizes": "144x144",
       "type": "image/png"
     },
     {
-      "src": "/icon/icon-192.png",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon/icon-512.png",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
