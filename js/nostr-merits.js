@@ -354,10 +354,17 @@ const LBW_Merits = (() => {
             const BOOTSTRAP_DONE_KEY = 'lbw_bootstrap_done_' + founderHex.substring(0, 12);
             if (localStorage.getItem(BOOTSTRAP_DONE_KEY)) {
                 console.log('[Merits] Bootstrap ya realizado anteriormente — omitiendo re-bootstrap');
-                // BUT: still verify merits are loaded into memory (relay subscription
-                // may not have returned yet, or tag filter may have returned 0 results).
-                // Wait briefly for relay events and re-query directly if still empty.
-                await new Promise(r => setTimeout(r, 3000));
+                // Check immediately if merits are already in memory from localStorage
+                const immediateData = _merits.get(founderHex);
+                if (immediateData && immediateData.total >= 3000) {
+                    console.log('[Merits] ✅ Meritos del fundador ya en memoria:', immediateData.total);
+                    setTimeout(() => {
+                        try { if (typeof updateProfileDisplay === 'function') updateProfileDisplay(); } catch(e) {}
+                    }, 50);
+                    return;
+                }
+                // Not in memory yet — wait briefly for relay subscription to deliver events
+                await new Promise(r => setTimeout(r, 500));
                 const cachedData = _merits.get(founderHex);
                 if (!cachedData || cachedData.total < 3000) {
                     console.log('[Merits] Méritos del fundador no están en memoria — recargando desde relay...');
@@ -447,7 +454,7 @@ const LBW_Merits = (() => {
     // not supporting tag filters, but we know the bootstrap event exists.
     function _reloadFounderMeritsFromRelay(founderHex) {
         return new Promise(resolve => {
-            const timeout = setTimeout(() => resolve(), 6000);
+            const timeout = setTimeout(() => resolve(), 3000);
             let processed = 0;
             const sub = LBW_Nostr.subscribe(
                 { kinds: [KIND.MERIT], authors: [founderHex], limit: 50 },
@@ -472,7 +479,7 @@ const LBW_Merits = (() => {
                     resolve();
                 }
             );
-            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 6500);
+            setTimeout(() => { try { LBW_Nostr.unsubscribe(sub); } catch(e) {} }, 3500);
         });
     }
 
@@ -482,6 +489,19 @@ const LBW_Merits = (() => {
 
         // Load from cache first (instant availability)
         if (_merits.size === 0) _loadMeritsFromStorage();
+
+        // If founder merits already in localStorage → refresh profile immediately (no wait)
+        if (LBW_Nostr.isLoggedIn()) {
+            try {
+                const myPk = LBW_Nostr.getPubkey();
+                const cached = myPk ? _merits.get(myPk) : null;
+                if (cached && cached.total >= 3000) {
+                    setTimeout(() => {
+                        try { if (typeof updateProfileDisplay === 'function') updateProfileDisplay(); } catch(e) {}
+                    }, 100);
+                }
+            } catch(e) {}
+        }
 
         // Auto-bootstrap founder if needed (async, non-blocking)
         _autoBootstrapIfFounder();
