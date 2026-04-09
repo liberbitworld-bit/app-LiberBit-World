@@ -373,6 +373,24 @@
         }
     }
 
+    // ── Badge de ciudadanía (nivel/tier del vendedor) ─────────
+    // Devuelve HTML de un badge con el nivel de ciudadanía del usuario
+    function getCitizenshipBadgeHtml(pubkey) {
+        try {
+            if (typeof LBW_Merits === 'undefined') return '';
+            const userData = LBW_Merits.getUserMerits(pubkey);
+            if (!userData) return '';
+            const level = userData.level || LBW_Merits.getCitizenshipLevel(userData.total || 0);
+            if (!level) return '';
+            // Solo mostrar nivel si tiene al menos E-Residency (>=100 meritos)
+            if ((userData.total || 0) < 100) return '';
+            const color = level.color || '#8BC34A';
+            return `<span title="${level.name} · ${userData.total} LBWM" style="font-size:0.65rem;background:${color}18;color:${color};padding:0.15rem 0.5rem;border-radius:20px;border:1px solid ${color}60;cursor:default;">${level.emoji} ${level.name}</span>`;
+        } catch (e) {
+            return '';
+        }
+    }
+
     // ── API pública ───────────────────────────────────────────
     window.LBW_Reviews = {
         publishReview,
@@ -382,6 +400,7 @@
         renderStars,
         renderReviewsBlock,
         getScoreBadgeHtml,
+        getCitizenshipBadgeHtml,
         showReviewModal,
         // Internos expuestos para los onclick del modal
         _selectStar,
