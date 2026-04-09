@@ -377,7 +377,7 @@ const LBW_Merits = (() => {
                             id: fallbackId,
                             pubkey: founderHex,
                             amount: FOUNDER_BOOTSTRAP_AMOUNT,
-                            category: 'productiva',
+                            category: 'fundacional',
                             created_at: Math.floor(Date.now() / 1000),
                             source: 'bootstrap-offline'
                         });
