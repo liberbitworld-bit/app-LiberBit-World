@@ -103,7 +103,16 @@ async function loadProposals() {
         updateGovStats();
         displayProposals();
 
-        setTimeout(() => { updateGovStats(); displayProposals(); }, 3000);
+        // If already have data from relay (arrived before section opened), show immediately
+        if (allProposals.length > 0) {
+            console.log(`[Gov] ✅ ${allProposals.length} propuestas disponibles al abrir`);
+        }
+
+        // Progressive retries — relay may take several seconds to connect
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 2000);
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 5000);
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 10000);
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 15000);
     } catch (err) {
         console.error('Error loading proposals:', err);
         allProposals = [];
