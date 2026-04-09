@@ -78,6 +78,14 @@ const LBW_Governance = (() => {
     let _resultCalcScheduled = new Set();  // dTags with pending calc
     let _fetchingVotes = false;
 
+    // [SEC-23] Buffer of result events (kind 31010) whose signer is
+    // not yet known to be a Genesis. Drained whenever new merit data
+    // arrives, since the signer's status may have just been confirmed.
+    let _pendingResultEvents = [];   // [event]
+    const PENDING_RESULT_CAP = 200;
+    let _resultDrainHooked = false;
+    let _drainingResults = false;
+
     // ── Storage Keys ────────────────────────────────────────
     const STORAGE_KEY           = 'lbw_governance_proposals';
     const VOTES_STORAGE_KEY     = 'lbw_governance_myvotes';
@@ -464,33 +472,98 @@ const LBW_Governance = (() => {
         _resultSub = LBW_Nostr.subscribe(
             { kinds: [KIND.RESULT], '#t': ['lbw-governance'], limit: 200 },
             (event) => {
-                const result = _parseResult(event);
-                if (!result) return;
-
-                // Keep first received result per proposal (deterministic)
-                const existing = _results.get(result.dTag);
-                if (existing) return;
-
-                _results.set(result.dTag, result);
-                _persistResults();
-
-                // Update proposal status
-                const proposal = _proposals.get(result.dTag);
-                if (proposal) {
-                    proposal.status = result.approved ? 'approved' :
-                                     (result.quorum_met === false ? 'quorum_failed' : 'rejected');
-                    _persistToStorage();
-                }
-
-                _onResultCallbacks.forEach(cb => { try { cb(result); } catch (e) {} });
-                _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'result'); } catch (e) {} });
-
-                // Auto-claim voting merits for current user
-                _autoClaimVotingMerits(result.dTag, result);
-
-                console.log(`[Governance] 📊 Resultado recibido: ${result.dTag} → ${result.approved ? 'APROBADA' : result.quorum_met === false ? 'SIN QUORUM' : 'RECHAZADA'}`);
+                // [SEC-23] Result events must come from a Genesis signer.
+                _validateAndProcessResultEvent(event);
             }
         );
+        _hookResultDrainOnMerits();
+    }
+
+    // [SEC-23] Validate and process a result event.
+    // The event signer (event.pubkey, already verified by verifyEvent)
+    // must be Genesis (≥3000 merits). Without this check, anyone could
+    // forge a kind:31010 announcing a fake outcome and the first one
+    // received would win the cache.
+    function _validateAndProcessResultEvent(event) {
+        if (!event || !event.pubkey) return;
+
+        // Trust check on the SIGNER, not on the JSON `calculatedBy` field
+        // (which is attacker-controllable).
+        let issuerTotal = 0;
+        if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getUserMerits) {
+            const issuerData = LBW_Merits.getUserMerits(event.pubkey);
+            issuerTotal = issuerData ? issuerData.total : 0;
+        }
+
+        if (issuerTotal < 3000) {
+            // Issuer status unknown or insufficient — park for later.
+            // Their merits may simply not have arrived from the relay yet.
+            if (_pendingResultEvents.length < PENDING_RESULT_CAP) {
+                _pendingResultEvents.push(event);
+            } else {
+                console.warn('[SEC-23] Pending result buffer full — dropping result from',
+                    event.pubkey.substring(0, 12));
+            }
+            return;
+        }
+
+        const result = _parseResult(event);
+        if (!result) return;
+
+        // Keep first received valid result per proposal (deterministic)
+        const existing = _results.get(result.dTag);
+        if (existing) return;
+
+        _results.set(result.dTag, result);
+        _persistResults();
+
+        // Update proposal status
+        const proposal = _proposals.get(result.dTag);
+        if (proposal) {
+            proposal.status = result.approved ? 'approved' :
+                             (result.quorum_met === false ? 'quorum_failed' : 'rejected');
+            _persistToStorage();
+        }
+
+        _onResultCallbacks.forEach(cb => { try { cb(result); } catch (e) {} });
+        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'result'); } catch (e) {} });
+
+        // Auto-claim voting merits for current user
+        _autoClaimVotingMerits(result.dTag, result);
+
+        console.log(`[Governance] 📊 Resultado recibido: ${result.dTag} → ${result.approved ? 'APROBADA' : result.quorum_met === false ? 'SIN QUORUM' : 'RECHAZADA'}`);
+    }
+
+    // [SEC-23] Re-evaluate parked result events. Called whenever a new
+    // merit award arrives, since the signer of a parked result may have
+    // just crossed the Genesis threshold.
+    function _drainPendingResults() {
+        if (_drainingResults) return;
+        _drainingResults = true;
+        try {
+            const queue = _pendingResultEvents;
+            _pendingResultEvents = [];
+            for (const event of queue) {
+                _validateAndProcessResultEvent(event);
+            }
+        } finally {
+            _drainingResults = false;
+        }
+    }
+
+    // [SEC-23] Hook the merit subscription so that, when new merit
+    // events arrive, we re-check parked results. Idempotent — runs once.
+    function _hookResultDrainOnMerits() {
+        if (_resultDrainHooked) return;
+        if (typeof LBW_Merits === 'undefined' || !LBW_Merits.subscribeMerits) return;
+        try {
+            LBW_Merits.subscribeMerits(() => {
+                if (_pendingResultEvents.length > 0) _drainPendingResults();
+            });
+            _resultDrainHooked = true;
+        } catch (e) {
+            console.warn('[SEC-23] Could not hook merit drain:', e.message);
+        }
     }
 
     // ── Subscribe Execution Events (kind 31011 + 31012) ──────
