@@ -1,24 +1,38 @@
 # LiberBit World
 
-**Plataforma descentralizada de gobernanza y comunidad para ciudades privadas soberanas.**
+**La red soberana de quienes no están dispuestos a ceder.**
 
-LiberBit World es una aplicación web construida sobre el protocolo Nostr y la red Bitcoin/Lightning, donde los ciudadanos se identifican, contribuyen y participan en la gobernanza de comunidades con economías basadas en Bitcoin.
+LiberBit World es una comunidad digital y física para personas que defienden su libertad, su privacidad, su propiedad y su derecho a la libre expresión — sin censuras, sin intermediarios, sin permisos.
 
-> "Una red de ciudades libres, con identidad digital soberana, gobernanza por méritos y economía Bitcoin."
+> *"La libertad no se pide, se construye."*
 
 ---
 
 ## ¿Qué es LiberBit World?
 
-LiberBit World implementa el concepto de **network state**: comunidades privadas con reglas propias, economía interna en Bitcoin y un sistema de ciudadanía progresivo basado en méritos. La primera ciudad fundacional es **IberAtlas**, ubicada en la Península Ibérica.
+LiberBit World es la capa digital del ecosistema LiberBit: una red soberana que conecta a libertarios, anarcocapitalistas, minarquistas y cualquier persona que entienda que la soberanía individual no es negociable.
 
-La plataforma permite a sus ciudadanos:
+La plataforma ofrece infraestructura descentralizada para organizarse, comunicarse y actuar — sin depender de corporaciones, Estados ni intermediarios:
 
-- Autenticarse con identidad Nostr (sin usuarios ni contraseñas)
-- Acumular méritos por contribuciones reales a la comunidad
-- Progresar por niveles de ciudadanía (Visitante → Fundador)
-- Crear y debatir propuestas de gobernanza
-- Realizar aportaciones en Bitcoin vía Lightning Network
+- **Identidad soberana** — sin usuarios ni contraseñas, sin rastreo, sin datos cedidos
+- **Comunicación cifrada** — mensajes de extremo a extremo que nadie puede leer ni censurar
+- **Gobernanza real** — propuestas, debate y votaciones con peso basado en contribución
+- **Economía libre** — transacciones directas en Bitcoin vía Lightning, sin bancos
+- **Libre expresión** — sin shadowban, sin moderación política, sin censura
+
+La capa física del ecosistema es **LiberBit City**: una red de ciudades soberanas en desarrollo, con **LiberAtlas** como proyecto fundacional en la Península Ibérica.
+
+---
+
+## Los cinco pilares
+
+| Pilar | Descripción |
+|-------|-------------|
+| 🔓 **Libertad** | Nadie te dice qué puedes pensar, decir o hacer |
+| 🔒 **Privacidad** | Tus datos, tus comunicaciones, tu identidad son tuyas |
+| 🏠 **Propiedad** | Lo que es tuyo no puede ser confiscado ni inflado |
+| 🗣️ **Libre Expresión** | Sin censura, sin shadowban, sin moderación política |
+| 🛡️ **Seguridad** | Sin depender del Estado ni de terceros |
 
 ---
 
@@ -28,7 +42,7 @@ La plataforma permite a sus ciudadanos:
 |------|-----------|
 | Frontend | Vanilla JavaScript SPA |
 | Identidad | Nostr (NIP-01, NIP-44, NIP-07) |
-| Mensajería | NIP-44 (mensajes cifrados de extremo a extremo) |
+| Mensajería | NIP-44 (cifrado de extremo a extremo) |
 | Relay | Relay Nostr privado |
 | Base de datos | Supabase (caché e índices) |
 | Pagos | Lightning Network (Lightning Address) |
@@ -66,14 +80,14 @@ LiberBit World tiene 6 niveles de ciudadanía basados en méritos acumulados:
 | 🪪 E-Residency | 100+ | Comunidad |
 | 🤝 Colaborador | 500+ | Comunidad |
 | 🛂 Ciudadano Senior | 1.000+ | Ciudadanía |
-| 🌍 Embajador | 2.000+ | Ciudadanía |
-| 👑 Gobernador | 3.000+ | Gobernanza |
+| 🌍 Custodio | 2.000+ | Ciudadanía |
+| 👑 Génesis | 3.000+ | Gobernanza |
 
-El sistema de votación está estructurado en 3 bloques: Gobernanza (51%), Ciudadanía (29%) y Comunidad (20%), con un cap máximo de 3.000 méritos de voto para Gobernadores.
+El sistema de votación está estructurado en 3 bloques: Gobernanza (51%), Ciudadanía (29%) y Comunidad (20%).
 
 Los méritos se acumulan en 4 categorías:
 
-- **Económica Definitiva** (peso 1.0) — aportaciones económicas al ecosistema
+- **Económica** (peso 1.0) — aportaciones económicas al ecosistema
 - **Productiva** (peso 1.0) — contribuciones de trabajo y producción
 - **Responsabilidad** (peso 1.2) — requiere 1.000+ méritos en otras categorías
 - **Financiada** (peso 0.6) — actividad financiada por la comunidad
@@ -154,9 +168,11 @@ Usamos [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Filosofía del proyecto
 
-LiberBit World nace de la convicción de que Bitcoin no es solo dinero: es la infraestructura para construir comunidades soberanas, con reglas propias, sin depender de Estados ni corporaciones. El protocolo Nostr aporta la identidad descentralizada que completa ese ecosistema.
+LiberBit nace de la convicción de que la soberanía individual no se negocia — ni se delega. Ni al Estado, ni a las corporaciones, ni a ningún intermediario.
 
-Este proyecto está dirigido a quienes creen que la tecnología puede devolver la soberanía individual y colectiva a las personas.
+La tecnología descentralizada (Bitcoin, Nostr, Lightning) es la infraestructura que hace posible lo que antes era imposible: comunidades con identidad propia, economía interna libre y gobernanza real, sin depender de nadie externo.
+
+LiberBit World propone, nunca impone.
 
 ---
 
@@ -169,5 +185,6 @@ MIT — consulta el archivo [LICENSE](./LICENSE) para más detalles.
 ## Contacto y comunidad
 
 - Web: [liberbitworld.org](https://liberbitworld.org)
+- Telegram: [t.me/LiberBitWorld](https://t.me/LiberBitWorld)
 - Nostr: búscanos en el relay `relay.liberbitworld.org`
 - Marketing: [liberbitworld.com](https://liberbitworld.com)
