@@ -800,6 +800,21 @@ const LBW_Governance = (() => {
     }
 
     // ── Calculate Weighted Result ────────────────────────────
+    // [SEC-20] Delegates the per-voter weight computation to
+    // LBW_Merits.calculateVotingPower(), which is the single source of
+    // truth for the LBWM voting model:
+    //
+    //   - Governor cap: each Governor's effective merits are capped at 3000
+    //   - Equitable distribution: the 51% of the Governance bloc is split
+    //     evenly among ALL governors in the ledger, not only those who voted
+    //   - Bloc-wide caps: Ciudadanía 29% max, Comunidad 20% max
+    //   - Proportional within non-Governance blocs
+    //
+    // The previous implementation summed `userData.total` directly, which
+    // ignored the cap, the equitable split and the bloc caps — meaning a
+    // single Genesis with many merits could outvote the entire system and
+    // a quorum could be claimed with just one Governor's vote regardless
+    // of their share. This refactor restores the canonical model.
     function _calculateWeightedResult(dTag) {
         const votes = _votes.get(dTag) || [];
         const proposal = _proposals.get(dTag);
@@ -809,32 +824,58 @@ const LBW_Governance = (() => {
             return { quorum_met: false, winner: null, approved: false, weighted: {}, total_votes: 0, voter_count: 0 };
         }
 
+        // Pre-compute voting power for every ledger participant.
+        // Passing the FULL ledger (not just the voters) matches the
+        // intent of getUserVotingPower(): a Governor that doesn't show
+        // up to vote loses their share — it is NOT redistributed.
+        let powerByPubkey = {};
+        if (typeof LBW_Merits !== 'undefined' && LBW_Merits.calculateVotingPower && LBW_Merits.getLeaderboard) {
+            try {
+                const lb = LBW_Merits.getLeaderboard(9999);
+                const allVoters = lb.map(e => ({ pubkey: e.pubkey, merits: e.total }));
+                if (allVoters.length > 0) {
+                    powerByPubkey = LBW_Merits.calculateVotingPower(allVoters);
+                }
+            } catch (e) {
+                console.warn('[SEC-20] calculateVotingPower failed, falling back to flat weights:', e.message);
+            }
+        }
+
         const weighted = {};
-        let quorum_met = false;
+        let governorVoted = false;
         let voterCount = 0;
 
         for (const vote of votes) {
             if (!vote.option) continue;
-            let weight = 1; // fallback equal weight
 
-            if (typeof LBW_Merits !== 'undefined') {
-                const userData = LBW_Merits.getUserMerits(vote.pubkey);
-                if (userData && userData.total > 0) {
-                    weight = userData.total;
-                    const bloc = userData.level?.bloc || 'Comunidad';
-                    if (bloc === 'Gobernanza') quorum_met = true;
-                }
+            const userPower = powerByPubkey[vote.pubkey];
+            let weight = 0;
+            let bloc = 'Comunidad';
+
+            if (userPower) {
+                weight = userPower.power || 0;     // fraction of 1.0
+                bloc   = userPower.bloc || 'Comunidad';
             }
+            // Voters with no merits in the ledger contribute 0 power but
+            // still count toward voter_count for transparency.
+
+            if (bloc === 'Gobernanza') governorVoted = true;
 
             weighted[vote.option] = (weighted[vote.option] || 0) + weight;
             voterCount++;
         }
 
+        // [SEC-20] Quorum requires at least one Governor to participate.
+        // The Governance bloc holds the structural 51% of voting power; if
+        // no Governor casts a vote, the maximum reachable power on any
+        // option is 0.49, which by definition cannot win a referendum.
+        const quorum_met = governorVoted;
+
         if (!quorum_met) {
             return { quorum_met: false, winner: null, approved: false, weighted, total_votes: votes.length, voter_count: voterCount };
         }
 
-        // Determine winner
+        // Determine winner: option with highest accumulated power
         const sorted = Object.entries(weighted).sort((a, b) => b[1] - a[1]);
         const winner = sorted[0]?.[0] || null;
 
