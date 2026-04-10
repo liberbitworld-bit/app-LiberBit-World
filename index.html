@@ -221,6 +221,14 @@
                                 <small class="text-xs opacity-60 mt-1 block">Tu clave nunca sale de tu dispositivo</small>
                             </div>
 
+                            <div class="form-group" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.75rem;">
+                                <input type="checkbox" id="rememberDevice" style="margin-top:0.2rem;flex-shrink:0;cursor:pointer;">
+                                <label for="rememberDevice" style="font-size:0.8rem;line-height:1.4;color:var(--color-text-secondary);cursor:pointer;margin:0;">
+                                    <strong style="color:var(--color-text-primary);">Recordar en este dispositivo</strong><br>
+                                    <span style="opacity:0.75;">Si lo marcas, tu clave se guardará en este navegador. Más cómodo, menos seguro. Déjalo desmarcado en ordenadores compartidos.</span>
+                                </label>
+                            </div>
+
                             <button type="button" class="btn btn-primary btn-large" id="importAccountBtn">
                                 Importar Identidad →
                             </button>
@@ -2741,9 +2749,9 @@
 
 
     <!-- JavaScript Modules -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=apr10"></script>
-    <script src="js/auth.js?v=apr10"></script>
-    <script src="js/ui.js?v=apr10"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/config.js?v=apr10b"></script>
+    <script src="js/auth.js?v=apr10b"></script>
+    <script src="js/ui.js?v=apr10b"></script>
     <!-- SOS Functions -->
     <script>
         function selectSOSType(type) {
@@ -2755,38 +2763,38 @@
         }
     </script>
 
-    <script src="js/posts.js?v=apr10"></script>
-    <script src="js/marketplace.js?v=apr10"></script>
-    <script src="js/p2p-exchange.js?v=apr10"></script>
-    <script src="js/notifications.js?v=apr10"></script>
-    <script src="js/chat.js?v=apr10"></script>
+    <script src="js/posts.js?v=apr10b"></script>
+    <script src="js/marketplace.js?v=apr10b"></script>
+    <script src="js/p2p-exchange.js?v=apr10b"></script>
+    <script src="js/notifications.js?v=apr10b"></script>
+    <script src="js/chat.js?v=apr10b"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="js/lightning.js?v=apr10"></script>
-    <script src="js/governance.js?v=apr10"></script>
-    <script src="js/profile.js?v=apr10"></script>
-    <script src="js/wallet.js?v=apr10"></script>
+    <script src="js/lightning.js?v=apr10b"></script>
+    <script src="js/governance.js?v=apr10b"></script>
+    <script src="js/profile.js?v=apr10b"></script>
+    <script src="js/wallet.js?v=apr10b"></script>
 
     <!-- Nostr Integration Layer: debe cargarse ANTES que los modulos UI que dependen de el -->
-    <script src="js/nostr-store.js?v=apr10"></script>
-    <script src="js/nostr-media.js?v=apr10"></script>
-    <script src="js/chat-attachments.js?v=apr10"></script>
-    <script src="js/nostr.js?v=apr10"></script>
-    <script src="js/nostr-dm.js?v=apr10"></script>
-    <script src="js/nostr-sync.js?v=apr10"></script>
-    <script src="js/nostr-governance.js?v=apr10"></script>
-    <script src="js/nostr-merits.js?v=apr10"></script>
+    <script src="js/nostr-store.js?v=apr10b"></script>
+    <script src="js/nostr-media.js?v=apr10b"></script>
+    <script src="js/chat-attachments.js?v=apr10b"></script>
+    <script src="js/nostr.js?v=apr10b"></script>
+    <script src="js/nostr-dm.js?v=apr10b"></script>
+    <script src="js/nostr-sync.js?v=apr10b"></script>
+    <script src="js/nostr-governance.js?v=apr10b"></script>
+    <script src="js/nostr-merits.js?v=apr10b"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
-    <script src="js/merits.js?v=apr10"></script>
+    <script src="js/merits.js?v=apr10b"></script>
     <!-- supabase-merits-sync: sincroniza merit events Nostr → Supabase -->
-    <script src="js/supabase-merits-sync.js?v=apr10"></script>
-    <script src="js/nostr-reviews.js?v=apr10"></script>
-    <script src="js/nostr-marketplace-pay.js?v=apr10"></script>
-    <script src="js/nostr-stalls.js?v=apr10"></script>
-    <script src="js/nostr-bridge.js?v=apr10"></script>
-    <script src="js/debate.js?v=apr10"></script>
-    <script src="js/avatar-fix.js?v=apr10"></script>
+    <script src="js/supabase-merits-sync.js?v=apr10b"></script>
+    <script src="js/nostr-reviews.js?v=apr10b"></script>
+    <script src="js/nostr-marketplace-pay.js?v=apr10b"></script>
+    <script src="js/nostr-stalls.js?v=apr10b"></script>
+    <script src="js/nostr-bridge.js?v=apr10b"></script>
+    <script src="js/debate.js?v=apr10b"></script>
+    <script src="js/avatar-fix.js?v=apr10b"></script>
     <!-- Missions system (Merit Bounties) -->
-    <script src="js/missions.js?v=apr10"></script>
+    <script src="js/missions.js?v=apr10b"></script>
 
     <!-- Emoji Picker -->
     <style>
@@ -3105,10 +3113,12 @@
                 // Clean invisible chars (zero-width spaces, BOM, etc.) from copy-paste
                 input = input.replace(/[\s\u200B\u200C\u200D\uFEFF\u00A0]/g, '');
                 if (!input) { alert('Introduce tu clave privada (nsec1... o hex)'); return; }
+                // [bug 21] Read "remember on device" checkbox state. Default unchecked = sessionStorage only.
+                const remember = document.getElementById('rememberDevice')?.checked === true;
                 try {
                     importBtn.disabled = true;
                     importBtn.textContent = '⏳ Conectando y resolviendo perfil...';
-                    const result = await LBW_NostrBridge.handlePrivateKeyLogin(input);
+                    const result = await LBW_NostrBridge.handlePrivateKeyLogin(input, remember);
                     console.log('[Auth] ✅ Login Nostr con nsec:', result.npub);
                     // Close auth modal and show main menu
                     if (typeof closeAuthModal === 'function') closeAuthModal();
