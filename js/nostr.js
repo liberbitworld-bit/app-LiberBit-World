@@ -1433,7 +1433,9 @@ const LBW_Nostr = (() => {
         isUsingExtension, isLoggedIn, getEventKinds,
         // Pool / relay access for NIP-15 stalls module
         getPool: () => _getPool(),
-        getReadRelays: () => [..._getUserReadRelays()]
+        getReadRelays: () => [..._getUserReadRelays()],
+        // [bug 19] Expose event validator for modules that subscribe directly via getPool()
+        validateIncomingEvent: (event, relayUrl) => _validateIncomingEvent(event, relayUrl || 'external')
     };
 })();
 
