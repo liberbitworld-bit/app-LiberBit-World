@@ -3,6 +3,19 @@
 // Zero Supabase dependencies
 // [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, Génesis verification
 
+// [bug 16] Safe JSON parse from localStorage. Returns fallback on null/corrupt data.
+function _safeParseLS(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null || raw === undefined) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed === null ? fallback : parsed;
+    } catch (e) {
+        console.warn(`[merits] localStorage[${key}] corrupt, using fallback:`, e.message);
+        return fallback;
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LEGACY MIGRATION — liberbit_contributions localStorage → Nostr
 // Ejecuta una sola vez por usuario. Elimina el localStorage tras migrar.
@@ -538,7 +551,7 @@ function _loadLedgerDataLegacy() {
     // Legacy fallback: solo lectura, sin escritura. Se eliminará tras confirmar migración completa.
     const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
         ? []
-        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
+        : _safeParseLS('liberbit_contributions', []);
     const allContribs = [...myContribs.map(c => ({
         id: c.id,
         applicant_name: c.npub ? c.npub.substring(0, 12) + '...' : 'Tú',
@@ -965,7 +978,7 @@ async function rejectDeposit(contribId) {
         // Publish rejection as a kind 31003 status-update event on Nostr
         // so it's verifiable, auditable, and notifies the contributor via relay
         await LBW_Nostr.publishEvent({
-            kind: 31003,
+            kind: LBW_Nostr.EVENT_KINDS.LBW_CONTRIB,
             content: JSON.stringify({
                 action: 'reject',
                 reason: 'No verificado por Génesis',
@@ -1008,7 +1021,7 @@ function loadMyContributions() {
     // Legacy fallback: solo lectura. Se eliminará tras confirmar migración completa.
     const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
         ? []
-        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]').filter(c => c.applicant_public_key === pubKey);
+        : _safeParseLS('liberbit_contributions', []).filter(c => c.applicant_public_key === pubKey);
 
     const allMyContribs = [
         ...myContribs.map(c => ({
