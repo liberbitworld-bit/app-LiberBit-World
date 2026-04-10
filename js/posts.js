@@ -1,8 +1,21 @@
 let currentReplyTo = null; // { id, author, content }
 
+// [bug 16] Safe JSON parse from localStorage. Returns fallback on null/corrupt data.
+function _safeParseLS(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null || raw === undefined) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed === null ? fallback : parsed;
+    } catch (e) {
+        console.warn(`[posts] localStorage[${key}] corrupt, using fallback:`, e.message);
+        return fallback;
+    }
+}
+
 // Reply mappings stored locally (postId -> { reply_to_id, reply_to_author, reply_to_content })
 function getReplyMappings() {
-    return JSON.parse(localStorage.getItem('liberbit_reply_mappings') || '{}');
+    return _safeParseLS('liberbit_reply_mappings', {});
 }
 
 function saveReplyMapping(postId, replyData) {
