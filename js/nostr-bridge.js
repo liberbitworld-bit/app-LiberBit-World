@@ -202,23 +202,17 @@ const LBW_NostrBridge = (() => {
         }
     }
 
-    async function handlePrivateKeyLogin(input, remember = false) {
+    async function handlePrivateKeyLogin(input) {
         const result = LBW_Nostr.loginWithPrivateKey(input);
         const session = {
             pubkey: result.pubkeyHex, npub: result.npub,
             name: '', picture: '', method: 'nsec', loginTime: Date.now()
         };
-        // [bug 21] Storage policy: sessionStorage always (this tab), localStorage only if user opted in.
-        // Importing an existing nsec implies the user already has a backup copy elsewhere — default
-        // is NOT to persist across tabs. User can opt in via "Recordar en este dispositivo" checkbox.
-        try {
-            sessionStorage.setItem('lbw_nsec_session', input);
-            if (remember) {
-                localStorage.setItem('lbw_nsec_persist', input);
-            } else {
-                // Honor opt-out: clear any previous persistent copy.
-                localStorage.removeItem('lbw_nsec_persist');
-            }
+        // Store nsec in localStorage for persistence across tab close/reopen
+        // Also keep in sessionStorage for backward compatibility
+        try { 
+            localStorage.setItem('lbw_nsec_persist', input);
+            sessionStorage.setItem('lbw_nsec_session', input); 
         } catch (e) {}
 
         // ══ CRITICAL: Reset currentUser COMPLETELY for new login ══
@@ -437,22 +431,15 @@ const LBW_NostrBridge = (() => {
         return result;
     }
 
-    async function handleCreateIdentity(name, remember = true) {
+    async function handleCreateIdentity(name) {
         const result = await LBW_Nostr.createIdentity(name);
         const session = {
             pubkey: result.pubkeyHex, npub: result.npub,
             name, method: 'created', loginTime: Date.now()
         };
-        // [bug 21] Default for new identities is to persist — the user has not yet copied the nsec
-        // anywhere, so non-persistence here would mean loss of identity on tab close. The keysDisplay
-        // panel below will warn them to back it up immediately.
-        try {
-            sessionStorage.setItem('lbw_nsec_session', result.nsec);
-            if (remember) {
-                localStorage.setItem('lbw_nsec_persist', result.nsec);
-            } else {
-                localStorage.removeItem('lbw_nsec_persist');
-            }
+        try { 
+            localStorage.setItem('lbw_nsec_persist', result.nsec);
+            sessionStorage.setItem('lbw_nsec_session', result.nsec); 
         } catch (e) {}
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
 
@@ -723,11 +710,26 @@ const LBW_NostrBridge = (() => {
             await startCommunityChat();
         } catch (e) { console.error('[Bridge] ❌ Community chat failed:', e); }
         try {
-            await startDirectMessages();
-        } catch (e) { console.error('[Bridge] ❌ DMs failed:', e); }
-        try {
             await startMarketplace();
         } catch (e) { console.error('[Bridge] ❌ Marketplace failed:', e); }
+
+        // ── Esperar a que un private relay esté conectado antes de abrir las
+        //    suscripciones a PRIVATE_KINDS (DMs, gobernanza, méritos). Sin esto
+        //    se produce una race condition: las subs se abren contra los
+        //    fallbacks públicos en los primeros 1-3s del bootstrap y quedan
+        //    pinned ahí aunque los privados conecten poco después.
+        try {
+            const ok = await LBW_Nostr.waitForPrivateRelay(5000);
+            if (ok) {
+                console.log('[Bridge] ✅ Private relay listo, abriendo subs privadas');
+            } else {
+                console.warn('[Bridge] ⚠️ Ningún private relay disponible tras 5s, continuando con fallback público');
+            }
+        } catch (e) { console.error('[Bridge] waitForPrivateRelay error:', e); }
+
+        try {
+            await startDirectMessages();
+        } catch (e) { console.error('[Bridge] ❌ DMs failed:', e); }
         try {
             await startGovernance();
         } catch (e) { console.error('[Bridge] ❌ Governance failed:', e); }
