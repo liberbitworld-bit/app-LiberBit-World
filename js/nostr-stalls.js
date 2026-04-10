@@ -241,6 +241,8 @@
             { kinds: [KIND_STALL], '#t': [LBW_TAG], limit: 50 }
         ], {
             onevent: (event) => {
+                // [bug 19] Verificar firma + estructura antes de procesar
+                if (LBW_Nostr.validateIncomingEvent && !LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
                 const stall = _parseStall(event);
                 if (stall) {
                     _upsertStall(stall);
@@ -258,6 +260,8 @@
             { kinds: [KIND_PRODUCT], '#t': [LBW_TAG], limit: 200 }
         ], {
             onevent: (event) => {
+                // [bug 19] Verificar firma + estructura antes de procesar
+                if (LBW_Nostr.validateIncomingEvent && !LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
                 const product = _parseProduct(event);
                 if (product) _upsertProduct(product);
             }
