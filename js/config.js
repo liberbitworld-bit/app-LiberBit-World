@@ -9,6 +9,38 @@
  *   → se convierte en una petición POST al proxy
  */
 
+// ═══════════════════════════════════════════════════════════════
+// [bug 17] Silenciador de console.log en producción
+// ─────────────────────────────────────────────────────────────
+// En producción los ~167 console.log de la app generan ruido y
+// pueden filtrar info útil para un atacante (estructura interna,
+// IDs de eventos, pubkeys parciales, errores de red...). Los
+// silenciamos en prod, conservando warn/error/info para que los
+// problemas reales sigan visibles.
+//
+// Reactivar logs en producción sin redesplegar:
+//   localStorage.setItem('lbw_debug', '1'); location.reload();
+// O bien añadir ?debug=1 a la URL.
+// ═══════════════════════════════════════════════════════════════
+(function _installLogSilencer() {
+    try {
+        const host = window.location.hostname;
+        const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+        const debugParam = new URLSearchParams(window.location.search).get('debug') === '1';
+        let debugLS = false;
+        try { debugLS = localStorage.getItem('lbw_debug') === '1'; } catch (e) {}
+        const verbose = isLocal || debugParam || debugLS;
+        if (!verbose) {
+            const noop = function () {};
+            // Silenciar solo log/debug. Preservar warn/error/info/trace.
+            console.log = noop;
+            console.debug = noop;
+        }
+    } catch (e) {
+        // Si algo falla, dejamos console intacto.
+    }
+})();
+
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
     : 'https://liberbit-api.vercel.app/api';  // ← CAMBIAR por tu URL de Vercel
