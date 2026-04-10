@@ -168,19 +168,63 @@
         return event;
     }
 
-    // ── Eliminar (kind:5) ─────────────────────────────────────
+    // ── Eliminar (kind:5, NIP-09 addressable) ─────────────────
+    // [bug 14] Stalls (30017) y productos (30018) son eventos addressable (NIP-33).
+    // Hay que borrarlos con un tag `a` (kind:pubkey:dTag) y un tag `k` (NIP-09 ≥2024),
+    // no con `e` (que solo invalida una revisión específica). Mantenemos `e` por
+    // compatibilidad con relays/clientes que aún lo honran.
     async function deleteStall(stallId) {
-        await LBW_Nostr.publishEvent({ kind: 5, content: 'Tienda eliminada', tags: [['e', stallId]] });
+        const stall = _stalls.find(s => s.id === stallId);
+        if (!stall) throw new Error('Tienda no encontrada en estado local');
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('No has iniciado sesión');
+        if (stall.pubkey !== LBW_Nostr.getPubkey()) {
+            throw new Error('No puedes borrar una tienda que no es tuya');
+        }
+        if (!stall.dTag) throw new Error('Tienda sin dTag — no es addressable');
+
+        await LBW_Nostr.publishEvent({
+            kind: 5,
+            content: 'Tienda eliminada',
+            tags: [
+                ['a', `${KIND_STALL}:${stall.pubkey}:${stall.dTag}`],
+                ['k', String(KIND_STALL)],
+                ['e', stallId]
+            ]
+        });
         _stalls = _stalls.filter(s => s.id !== stallId);
-        console.log('[Stalls] 🗑️ Tienda eliminada:', stallId.substring(0, 8));
+        // Limpiar también los productos asociados a esa tienda en estado local
+        const stallKey = _stallKey(stall.pubkey, stall.dTag);
+        delete _products[stallKey];
+        console.log('[Stalls] 🗑️ Tienda eliminada (NIP-09 addressable):', stall.dTag);
     }
 
     async function deleteProduct(productId) {
-        await LBW_Nostr.publishEvent({ kind: 5, content: 'Producto eliminado', tags: [['e', productId]] });
+        let product = null;
+        let stallKey = null;
         for (const key of Object.keys(_products)) {
-            _products[key] = _products[key].filter(p => p.id !== productId);
+            const found = _products[key].find(p => p.id === productId);
+            if (found) { product = found; stallKey = key; break; }
         }
-        console.log('[Stalls] 🗑️ Producto eliminado:', productId.substring(0, 8));
+        if (!product) throw new Error('Producto no encontrado en estado local');
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('No has iniciado sesión');
+        if (product.pubkey !== LBW_Nostr.getPubkey()) {
+            throw new Error('No puedes borrar un producto que no es tuyo');
+        }
+        if (!product.dTag) throw new Error('Producto sin dTag — no es addressable');
+
+        await LBW_Nostr.publishEvent({
+            kind: 5,
+            content: 'Producto eliminado',
+            tags: [
+                ['a', `${KIND_PRODUCT}:${product.pubkey}:${product.dTag}`],
+                ['k', String(KIND_PRODUCT)],
+                ['e', productId]
+            ]
+        });
+        if (stallKey && _products[stallKey]) {
+            _products[stallKey] = _products[stallKey].filter(p => p.id !== productId);
+        }
+        console.log('[Stalls] 🗑️ Producto eliminado (NIP-09 addressable):', product.dTag);
     }
 
     // ── Acceso a datos ────────────────────────────────────────
