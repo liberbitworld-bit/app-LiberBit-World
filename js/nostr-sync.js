@@ -226,7 +226,7 @@ const LBW_Sync = (() => {
     // ── Convenience: Synced Community Chat ───────────────────
     async function syncCommunityChat(onMessage, onHydrated = null) {
         return syncedSubscribe('community-chat', {
-            kind: 1,
+            kind: LBW_Nostr.EVENT_KINDS.TEXT_NOTE,
             filters: { '#t': ['liberbit', 'lbw'] },
             tagFilter: { t: ['liberbit', 'lbw'] },
             onEvent: (event, source) => {
@@ -252,7 +252,7 @@ const LBW_Sync = (() => {
     // ── Convenience: Synced Marketplace ──────────────────────
     async function syncMarketplace(onListing, onHydrated = null) {
         return syncedSubscribe('marketplace', {
-            kind: 30402,
+            kind: LBW_Nostr.EVENT_KINDS.MARKETPLACE,
             filters: { '#t': ['liberbit-market'] },
             tagFilter: { t: ['liberbit-market'] },
             onEvent: (event, source) => {
@@ -326,7 +326,7 @@ const LBW_Sync = (() => {
 
         _feeds['direct-messages'] = {
             sub: subs,
-            kind: 4,
+            kind: LBW_Nostr.EVENT_KINDS.ENCRYPTED_DM,
             cursorKey,
             active: true,
             // Special: compound sub (subIn + subOut)
