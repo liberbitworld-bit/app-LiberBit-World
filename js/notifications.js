@@ -3,6 +3,19 @@
 let allNotifications = [];
 let currentNotificationFilter = 'all';
 
+// [bug 16] Safe JSON parse from localStorage. Returns fallback on null/corrupt data.
+function _safeParseLS(key, fallback) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null || raw === undefined) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed === null ? fallback : parsed;
+    } catch (e) {
+        console.warn(`[notifications] localStorage[${key}] corrupt, using fallback:`, e.message);
+        return fallback;
+    }
+}
+
 function openNotificationCenter() {
     document.getElementById('notificationModal').classList.add('active');
     loadAllNotifications().then(() => {
@@ -216,7 +229,7 @@ async function loadAllNotifications() {
         }
 
         // ── 7. Notificaciones de meritos desde localStorage (legado) ─────────
-        const meritNotifs = JSON.parse(localStorage.getItem('merit_notifications') || '[]');
+        const meritNotifs = _safeParseLS('merit_notifications', []);
         meritNotifs.forEach(notif => {
             if (!notif.read && !dismissed.has('merit_' + notif.id)) {
                 allNotifications.push({
@@ -351,7 +364,7 @@ function _findNotifById(escapedId) {
 function _dismissById(escapedId) {
     const notif = _findNotifById(escapedId);
     if (!notif) return null;
-    const dismissed = JSON.parse(localStorage.getItem('dismissed_notifications') || '[]');
+    const dismissed = _safeParseLS('dismissed_notifications', []);
     dismissed.push(String(notif.id));
     if (dismissed.length > 500) dismissed.splice(0, dismissed.length - 500);
     localStorage.setItem('dismissed_notifications', JSON.stringify(dismissed));
@@ -387,7 +400,7 @@ function dismissNotification(index) {
 }
 
 function getDismissedNotifications() {
-    return new Set(JSON.parse(localStorage.getItem('dismissed_notifications') || '[]'));
+    return new Set(_safeParseLS('dismissed_notifications', []));
 }
 
 function getFilteredNotifications() {
