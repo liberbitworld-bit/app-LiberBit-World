@@ -221,7 +221,7 @@ async function appendPrivateConversationsToSidebar(container) {
             const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
             
             container.innerHTML += `
-                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${conv.pubkey}', '${escapeHtml(name)}')">
+                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${escapeHtml(conv.pubkey)}', '${escapeHtml(name)}')">
                     ${avatarHtml}
                     <div class="sidebar-conv-info">
                         <div class="sidebar-conv-name">${escapeHtml(name)}</div>
@@ -420,12 +420,13 @@ async function searchChatUsers(query) {
         resultsContainer.innerHTML = users.map(user => {
             const initial = (user.name || '?').charAt(0).toUpperCase();
             const truncatedKey = user.public_key.substring(0, 12) + '...';
-            const avatarHtml = user.avatar_url 
-                ? `<img src="${user.avatar_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0;">`
+            const safeAvatarUrl = (user.avatar_url && /^https?:\/\//i.test(user.avatar_url)) ? user.avatar_url : '';
+            const avatarHtml = safeAvatarUrl 
+                ? `<img src="${escapeHtml(safeAvatarUrl)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0;">`
                 : `<div style="width:32px; height:32px; border-radius:50%; background:var(--color-teal-dark); display:flex; align-items:center; justify-content:center; color:var(--color-gold); font-weight:700; font-size:0.9rem; flex-shrink:0;">${initial}</div>`;
             
             return `
-                <div onclick="startChatFromSearch('${user.public_key}', '${escapeHtml(user.name || 'Usuario')}')" style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem; border-radius:8px; cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(229,185,92,0.1)'" onmouseout="this.style.background='none'">
+                <div onclick="startChatFromSearch('${escapeHtml(user.public_key)}', '${escapeHtml(user.name || 'Usuario')}')" style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem; border-radius:8px; cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(229,185,92,0.1)'" onmouseout="this.style.background='none'">
                     ${avatarHtml}
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:0.85rem; font-weight:600; color:var(--color-text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(user.name || 'Usuario')}</div>
@@ -675,7 +676,7 @@ async function _renderDebateMessage(msg, msgMap) {
         let parentAuthor = parent.pubkey.substring(0, 8) + '...';
         const preview = (parent.content || '').substring(0, 60) + (parent.content.length > 60 ? '…' : '');
         replyBlock = `
-            <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" onclick="_scrollToDebateMessage('${msg.replyTo}')">
+            <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" onclick="_scrollToDebateMessage('${escapeHtml(msg.replyTo)}')">
                 <span style="color:var(--color-gold); font-weight:600;">↩ ${escapeHtml(parentAuthor)}</span>
                 <span style="margin-left:0.4rem;">${escapeHtml(preview)}</span>
             </div>`;
@@ -701,7 +702,7 @@ async function _renderDebateMessage(msg, msgMap) {
                     ${typeof LBW_ChatAttach !== 'undefined' ? LBW_ChatAttach.renderContent(msg.content) : escapeHtml(msg.content).replace(/\n/g, '<br>')}
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.25rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
-                    <button onclick="replyToDebateMessage('${msg.id}', '${escapeHtml(authorName)}')"
+                    <button onclick="replyToDebateMessage('${escapeHtml(msg.id)}', '${escapeHtml(authorName)}')"
                             style="font-size:0.65rem; color:var(--color-text-secondary); background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px; transition:all 0.2s;"
                             onmouseover="this.style.color='var(--color-gold)'" onmouseout="this.style.color='var(--color-text-secondary)'">
                         ↩ Responder
