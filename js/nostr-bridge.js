@@ -1859,7 +1859,24 @@ const LBW_NostrBridge = (() => {
 
 window.LBW_NostrBridge = LBW_NostrBridge;
 
+// [Bug 2 fix] Startup module audit: en DOMContentLoaded comprueba que todos
+// los providers LBW_X esperados estén cargados. Si falta alguno, lo loguea
+// como error claro en lugar de fallar silenciosamente más tarde.
 document.addEventListener('DOMContentLoaded', () => {
+    const expected = [
+        'LBW_Store', 'LBW_Media', 'LBW_ChatAttach', 'LBW_Nostr', 'LBW_DM',
+        'LBW_Sync', 'LBW_Governance', 'LBW_Merits', 'LBW_MeritsSync',
+        'LBW_Reviews', 'LBW_MarketPay', 'LBW_Stalls', 'LBW_NostrBridge',
+        'LBW_Debate', 'LBW_Missions'
+    ];
+    const missing = expected.filter(name => typeof window[name] === 'undefined');
+    if (missing.length) {
+        console.error('[Bridge] ❌ Módulos LBW faltantes en window:', missing);
+        console.error('[Bridge] Esto suele indicar un orden de carga incorrecto en index.html o un error de parse en el módulo.');
+    } else {
+        console.log('[Bridge] ✅ Audit OK — los 15 módulos LBW están cargados');
+    }
+
     LBW_NostrBridge.init();
     LBW_NostrBridge.restoreSession();
 });
