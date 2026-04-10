@@ -329,7 +329,7 @@ function updateProfileDisplay() {
         citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
     }
 
-    // [v2.0] Governor badge + Founder indicator
+    // [v2.0] Génesis badge + Founder indicator
     const govBadge = document.getElementById('profileGovernorBadge');
     if (govBadge) {
         if (meritData.isGovernor) {
@@ -375,7 +375,7 @@ function updateProfileDisplay() {
         `;
     }
 
-    // [v2.0] Quick access: Governor → verifications
+    // [v2.0] Quick access: Génesis → verifications
     const govQuickAccess = document.getElementById('profileGovQuickAccess');
     if (govQuickAccess) {
         if (meritData.isGovernor) {
