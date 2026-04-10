@@ -9,7 +9,7 @@
 //   - 4 categories: Económica(1.0), Productiva(1.0), Responsabilidad(1.2), Financiada(0.6)
 //   - 6 citizenship levels: Amigo → Génesis
 //   - 3 voting blocks: Gobernanza(51%), Ciudadanía(29%), Comunidad(20%)
-//   - Governor merit cap: min(total, 3000) for voting
+//   - Génesis merit cap: min(total, 3000) for voting
 //   - Responsabilidad requires 1000+ merits in other categories
 //   - LINEAR: Merit_total = Σ (wᵢ × Cᵢ)
 //
@@ -18,7 +18,7 @@
 //   - Anti-plutocracy via structural protections (citizenship levels, voting blocks)
 //   - Parameterized replaceable events (NIP-33)
 //   - PRIVATE relays only (merit data is internal)
-//   - Governor-signed snapshots for consensus
+//   - Génesis-signed snapshots for consensus
 //
 // Dependencies: nostr.js (LBW_Nostr), nostr-store.js (LBW_Store)
 // ============================================================
@@ -87,14 +87,14 @@ const LBW_Merits = (() => {
         Comunidad:   { maxPct: 0.20, type: 'proportional' }
     };
 
-    // Governor voting cap: merit_voto = min(total, 3000)
-    const GOVERNOR_MERIT_CAP = 3000;
+    // Génesis voting cap: merit_voto = min(total, 3000)
+    const GENESIS_MERIT_CAP = 3000;
 
     // ── Founder Identity ─────────────────────────────────────
     // The platform founder's npub. Used to auto-bootstrap foundational merits
     // on first login if no merit record exists yet on the relay.
     const FOUNDER_NPUB = 'npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5';
-    const FOUNDER_BOOTSTRAP_AMOUNT = 3000; // Minimum for Governor status
+    const FOUNDER_BOOTSTRAP_AMOUNT = 3000; // Minimum for Génesis status
 
     // ── Internal State ───────────────────────────────────────
     let _merits = new Map();
@@ -256,8 +256,8 @@ const LBW_Merits = (() => {
         return { ...result, dTag, meritPoints, weight };
     }
 
-    // ── Award Merit (Governor-only) ──────────────────────────
-    // [v2.1] FIXED: Added Governor validation to prevent unauthorized merit emission
+    // ── Award Merit (Génesis-only) ──────────────────────────
+    // [v2.1] FIXED: Added Génesis validation to prevent unauthorized merit emission
     async function awardMerit(recipientPubkey, amount, category, reason) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         if (!recipientPubkey) throw new Error('Destinatario requerido.');
@@ -266,7 +266,7 @@ const LBW_Merits = (() => {
 
         const pubkey = LBW_Nostr.getPubkey();
         
-        // [v2.1] CRITICAL FIX: Verify caller is a Governor (≥3000 merits)
+        // [v2.1] CRITICAL FIX: Verify caller is a Génesis (≥3000 merits)
         // Exception: Bootstrap awards (category 'fundacional') can be self-awarded for initial setup
         if (category !== 'fundacional') {
             const callerData = _merits.get(pubkey);
@@ -308,12 +308,12 @@ const LBW_Merits = (() => {
         return result;
     }
 
-    // ── Publish Snapshot (Governor-only) ─────────────────────
-    // [v2.1] FIXED: Added Governor validation
+    // ── Publish Snapshot (Génesis-only) ─────────────────────
+    // [v2.1] FIXED: Added Génesis validation
     async function publishSnapshot() {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
         
-        // [v2.1] Verify caller is Governor
+        // [v2.1] Verify caller is Génesis
         const pubkey = LBW_Nostr.getPubkey();
         const callerData = _merits.get(pubkey);
         const callerTotal = callerData ? callerData.total : 0;
@@ -936,7 +936,7 @@ const LBW_Merits = (() => {
 
     // ── Voting Power (v2.0) ──────────────────────────────────
     // 3-block system:
-    //   Gobernanza (Gobernadores): min 51%, equitable distribution
+    //   Gobernanza (Génesis): min 51%, equitable distribution
     //   Ciudadanía (Ciudadano Senior + Custodio): max 29%, proportional
     //   Comunidad (Amigo + E-Residency + Colaborador): max 20%, proportional
 
@@ -945,13 +945,13 @@ const LBW_Merits = (() => {
         for (const v of voters) {
             const level = getCitizenshipLevel(v.merits);
             const bloc = level.bloc || 'Comunidad';
-            const effectiveMerits = bloc === 'Gobernanza' ? Math.min(v.merits, GOVERNOR_MERIT_CAP) : v.merits;
+            const effectiveMerits = bloc === 'Gobernanza' ? Math.min(v.merits, GENESIS_MERIT_CAP) : v.merits;
             blocs[bloc].push({ ...v, effectiveMerits, level });
         }
 
         const results = {};
 
-        // Gobernanza: equitable (each governor gets equal share of 51%)
+        // Gobernanza: equitable (each Génesis gets equal share of 51%)
         const govCount = blocs.Gobernanza.length;
         if (govCount > 0) {
             const sharePerGov = VOTING_BLOCKS.Gobernanza.minPct / govCount;
@@ -1038,16 +1038,16 @@ const LBW_Merits = (() => {
     }
 
     // ── Bootstrap: Foundational Merit Award ──────────────────
-    // Solves the "chicken-and-egg" problem: no Governor → no one
-    // can verify economic contributions → no merits → no Governor.
+    // Solves the "chicken-and-egg" problem: no Génesis → no one
+    // can verify economic contributions → no merits → no Génesis.
     //
     // The founder gets a one-time merit award recognizing pre-launch
     // value (app development, infrastructure, system design, etc.).
     // This is auditable on the Nostr relay and visible in the ledger.
     //
-    // Phase 0: Only founder is Governor (≥3000). Verifies first deposits.
+    // Phase 0: Only founder is Génesis (≥3000). Verifies first deposits.
     // Phase 1: Early members accumulate merits. Voting begins.
-    // Phase 2: Other users reach Governor organically. Power dilutes naturally.
+    // Phase 2: Other users reach Génesis organically. Power dilutes naturally.
 
     async function bootstrapFounder(founderPubkey, amount, reason) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
@@ -1104,7 +1104,7 @@ const LBW_Merits = (() => {
         return (userData.byCategory && userData.byCategory['fundacional'] > 0);
     }
 
-    // Check if current user is Governor (≥3000 merits)
+    // Check if current user is Génesis (≥3000 merits)
     function isGovernor(pubkey) {
         const pk = pubkey || (LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '');
         const userData = _merits.get(pk);
@@ -1171,7 +1171,8 @@ const LBW_Merits = (() => {
         CATEGORIES,
         CITIZENSHIP_LEVELS,
         VOTING_BLOCKS,
-        GOVERNOR_MERIT_CAP,
+        GENESIS_MERIT_CAP,
+        GOVERNOR_MERIT_CAP: GENESIS_MERIT_CAP, // [legacy alias]
 
         // Publish
         submitContribution,
