@@ -826,4 +826,6 @@ const LBW_Missions = (function () {
     };
 })();
 
+window.LBW_Missions = LBW_Missions;
+
 console.log('✅ LBW Missions loaded');
