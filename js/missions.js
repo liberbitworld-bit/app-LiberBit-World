@@ -38,7 +38,7 @@ const LBW_Missions = (function () {
         return parseInt(el?.textContent) || 0;
     }
 
-    function _isGovernor() {
+    function _isGenesis() {
         return _myMerits() >= 3000;
     }
 
@@ -102,7 +102,7 @@ const LBW_Missions = (function () {
             min_citizenship: data.min_citizenship || 'Amigo',
             deadline: data.deadline || null,
             delivery_instructions: data.delivery_instructions || '',
-            status: _isGovernor() ? 'open' : 'pending_approval',
+            status: _isGenesis() ? 'open' : 'pending_approval',
             creator_pubkey: pubkey,
             creator_name: currentUser?.name || pubkey.substring(0, 12),
             claimed_by_pubkey: null,
@@ -186,7 +186,7 @@ const LBW_Missions = (function () {
     }
 
     async function approveMission(missionId) {
-        if (!_isGovernor()) throw new Error('Solo los Génesis pueden aprobar misiones.');
+        if (!_isGenesis()) throw new Error('Solo los Génesis pueden aprobar misiones.');
         const pubkey = _myPubkey();
 
         const mission = _missions.find(m => m.id === missionId);
@@ -236,7 +236,7 @@ const LBW_Missions = (function () {
     }
 
     async function cancelMission(missionId) {
-        if (!_isGovernor()) throw new Error('Solo los Génesis pueden cancelar misiones.');
+        if (!_isGenesis()) throw new Error('Solo los Génesis pueden cancelar misiones.');
 
         const { data: updated, error } = await supabaseClient
             .from('missions')
@@ -306,7 +306,7 @@ const LBW_Missions = (function () {
         const pubkey = _myPubkey();
         const myMerits = _myMerits();
         const canCreate = _canCreateMission();
-        const isGov = _isGovernor();
+        const isGov = _isGenesis();
 
         // Filter missions
         let visible = _missions.filter(m => m.status !== 'cancelled' || isGov);
@@ -642,7 +642,7 @@ const LBW_Missions = (function () {
                     <textarea id="missionDeliveryInstructions" maxlength="300" rows="2" placeholder="Ej: Subir a GitHub y enviar el link, o contactar por DM..." style="width:100%;padding:0.7rem;background:var(--color-bg-dark);border:2px solid var(--color-border);border-radius:8px;color:var(--color-text-primary);resize:vertical;"></textarea>
                 </div>
 
-                ${!_isGovernor() ? `<div style="padding:0.75rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;margin-bottom:1.25rem;font-size:0.8rem;color:#FFB74D;">⚠️ Tu misión quedará <strong>pendiente de aprobación</strong> por un Génesis antes de publicarse.</div>` : ''}
+                ${!_isGenesis() ? `<div style="padding:0.75rem;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:8px;margin-bottom:1.25rem;font-size:0.8rem;color:#FFB74D;">⚠️ Tu misión quedará <strong>pendiente de aprobación</strong> por un Génesis antes de publicarse.</div>` : ''}
 
                 <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
                     <button onclick="document.getElementById('missionCreateModal').remove()" class="btn btn-secondary">Cancelar</button>
@@ -671,7 +671,7 @@ const LBW_Missions = (function () {
         try {
             await createMission({ title, description, merit_category: category, merit_amount: amount, min_citizenship: minCitizenship, deadline: deadline || null, delivery_instructions: deliveryInstructions });
             document.getElementById('missionCreateModal')?.remove();
-            showNotification(_isGovernor() ? '🎯 ¡Misión publicada!' : '📤 Misión enviada, pendiente de aprobación por un Génesis.', 'success');
+            showNotification(_isGenesis() ? '🎯 ¡Misión publicada!' : '📤 Misión enviada, pendiente de aprobación por un Génesis.', 'success');
             renderMissionsTab();
             // Refresh networking if visible
             if (document.getElementById('networkingSection')?.classList.contains('active')) {
