@@ -352,8 +352,8 @@ const LBW_Nostr = (() => {
         _relayCounts: {},   // relay -> { count, resetAt }
         _pubkeyCounts: {},  // pubkey -> { count, resetAt }
 
-        MAX_EVENTS_PER_RELAY_PER_SEC: 50,
-        MAX_EVENTS_PER_PUBKEY_PER_SEC: 10,
+        MAX_EVENTS_PER_RELAY_PER_SEC: 500,
+        MAX_EVENTS_PER_PUBKEY_PER_SEC: 500,
         MAX_CONTENT_BYTES: 64 * 1024,  // 64 KB
 
         checkRelay(relayUrl) {
