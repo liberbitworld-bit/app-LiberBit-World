@@ -198,7 +198,7 @@ function displayProposals() {
             : '';
 
         return `
-            <div class="proposal-card ${statusConf.class}" onclick="showProposalDetail('${escapeHtml(proposal.dTag || proposal.id)}')">
+            <div class="proposal-card ${statusConf.class}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
                     <div class="proposal-type-badge">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
                     ${prpLabel ? `<div style="font-size:0.75rem;font-weight:700;color:var(--color-gold);opacity:0.85;letter-spacing:0.05em;font-family:monospace;">${prpLabel}</div>` : ''}
@@ -253,7 +253,7 @@ function _renderResultBadge(result, proposal) {
     if (result.quorum_met === false) {
         const dTagId = proposal.dTag || proposal.id;
         const recalcBtn = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
-            ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${escapeHtml(dTagId)}')"
+            ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${dTagId}')"
                   style="margin-top:0.4rem;background:#faad14;color:#000;border:none;border-radius:6px;padding:0.25rem 0.7rem;font-size:0.78rem;cursor:pointer;font-weight:700;">
                   🔄 Recalcular — voté como Génesis
               </button>`
@@ -379,11 +379,11 @@ async function showProposalDetail(proposalIdentifier) {
                     <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);">
                         <h3 style="color:var(--color-gold);margin-bottom:1rem;">Tu Voto</h3>
                         <div id="voteOptions">${getVoteOptions(proposal)}</div>
-                        <button class="btn btn-primary" onclick="submitVote('${escapeHtml(proposal.dTag)}')" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
+                        <button class="btn btn-primary" onclick="submitVote('${proposal.dTag}')" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
                     </div>
                 ` : hasVoted ? `
                     <div style="background:rgba(82,196,26,0.1);padding:1.25rem;border-radius:12px;border:1px solid #52c41a;text-align:center;">
-                        <p style="color:#52c41a;font-weight:600;">✓ Ya has votado: "${escapeHtml(myVote.option)}"</p>
+                        <p style="color:#52c41a;font-weight:600;">✓ Ya has votado: "${myVote.option}"</p>
                     </div>
                 ` : ''}
                 </div>
@@ -436,7 +436,7 @@ function _renderResultSection(result, proposal) {
             ? `La opción <strong>"${escapeHtml(result.winner)}"</strong> ganó con ${result.total_votes} votos ponderados.`
             : `La opción <strong>"${escapeHtml(result.winner)}"</strong> fue la más votada (propuesta rechazada).`;
 
-    // Recalculate button: only shown when quorum failed AND current user has voted as governor
+    // Recalculate button: only shown when quorum failed AND current user has voted as Génesis
     let recalcSection = '';
     if (quorumFailed) {
         const dTagId = proposal.dTag || proposal.id;
@@ -449,7 +449,7 @@ function _renderResultSection(result, proposal) {
                         ⚠️ Detectado: votaste como Génesis pero el resultado no lo registró.<br>
                         Esto ocurre por un desfase de sincronización de méritos. Puedes recalcular:
                     </div>
-                    <button onclick="recalculateGovResult('${escapeHtml(dTagId)}')"
+                    <button onclick="recalculateGovResult('${dTagId}')"
                         style="background:#faad14;color:#000;border:none;border-radius:8px;padding:0.6rem 1.2rem;font-weight:700;cursor:pointer;font-size:0.9rem;">
                         🔄 Recalcular Resultado
                     </button>
@@ -507,7 +507,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
                     style="width:100%;min-height:100px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;resize:vertical;"></textarea>
                 <input type="text" id="executionLinks" placeholder="Links de evidencia (opcional, separados por coma)" 
                     style="width:100%;margin-top:0.75rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;">
-                <button class="btn btn-primary" onclick="submitExecutionReport('${escapeHtml(proposal.dTag)}')" style="width:100%;margin-top:1rem;">
+                <button class="btn btn-primary" onclick="submitExecutionReport('${proposal.dTag}')" style="width:100%;margin-top:1rem;">
                     📤 Publicar Reporte de Ejecución
                 </button>
             </div>
@@ -531,11 +531,11 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
             </div>
         `;
 
-        // Governor can verify if not yet executed and not the author
+        // Génesis can verify if not yet executed and not the author
         if (proposal.status === 'in_execution' && isGovernor && proposal.author_id !== LBW_Nostr.getPubkey()) {
             html += `
                 <div style="margin-top:1rem;">
-                    <button class="btn btn-primary" onclick="submitExecVerification('${escapeHtml(proposal.dTag)}')" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);">
+                    <button class="btn btn-primary" onclick="submitExecVerification('${proposal.dTag}')" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);">
                         👑 Verificar Ejecución (+50 méritos al autor)
                     </button>
                 </div>
@@ -672,7 +672,7 @@ async function submitExecutionReport(proposalDTag) {
     }
 }
 
-// ── Submit Exec Verification (Governor) ───────────────────
+// ── Submit Exec Verification (Génesis) ───────────────────
 async function submitExecVerification(proposalDTag) {
     const btn = document.querySelector('[onclick*="submitExecVerification"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Verificando...'; }
