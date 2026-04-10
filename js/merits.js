@@ -3,19 +3,6 @@
 // Zero Supabase dependencies
 // [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, Génesis verification
 
-// [bug 16] Safe JSON parse from localStorage. Returns fallback on null/corrupt data.
-function _safeParseLS(key, fallback) {
-    try {
-        const raw = localStorage.getItem(key);
-        if (raw === null || raw === undefined) return fallback;
-        const parsed = JSON.parse(raw);
-        return parsed === null ? fallback : parsed;
-    } catch (e) {
-        console.warn(`[merits] localStorage[${key}] corrupt, using fallback:`, e.message);
-        return fallback;
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════
 // LEGACY MIGRATION — liberbit_contributions localStorage → Nostr
 // Ejecuta una sola vez por usuario. Elimina el localStorage tras migrar.
@@ -551,7 +538,7 @@ function _loadLedgerDataLegacy() {
     // Legacy fallback: solo lectura, sin escritura. Se eliminará tras confirmar migración completa.
     const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
         ? []
-        : _safeParseLS('liberbit_contributions', []);
+        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]');
     const allContribs = [...myContribs.map(c => ({
         id: c.id,
         applicant_name: c.npub ? c.npub.substring(0, 12) + '...' : 'Tú',
@@ -978,7 +965,7 @@ async function rejectDeposit(contribId) {
         // Publish rejection as a kind 31003 status-update event on Nostr
         // so it's verifiable, auditable, and notifies the contributor via relay
         await LBW_Nostr.publishEvent({
-            kind: LBW_Nostr.EVENT_KINDS.LBW_CONTRIB,
+            kind: 31003,
             content: JSON.stringify({
                 action: 'reject',
                 reason: 'No verificado por Génesis',
@@ -1021,7 +1008,7 @@ function loadMyContributions() {
     // Legacy fallback: solo lectura. Se eliminará tras confirmar migración completa.
     const legacyContribs = localStorage.getItem('lbw_legacy_migrated') === '1'
         ? []
-        : _safeParseLS('liberbit_contributions', []).filter(c => c.applicant_public_key === pubKey);
+        : JSON.parse(localStorage.getItem('liberbit_contributions') || '[]').filter(c => c.applicant_public_key === pubKey);
 
     const allMyContribs = [
         ...myContribs.map(c => ({
@@ -1103,28 +1090,56 @@ function loadMyContributions() {
 
 // GAUGE_LEVELS derivado de LBW_Merits.CITIZENSHIP_LEVELS (fuente única de verdad)
 // shortLabel: etiqueta corta para el canvas del gauge
+//
+// [Bug 2 fix] Inicialización LAZY e idempotente: las constantes se rellenan
+// la primera vez que se usan, no en el momento del parse. Esto elimina la
+// dependencia frágil de orden de carga (merits.js DEBE estar tras nostr-merits.js).
+// Cualquier orden de scripts funciona ahora — si LBW_Merits aún no está cargado
+// cuando merits.js se parsea, _initGaugeConstants() resuelve más tarde, en la
+// primera llamada a una función de gauge (que ocurre post-DOMContentLoaded).
 const GAUGE_SHORT_LABELS = ['Amigo', 'E-Res.', 'Colabor.', 'C.Senior', 'Custod.', 'Génesis'];
-const GAUGE_LEVELS = (typeof LBW_Merits !== 'undefined' ? LBW_Merits.CITIZENSHIP_LEVELS : []).map((l, i) => ({
-    name: l.name,
-    shortLabel: GAUGE_SHORT_LABELS[i] || l.name,
-    min: l.minMerits,
-    emoji: l.emoji,
-    color: l.color,
-    bloc: l.bloc
-}));
-const GAUGE_THRESH = GAUGE_LEVELS.map(s => s.min);
+let GAUGE_LEVELS = [];
+let GAUGE_THRESH = [];
+let GAUGE_N = 0;
+let SEG_ANG = 0;
 const GAUGE_RANGES = [100, 400, 500, 1000, 1000, 500];
-const GAUGE_N = GAUGE_LEVELS.length;
-const SEG_ANG = Math.PI / GAUGE_N;
 const GAP = 0.02;
 
+function _initGaugeConstants() {
+    if (GAUGE_LEVELS.length) return true;
+    if (typeof LBW_Merits === 'undefined' || !LBW_Merits.CITIZENSHIP_LEVELS) {
+        console.warn('[Merits] _initGaugeConstants: LBW_Merits aún no disponible');
+        return false;
+    }
+    GAUGE_LEVELS = LBW_Merits.CITIZENSHIP_LEVELS.map((l, i) => ({
+        name: l.name,
+        shortLabel: GAUGE_SHORT_LABELS[i] || l.name,
+        min: l.minMerits,
+        emoji: l.emoji,
+        color: l.color,
+        bloc: l.bloc
+    }));
+    GAUGE_THRESH = GAUGE_LEVELS.map(s => s.min);
+    GAUGE_N = GAUGE_LEVELS.length;
+    SEG_ANG = Math.PI / GAUGE_N;
+    return true;
+}
+
+// Auto-init en cuanto LBW_Merits esté disponible (DOMContentLoaded o ya).
+if (typeof document !== 'undefined') {
+    if (document.readyState !== 'loading') _initGaugeConstants();
+    else document.addEventListener('DOMContentLoaded', _initGaugeConstants);
+}
+
 function _meritsToAngle(m) {
+    if (!_initGaugeConstants()) return 0;
     if (m >= 3000) { var extra = Math.min(m - 3000, GAUGE_RANGES[5]); return Math.PI - 5 * SEG_ANG - (extra / GAUGE_RANGES[5]) * SEG_ANG; }
     for (var i = 0; i < GAUGE_N - 1; i++) { if (m < GAUGE_THRESH[i + 1]) { return Math.PI - i * SEG_ANG - ((m - GAUGE_THRESH[i]) / GAUGE_RANGES[i]) * SEG_ANG; } }
     return 0;
 }
 
 function _getGaugeLevel(merits) {
+    if (!_initGaugeConstants()) return { name: '', shortLabel: '', min: 0, emoji: '', color: '#888', bloc: '', idx: 0 };
     var level = Object.assign({}, GAUGE_LEVELS[0], { idx: 0 });
     for (var i = 0; i < GAUGE_N; i++) {
         if (merits >= GAUGE_LEVELS[i].min) level = Object.assign({}, GAUGE_LEVELS[i], { idx: i });
@@ -1133,6 +1148,7 @@ function _getGaugeLevel(merits) {
 }
 
 function _getNextLevel(merits) {
+    if (!_initGaugeConstants()) return null;
     for (var i = 0; i < GAUGE_N; i++) {
         if (merits < GAUGE_LEVELS[i].min) return { level: GAUGE_LEVELS[i], remaining: GAUGE_LEVELS[i].min - merits, progress: merits / GAUGE_LEVELS[i].min };
     }
