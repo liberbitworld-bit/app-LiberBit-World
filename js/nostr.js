@@ -352,8 +352,14 @@ const LBW_Nostr = (() => {
         _relayCounts: {},   // relay -> { count, resetAt }
         _pubkeyCounts: {},  // pubkey -> { count, resetAt }
 
-        MAX_EVENTS_PER_RELAY_PER_SEC: 50,
-        MAX_EVENTS_PER_PUBKEY_PER_SEC: 10,
+        // [bug 17b] Bumped 10× from previous (50/10) which were too tight:
+        // - The internal pool subscribe uses a single 'pool' bucket for all 6 relays combined,
+        //   so per-relay was effectively a global cap.
+        // - Active community members publish bursts of historical events (perfil + contribs +
+        //   votos + propuestas + reseñas) during initial load that exceed 10/sec trivially.
+        // These caps still protect against true relay floods (>500 ev/sec sustained is abuse).
+        MAX_EVENTS_PER_RELAY_PER_SEC: 500,
+        MAX_EVENTS_PER_PUBKEY_PER_SEC: 100,
         MAX_CONTENT_BYTES: 64 * 1024,  // 64 KB
 
         checkRelay(relayUrl) {
