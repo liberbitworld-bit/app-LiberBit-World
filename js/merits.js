@@ -1,7 +1,7 @@
 // ========== MERITS LBWM FUNCTIONS (Nostr-integrated) ==========
 // All data flows through LBW_Merits → Nostr relays
 // Zero Supabase dependencies
-// [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, governor verification
+// [v2.0] Sum+cap formula, dual flow, voting blocks, category breakdown, Génesis verification
 
 // ═══════════════════════════════════════════════════════════════
 // LEGACY MIGRATION — liberbit_contributions localStorage → Nostr
@@ -157,7 +157,7 @@ async function loadMeritsData() {
         // [v2.0] Proposals tab
         loadMeritProposals();
 
-        // [v2.0] Verifications tab (governor panel)
+        // [v2.0] Verifications tab (Génesis panel)
         loadPendingVerifications();
 
         // [v2.0] Citizenship levels tab
@@ -259,7 +259,7 @@ function updateVotingBlocksDisplay() {
         }
     }
 
-    // Ensure minimum 51% for Gobernanza if there are governors
+    // Ensure minimum 51% for Gobernanza if there are Génesis
     if (blocs.Gobernanza.count > 0 && blocs.Gobernanza.pct < 0.51) {
         blocs.Gobernanza.pct = 0.51;
     }
@@ -839,7 +839,7 @@ async function submitContribution(event) {
                 );
                 showNotification('✅ Pago verificado automáticamente. Méritos emitidos.', 'success');
             } else {
-                // Step 2b: Pending governor verification
+                // Step 2b: Pending Génesis verification
                 showNotification('📨 Aportación registrada. Pendiente de verificación por Génesis.', 'success');
             }
         } else {
@@ -889,7 +889,7 @@ async function submitContribution(event) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// [v2.0-NEW] GOVERNOR VERIFICATION (for bank/other deposits)
+// [v2.0-NEW] GÉNESIS VERIFICATION (for bank/other deposits)
 // ═══════════════════════════════════════════════════════════════
 
 async function verifyDeposit(contribId) {
@@ -913,8 +913,8 @@ async function verifyDeposit(contribId) {
             return;
         }
 
-        const governorPubkey = LBW_Nostr.getPubkey();
-        if (contrib.pubkey === governorPubkey) {
+        const genesisPubkey = LBW_Nostr.getPubkey();
+        if (contrib.pubkey === genesisPubkey) {
             showNotification('Un Génesis no puede verificar sus propias aportaciones.', 'error');
             return;
         }
@@ -956,8 +956,8 @@ async function rejectDeposit(contribId) {
             return;
         }
 
-        const governorPubkey = LBW_Nostr.getPubkey();
-        if (contrib.pubkey === governorPubkey) {
+        const genesisPubkey = LBW_Nostr.getPubkey();
+        if (contrib.pubkey === genesisPubkey) {
             showNotification('Un Génesis no puede rechazar sus propias aportaciones.', 'error');
             return;
         }
@@ -970,7 +970,7 @@ async function rejectDeposit(contribId) {
                 action: 'reject',
                 reason: 'No verificado por Génesis',
                 contribId,
-                governor: governorPubkey,
+                genesis: genesisPubkey,
                 timestamp: Math.floor(Date.now() / 1000)
             }),
             tags: [
@@ -1495,7 +1495,7 @@ async function voteMeritProposal(proposalDTag, vote) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// [v2.0-NEW] VERIFICATIONS TAB (Governor panel)
+// [v2.0-NEW] VERIFICATIONS TAB (Génesis panel)
 // ═══════════════════════════════════════════════════════════════
 
 function loadPendingVerifications() {
