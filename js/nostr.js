@@ -438,8 +438,10 @@ const LBW_Nostr = (() => {
             return false;
         }
 
-        // 4. Rate limit: per relay
-        if (!_rateLimiter.checkRelay(relayUrl)) {
+        // 4. Rate limit: per relay (exento si es un relay propio del sistema —
+        //    nuestros propios relays no nos van a hacer DoS)
+        const isSystemRelay = SYSTEM_PRIVATE_RELAYS.includes(relayUrl) || relayUrl === 'pool';
+        if (!isSystemRelay && !_rateLimiter.checkRelay(relayUrl)) {
             console.warn(`[Nostr] ⚠️ Rate limit relay ${relayUrl}`);
             return false;
         }
