@@ -14,7 +14,7 @@
 //   - Voting resto:   3 Productiva (1.0×)
 //   - Author approved: 50 Productiva
 //   - Author rejected: 10 Productiva
-//   - Author execution verified: 50 Productiva (via awardMerit, Governor)
+//   - Author execution verified: 50 Productiva (via awardMerit, Génesis)
 //
 // Dependencies: nostr.js (LBW_Nostr), nostr-merits.js (LBW_Merits)
 // ============================================================
@@ -28,14 +28,14 @@ const LBW_Governance = (() => {
         DELEGATE:    31004,
         RESULT:      31010,   // Proposal result tally
         EXECUTION:   31011,   // Author execution report
-        EXEC_VERIFY: 31012    // Governor execution verification
+        EXEC_VERIFY: 31012    // Génesis execution verification
     };
 
     // ── Proposal Categories ──────────────────────────────────
     const CATEGORIES = {
         referendum:  { label: 'Referéndum',  emoji: '🗳️', description: 'Consulta vinculante a toda la comunidad' },
         budget:      { label: 'Presupuesto', emoji: '💰', description: 'Asignación o modificación presupuestaria' },
-        election:    { label: 'Elección',    emoji: '👥', description: 'Elección de representantes o gobernadores' },
+        election:    { label: 'Elección',    emoji: '👥', description: 'Elección de representantes o Génesis' },
     };
 
     const DEFAULT_OPTIONS = {
@@ -663,7 +663,7 @@ const LBW_Governance = (() => {
             // Wait for votes to load (increased to 8s for slow relays)
             setTimeout(async () => {
                 // Pre-load merit data for all voters before computing result
-                // This is critical: without this, governors may be misidentified
+                // This is critical: without this, Génesis may be misidentified
                 // as regular community members (quorum_met = false incorrectly).
                 const votes = _votes.get(dTag) || [];
                 const voterPubkeys = [...new Set(votes.map(v => v.pubkey).filter(Boolean))];
@@ -679,9 +679,9 @@ const LBW_Governance = (() => {
         }, 5000);
     }
 
-    // ── Recalculate Result (Governor override) ───────────────
+    // ── Recalculate Result (Génesis override) ───────────────
     // Clears a cached quorum_failed result and re-runs the calculation.
-    // Only meaningful after merits have finished loading. Governors can
+    // Only meaningful after merits have finished loading. Génesis can
     // call this when they know they voted but the result shows "sin quórum".
     async function recalculateResult(dTag) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
@@ -804,16 +804,16 @@ const LBW_Governance = (() => {
     // LBW_Merits.calculateVotingPower(), which is the single source of
     // truth for the LBWM voting model:
     //
-    //   - Governor cap: each Governor's effective merits are capped at 3000
+    //   - Génesis cap: each Génesis's effective merits are capped at 3000
     //   - Equitable distribution: the 51% of the Governance bloc is split
-    //     evenly among ALL governors in the ledger, not only those who voted
+    //     evenly among ALL Génesis in the ledger, not only those who voted
     //   - Bloc-wide caps: Ciudadanía 29% max, Comunidad 20% max
     //   - Proportional within non-Governance blocs
     //
     // The previous implementation summed `userData.total` directly, which
     // ignored the cap, the equitable split and the bloc caps — meaning a
     // single Genesis with many merits could outvote the entire system and
-    // a quorum could be claimed with just one Governor's vote regardless
+    // a quorum could be claimed with just one Génesis's vote regardless
     // of their share. This refactor restores the canonical model.
     function _calculateWeightedResult(dTag) {
         const votes = _votes.get(dTag) || [];
@@ -826,7 +826,7 @@ const LBW_Governance = (() => {
 
         // Pre-compute voting power for every ledger participant.
         // Passing the FULL ledger (not just the voters) matches the
-        // intent of getUserVotingPower(): a Governor that doesn't show
+        // intent of getUserVotingPower(): a Génesis that doesn't show
         // up to vote loses their share — it is NOT redistributed.
         let powerByPubkey = {};
         if (typeof LBW_Merits !== 'undefined' && LBW_Merits.calculateVotingPower && LBW_Merits.getLeaderboard) {
@@ -842,7 +842,7 @@ const LBW_Governance = (() => {
         }
 
         const weighted = {};
-        let governorVoted = false;
+        let genesisVoted = false;
         let voterCount = 0;
 
         for (const vote of votes) {
@@ -859,17 +859,17 @@ const LBW_Governance = (() => {
             // Voters with no merits in the ledger contribute 0 power but
             // still count toward voter_count for transparency.
 
-            if (bloc === 'Gobernanza') governorVoted = true;
+            if (bloc === 'Gobernanza') genesisVoted = true;
 
             weighted[vote.option] = (weighted[vote.option] || 0) + weight;
             voterCount++;
         }
 
-        // [SEC-20] Quorum requires at least one Governor to participate.
+        // [SEC-20] Quorum requires at least one Génesis to participate.
         // The Governance bloc holds the structural 51% of voting power; if
-        // no Governor casts a vote, the maximum reachable power on any
+        // no Génesis casts a vote, the maximum reachable power on any
         // option is 0.49, which by definition cannot win a referendum.
-        const quorum_met = governorVoted;
+        const quorum_met = genesisVoted;
 
         if (!quorum_met) {
             return { quorum_met: false, winner: null, approved: false, weighted, total_votes: votes.length, voter_count: voterCount };
@@ -1041,11 +1041,11 @@ const LBW_Governance = (() => {
         return result;
     }
 
-    // ── Verify Execution (Governor) ──────────────────────────
+    // ── Verify Execution (Génesis) ──────────────────────────
     async function verifyExecution(dTag) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
 
-        // Must be a Governor
+        // Must be a Génesis
         if (typeof LBW_Merits !== 'undefined' && !LBW_Merits.isGovernor()) {
             throw new Error('Solo los Génesis pueden verificar ejecuciones.');
         }
@@ -1086,7 +1086,7 @@ const LBW_Governance = (() => {
         _persistToStorage();
         _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'executed'); } catch (e) {} });
 
-        // Award execution merits to author (Governor can call awardMerit directly)
+        // Award execution merits to author (Génesis can call awardMerit directly)
         try {
             await LBW_Merits.awardMerit(
                 proposal.pubkey,
