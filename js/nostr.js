@@ -95,7 +95,7 @@ const LBW_Nostr = (() => {
         LBW_CONFIG:     31006,
         LBW_RESULT:     31010,   // Proposal result tally
         LBW_EXECUTION:  31011,   // Author execution report
-        LBW_EXEC_VERIFY: 31012,  // Governor execution verification
+        LBW_EXEC_VERIFY: 31012,  // Génesis execution verification
         APP_STATE:      30078,
         REVIEW:         1985     // NIP-85: Reviews
     };
@@ -1433,9 +1433,7 @@ const LBW_Nostr = (() => {
         isUsingExtension, isLoggedIn, getEventKinds,
         // Pool / relay access for NIP-15 stalls module
         getPool: () => _getPool(),
-        getReadRelays: () => [..._getUserReadRelays()],
-        // [bug 19] Expose event validator for modules that subscribe directly via getPool()
-        validateIncomingEvent: (event, relayUrl) => _validateIncomingEvent(event, relayUrl || 'external')
+        getReadRelays: () => [..._getUserReadRelays()]
     };
 })();
 
