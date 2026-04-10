@@ -96,7 +96,7 @@ window.LBW_Debate = {
         if (replyToEventId) {
             tags.push(['e', replyToEventId, '', 'reply']);
         }
-        await window.LBW_Nostr.publishEvent({ kind: 1, content: content.trim(), tags: tags });
+        await window.LBW_Nostr.publishEvent({ kind: window.LBW_Nostr.EVENT_KINDS.TEXT_NOTE, content: content.trim(), tags: tags });
     },
 
     getMessages: function(proposalDTag) {
