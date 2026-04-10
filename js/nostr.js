@@ -352,14 +352,8 @@ const LBW_Nostr = (() => {
         _relayCounts: {},   // relay -> { count, resetAt }
         _pubkeyCounts: {},  // pubkey -> { count, resetAt }
 
-        // [bug 17b] Bumped 10× from previous (50/10) which were too tight:
-        // - The internal pool subscribe uses a single 'pool' bucket for all 6 relays combined,
-        //   so per-relay was effectively a global cap.
-        // - Active community members publish bursts of historical events (perfil + contribs +
-        //   votos + propuestas + reseñas) during initial load that exceed 10/sec trivially.
-        // These caps still protect against true relay floods (>500 ev/sec sustained is abuse).
-        MAX_EVENTS_PER_RELAY_PER_SEC: 500,
-        MAX_EVENTS_PER_PUBKEY_PER_SEC: 100,
+        MAX_EVENTS_PER_RELAY_PER_SEC: 50,
+        MAX_EVENTS_PER_PUBKEY_PER_SEC: 10,
         MAX_CONTENT_BYTES: 64 * 1024,  // 64 KB
 
         checkRelay(relayUrl) {
@@ -642,6 +636,49 @@ const LBW_Nostr = (() => {
     }
 
     function getRelayStatus() { return { ..._relayStatusMap }; }
+
+    /**
+     * Espera a que al menos un relay privado del sistema esté en estado 'connected'.
+     * Se usa en el bootstrap para evitar la race condition donde las suscripciones
+     * a kinds privados (gobernanza, méritos, DMs) se abren antes de que los
+     * relays privados terminen el handshake WebSocket y caen al fallback público.
+     *
+     * @param {number} timeoutMs - Tiempo máximo de espera. Si vence, resuelve igual
+     *                             para no bloquear el arranque (las subs caerán al
+     *                             fallback público y se imprimirá el warning, que es
+     *                             el comportamiento legacy aceptable).
+     * @returns {Promise<boolean>} true si algún privado conectó dentro del timeout
+     */
+    function waitForPrivateRelay(timeoutMs = 5000) {
+        return new Promise((resolve) => {
+            const isPrivateConnected = () =>
+                SYSTEM_PRIVATE_RELAYS.some(url => _relayStatusMap[url] === 'connected');
+
+            if (isPrivateConnected()) {
+                resolve(true);
+                return;
+            }
+
+            let resolved = false;
+            const finish = (ok) => {
+                if (resolved) return;
+                resolved = true;
+                window.removeEventListener('nostr-relay-status', onChange);
+                clearTimeout(timer);
+                resolve(ok);
+            };
+
+            const onChange = () => {
+                if (isPrivateConnected()) finish(true);
+            };
+            window.addEventListener('nostr-relay-status', onChange);
+
+            const timer = setTimeout(() => {
+                console.warn(`[Nostr] ⏱ waitForPrivateRelay: timeout ${timeoutMs}ms — ningún relay privado conectó a tiempo`);
+                finish(false);
+            }, timeoutMs);
+        });
+    }
 
     function onRelayStatusChange(cb) { _onRelayStatus = cb; }
 
@@ -1409,7 +1446,7 @@ const LBW_Nostr = (() => {
         generateKeypair, importPrivateKey, pubkeyToNpub, npubToHex,
 
         // Relay management
-        connectToRelays, disconnectAll, getConnectedRelays, getRelayStatus, onRelayStatusChange,
+        connectToRelays, disconnectAll, getConnectedRelays, getRelayStatus, onRelayStatusChange, waitForPrivateRelay,
 
         // Auth
         loginWithExtension, loginWithPrivateKey, createIdentity, logout,
