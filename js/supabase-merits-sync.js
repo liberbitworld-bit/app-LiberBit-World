@@ -10,18 +10,30 @@ const LBW_MeritsSync = (() => {
     const ACTIVITY_MERIT_CAP = 300;
     const ACTIVITY_POINTS_PER_ACTION = 10;
 
-    const CITIZENSHIP_LEVELS = [
+    // [bug 1] CITIZENSHIP_LEVELS source of truth lives in nostr-merits.js (LBW_Merits.CITIZENSHIP_LEVELS).
+    // We resolve lazily on each call to avoid load-order coupling. Local fallback used only
+    // if LBW_Merits has not loaded yet (should never happen given index.html script order).
+    const _CITIZENSHIP_FALLBACK = [
         { name: 'Amigo',            minMerits: 0,    emoji: '👋' },
         { name: 'E-Residency',      minMerits: 100,  emoji: '🪪' },
         { name: 'Colaborador',      minMerits: 500,  emoji: '🤝' },
         { name: 'Ciudadano Senior', minMerits: 1000, emoji: '🛂' },
-        { name: 'Custodio',          minMerits: 2000, emoji: '🌍' },
-        { name: 'Génesis',           minMerits: 3000, emoji: '👑' }
+        { name: 'Custodio',         minMerits: 2000, emoji: '🌍' },
+        { name: 'Génesis',          minMerits: 3000, emoji: '👑' }
     ];
 
+    function _getCitizenshipLevels() {
+        if (typeof LBW_Merits !== 'undefined' && Array.isArray(LBW_Merits.CITIZENSHIP_LEVELS)) {
+            return LBW_Merits.CITIZENSHIP_LEVELS;
+        }
+        console.warn('[MeritsSync] LBW_Merits.CITIZENSHIP_LEVELS no disponible, usando fallback local');
+        return _CITIZENSHIP_FALLBACK;
+    }
+
     function _getCitizenshipLevel(total) {
-        let lvl = CITIZENSHIP_LEVELS[0];
-        for (const l of CITIZENSHIP_LEVELS) {
+        const levels = _getCitizenshipLevels();
+        let lvl = levels[0];
+        for (const l of levels) {
             if (total >= l.minMerits) lvl = l;
         }
         return lvl;
