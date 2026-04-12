@@ -45,7 +45,7 @@
                 id: 'LBTC-1',
                 name: 'LiberAtlas',
                 subtitle: 'Nodo capital · Península Ibérica',
-                coords: [40.4168, -3.7038], // TODO: coords reales
+                coords: [39.4753, -6.3724], // Cáceres
                 description: '~400 ha · hasta 10.000 residentes en 5 fases',
                 url: 'https://liberatlas.org',
                 color: '#E5B95C'
