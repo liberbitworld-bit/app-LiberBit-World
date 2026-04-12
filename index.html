@@ -1371,6 +1371,10 @@
                         <div class="lbw-map-stat-label">🏛️ Nodos físicos</div>
                     </div>
                     <div class="lbw-map-stat">
+                        <div class="lbw-map-stat-value" id="lbwMapRelayCount">—</div>
+                        <div class="lbw-map-stat-label">📡 Relays privados</div>
+                    </div>
+                    <div class="lbw-map-stat">
                         <div class="lbw-map-stat-value" id="lbwMapCitizenCount">—</div>
                         <div class="lbw-map-stat-label">👥 Ciudadanos</div>
                     </div>
@@ -1384,8 +1388,10 @@
                 <div class="lbw-map-controls">
                     <button class="lbw-map-toggle active" id="lbwMapToggleNodes"
                             onclick="LBW_Map.toggleNodes()">🏛️ Nodos físicos</button>
+                    <button class="lbw-map-toggle active" id="lbwMapToggleRelays"
+                            onclick="LBW_Map.toggleRelays()">📡 Relays</button>
                     <button class="lbw-map-toggle active" id="lbwMapToggleCitizens"
-                            onclick="LBW_Map.toggleCitizens()">👥 Ciudadanos por ciudad</button>
+                            onclick="LBW_Map.toggleCitizens()">👥 Ciudadanos</button>
                     <button class="lbw-map-toggle" onclick="LBW_Map.refresh()">🔄 Refrescar</button>
                 </div>
 
@@ -2831,7 +2837,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
-    <script src="js/map.js?v=1"></script>
+    <script src="js/map.js?v=3"></script>
 
     <!-- Emoji Picker -->
     <style>
