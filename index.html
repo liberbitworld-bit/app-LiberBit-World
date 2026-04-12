@@ -2826,6 +2826,8 @@
     <script src="js/merits.js?v=apr10g"></script>
     <!-- supabase-merits-sync: sincroniza merit events Nostr → Supabase -->
     <script src="js/supabase-merits-sync.js?v=1.4"></script>
+    <!-- supabase-governance-sync: sincroniza propuestas y votos Nostr → Supabase -->
+    <script src="js/supabase-governance-sync.js?v=1.0"></script>
     <script src="js/nostr-reviews.js?v=sec10"></script>
     <script src="js/nostr-marketplace-pay.js?v=sec10"></script>
     <script src="js/nostr-stalls.js?v=phase3"></script>
@@ -3136,6 +3138,10 @@
             // Init Supabase merit sync after login (non-blocking)
             if (typeof LBW_MeritsSync !== 'undefined') {
                 setTimeout(() => LBW_MeritsSync.init(), 1000);
+            }
+            // Init Supabase governance sync after login (non-blocking)
+            if (typeof LBW_GovernanceSync !== 'undefined') {
+                setTimeout(() => LBW_GovernanceSync.init(), 2000);
             }
         }
         // Make it globally accessible
