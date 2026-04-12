@@ -1,83 +1,158 @@
 // ============================================================
-// LiberBit World — Nostr MediaService v1.0 (nostr-media.js)
+// LiberBit World — Nostr MediaService v2.0 (nostr-media.js)
 //
 // Multi-provider image upload with:
-//   - SHA-256 integrity hash (pre-upload)
+//   - SHA-256 integrity hash (pre-upload, reutilizado por los providers)
+//   - Blossom BUD-01 (kind 24242) + NIP-96/NIP-98 (kind 27235) firma Nostr
 //   - Multiple providers with automatic fallback
-//   - Returns { urls: [url1, url2, ...], sha256, mime, size }
-//   - Client-side render helper with URL fallback chain
-//   - NO base64 data-URL fallback (violates content size limits)
+//   - Returns { urls, primaryUrl, sha256, mime, size, fileName, providers }
+//   - Client-side render helper con fallback chain
 //
-// Providers (in order):
-//   1. nostr.build (primary, Nostr-native)
-//   2. void.cat (secondary, Nostr-friendly)
-//   3. nostrimg.com (tertiary)
+// Providers (en orden):
+//   1. blossom.primal.net      (BUD-01, principal)
+//   2. blossom.band            (BUD-01)
+//   3. cdn.satellite.earth     (BUD-01)
+//   4. nostr.download          (BUD-01)
+//   5. nostr.build             (NIP-96 + NIP-98 auth)
 //
-// Dependencies: None (uses native crypto.subtle)
+// Todos los providers requieren firma Nostr. Se usa LBW_Nostr.signEvent()
+// (requiere parche mínimo en nostr.js exponiéndolo en el API pública).
+//
+// API pública: SIN CAMBIOS respecto a v1.0 — los consumidores
+// (chat-attachments, nostr-stalls, nostr-bridge) siguen funcionando igual.
+//
+// Dependencias: LBW_Nostr (signEvent), crypto.subtle (nativo)
 // ============================================================
 
 const LBW_Media = (() => {
     'use strict';
 
+    // ── Helpers de firma Nostr ───────────────────────────────
+
+    /**
+     * Firma un evento usando el signer expuesto por LBW_Nostr.
+     * Fallback a window.nostr (NIP-07) si LBW_Nostr aún no expone signEvent.
+     */
+    async function signNostrEvent(unsignedEvent) {
+        if (window.LBW_Nostr && typeof window.LBW_Nostr.signEvent === 'function') {
+            return await window.LBW_Nostr.signEvent(unsignedEvent);
+        }
+        if (window.nostr && typeof window.nostr.signEvent === 'function') {
+            return await window.nostr.signEvent(unsignedEvent);
+        }
+        throw new Error('No hay signer Nostr disponible. Actualiza js/nostr.js para exponer signEvent.');
+    }
+
+    function b64EncodeJson(obj) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    }
+
+    // ── Blossom BUD-01 upload (kind 24242) ───────────────────
+    // PUT <server>/upload con body = bytes crudos
+    // Header Authorization: Nostr <base64(signed_event)>
+    // Spec: https://github.com/hzrd149/blossom/blob/master/buds/01.md
+    async function blossomUpload(server, file, buffer, sha256) {
+        const now = Math.floor(Date.now() / 1000);
+        const signed = await signNostrEvent({
+            kind: 24242,
+            created_at: now,
+            content: `Upload ${file.name || 'file'}`,
+            tags: [
+                ['t', 'upload'],
+                ['x', sha256],
+                ['expiration', String(now + 300)]
+            ]
+        });
+
+        const resp = await fetch(server.replace(/\/+$/, '') + '/upload', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Nostr ' + b64EncodeJson(signed),
+                'Content-Type': file.type || 'application/octet-stream'
+            },
+            body: buffer
+        });
+
+        if (!resp.ok) {
+            const reason = resp.headers.get('x-reason') || resp.statusText || '';
+            throw new Error(`HTTP ${resp.status} ${reason}`.trim());
+        }
+        const data = await resp.json();
+        if (!data.url) throw new Error('Respuesta sin url');
+        return data.url;
+    }
+
+    // ── NIP-96 + NIP-98 upload (kind 27235) ──────────────────
+    // POST multipart con Authorization firmada
+    async function nip96Upload(endpoint, file, sha256) {
+        const now = Math.floor(Date.now() / 1000);
+        const signed = await signNostrEvent({
+            kind: 27235,
+            created_at: now,
+            content: '',
+            tags: [
+                ['u', endpoint],
+                ['method', 'POST'],
+                ['payload', sha256]
+            ]
+        });
+
+        const fd = new FormData();
+        fd.append('file', file);
+
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Authorization': 'Nostr ' + b64EncodeJson(signed) },
+            body: fd
+        });
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        if (data.status && data.status !== 'success') {
+            throw new Error(data.message || 'NIP-96 status != success');
+        }
+        const tags = data.nip94_event && data.nip94_event.tags;
+        if (Array.isArray(tags)) {
+            const urlTag = tags.find(t => t[0] === 'url');
+            if (urlTag && urlTag[1]) return urlTag[1];
+        }
+        if (data.data && data.data.url) return data.data.url;
+        throw new Error('Respuesta NIP-96 sin URL');
+    }
+
     // ── Provider Registry ────────────────────────────────────
+    // upload(file, buffer, sha256) → URL pública
     const PROVIDERS = [
         {
+            name: 'blossom.primal.net',
+            kind: 'blossom',
+            upload: (file, buffer, sha256) =>
+                blossomUpload('https://blossom.primal.net', file, buffer, sha256)
+        },
+        {
+            name: 'blossom.band',
+            kind: 'blossom',
+            upload: (file, buffer, sha256) =>
+                blossomUpload('https://blossom.band', file, buffer, sha256)
+        },
+        {
+            name: 'cdn.satellite.earth',
+            kind: 'blossom',
+            upload: (file, buffer, sha256) =>
+                blossomUpload('https://cdn.satellite.earth', file, buffer, sha256)
+        },
+        {
+            name: 'nostr.download',
+            kind: 'blossom',
+            upload: (file, buffer, sha256) =>
+                blossomUpload('https://nostr.download', file, buffer, sha256)
+        },
+        {
             name: 'nostr.build',
-            endpoint: 'https://nostr.build/api/v2/upload/files',
-            upload: async (file) => {
-                const fd = new FormData();
-                fd.append('file', file);
-                const resp = await fetch('https://nostr.build/api/v2/upload/files', {
-                    method: 'POST',
-                    body: fd
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                if (data.status === 'success' && data.data?.[0]?.url) {
-                    return data.data[0].url;
-                }
-                throw new Error('No URL in response');
-            }
-        },
-        {
-            name: 'void.cat',
-            endpoint: 'https://void.cat/upload',
-            upload: async (file) => {
-                const buffer = await file.arrayBuffer();
-                const resp = await fetch('https://void.cat/upload', {
-                    method: 'POST',
-                    body: buffer,
-                    headers: {
-                        'Content-Type': file.type || 'application/octet-stream',
-                        'V-Filename': file.name || 'image.jpg',
-                        'V-Description': 'LiberBit World upload'
-                    }
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                if (data.ok && data.file?.id) {
-                    return `https://void.cat/d/${data.file.id}`;
-                }
-                throw new Error('No file ID in response');
-            }
-        },
-        {
-            name: 'nostrimg.com',
-            endpoint: 'https://nostrimg.com/api/upload',
-            upload: async (file) => {
-                const fd = new FormData();
-                fd.append('image', file);
-                const resp = await fetch('https://nostrimg.com/api/upload', {
-                    method: 'POST',
-                    body: fd
-                });
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                if (data.data?.link) {
-                    return data.data.link;
-                }
-                throw new Error('No link in response');
-            }
+            kind: 'nip96',
+            upload: (file, buffer, sha256) =>
+                nip96Upload('https://nostr.build/api/v2/nip96/upload', file, sha256)
         }
     ];
 
@@ -94,61 +169,58 @@ const LBW_Media = (() => {
         }
     }
 
-    // ── Multi-Provider Upload ────────────────────────────────
-    // Tries each provider in order. Attempts at least 2 providers
-    // to get multiple URLs for redundancy.
-    //
-    // Returns: {
-    //   urls: [url1, url2, ...],
-    //   primaryUrl: url1,
-    //   sha256: "hex...",
-    //   mime: "image/jpeg",
-    //   size: 12345
-    // }
+    // Helper: calcular sha256 y devolver también el buffer (reutilizable)
+    async function _hashAndBuffer(file) {
+        const buffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const sha256 = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return { buffer, sha256 };
+    }
 
+    // ── Multi-Provider Upload ────────────────────────────────
     async function uploadImage(file, options = {}) {
         const { maxProviders = 2, onProgress = null } = options;
 
-        // Validate file
         if (!file) throw new Error('No se proporcionó archivo.');
         if (!file.type.startsWith('image/')) throw new Error('El archivo no es una imagen.');
         if (file.size > 5 * 1024 * 1024) throw new Error('Imagen demasiado grande (máx 5MB).');
 
-        // Compute SHA-256 before uploading
         if (onProgress) onProgress('Calculando integridad...');
-        const sha256 = await computeSHA256(file);
+        const { buffer, sha256 } = await _hashAndBuffer(file);
 
         const result = {
             urls: [],
             primaryUrl: null,
-            sha256: sha256,
+            sha256,
             mime: file.type,
             size: file.size,
             fileName: file.name,
-            providers: []  // Which providers succeeded
+            providers: []
         };
 
-        // Try each provider
+        const errors = [];
+
         for (let i = 0; i < PROVIDERS.length && result.urls.length < maxProviders; i++) {
             const provider = PROVIDERS[i];
 
             if (onProgress) onProgress(`Subiendo a ${provider.name}...`);
-            console.log(`[Media] 📤 Intentando ${provider.name}...`);
+            console.log(`[Media] 📤 Intentando ${provider.name} (${provider.kind})...`);
 
             try {
-                const url = await provider.upload(file);
+                const url = await provider.upload(file, buffer, sha256);
                 result.urls.push(url);
                 result.providers.push(provider.name);
                 console.log(`[Media] ✅ ${provider.name}: ${url}`);
-
                 if (!result.primaryUrl) result.primaryUrl = url;
             } catch (e) {
                 console.warn(`[Media] ❌ ${provider.name} falló:`, e.message);
-                // Continue to next provider
+                errors.push(`${provider.name}: ${e.message}`);
             }
         }
 
         if (result.urls.length === 0) {
+            console.error('[Media] Todos los providers fallaron:\n' + errors.join('\n'));
             throw new Error('Todos los proveedores de imagen fallaron. Inténtalo más tarde.');
         }
 
@@ -159,43 +231,23 @@ const LBW_Media = (() => {
     }
 
     // ── Build Nostr Event Tags for Media ─────────────────────
-    // Creates the appropriate tags for a marketplace listing
-    // with multiple image URLs and integrity hash.
     function buildImageTags(mediaResult) {
         if (!mediaResult || mediaResult.urls.length === 0) return [];
-
         const tags = [];
-
-        // Primary image URL (first one)
         tags.push(['image', mediaResult.primaryUrl]);
-
-        // Additional URLs as thumb/mirror
         for (let i = 1; i < mediaResult.urls.length; i++) {
             tags.push(['thumb', mediaResult.urls[i]]);
         }
-
-        // Integrity hash
         if (mediaResult.sha256) {
-            tags.push(['x', mediaResult.sha256]);    // NIP-94 file hash
-            tags.push(['sha256', mediaResult.sha256]); // Explicit hash tag
+            tags.push(['x', mediaResult.sha256]);
+            tags.push(['sha256', mediaResult.sha256]);
         }
-
-        // MIME type
-        if (mediaResult.mime) {
-            tags.push(['m', mediaResult.mime]);
-        }
-
-        // File size
-        if (mediaResult.size) {
-            tags.push(['size', String(mediaResult.size)]);
-        }
-
+        if (mediaResult.mime) tags.push(['m', mediaResult.mime]);
+        if (mediaResult.size) tags.push(['size', String(mediaResult.size)]);
         return tags;
     }
 
     // ── Render Helper: Image with Fallback Chain ─────────────
-    // Creates an <img> element that tries each URL in sequence.
-    // If url[0] fails, tries url[1], etc.
     function createFallbackImage(urls, options = {}) {
         const {
             alt = 'Imagen',
@@ -214,7 +266,6 @@ const LBW_Media = (() => {
         img.style.cssText = style;
         if (className) img.className = className;
 
-        // Set up fallback chain
         let currentIndex = 0;
         img.src = urls[currentIndex];
 
@@ -224,7 +275,6 @@ const LBW_Media = (() => {
                 console.log(`[Media] 🔄 Fallback a URL #${currentIndex + 1}: ${urls[currentIndex].substring(0, 40)}...`);
                 img.src = urls[currentIndex];
             } else {
-                // All URLs failed: show placeholder
                 img.style.display = 'none';
                 console.warn(`[Media] ❌ Todas las URLs de imagen fallaron`);
             }
@@ -234,7 +284,6 @@ const LBW_Media = (() => {
     }
 
     // ── Extract URLs from event tags ─────────────────────────
-    // Collects all image/thumb URLs + sha256 from an event's tags.
     function extractMediaFromTags(tags) {
         const urls = [];
         let sha256 = null;
@@ -243,7 +292,6 @@ const LBW_Media = (() => {
 
         (tags || []).forEach(t => {
             if ((t[0] === 'image' || t[0] === 'thumb') && t[1]) {
-                // Avoid duplicates
                 if (!urls.includes(t[1])) urls.push(t[1]);
             }
             if ((t[0] === 'x' || t[0] === 'sha256') && t[1]) sha256 = t[1];
@@ -255,20 +303,15 @@ const LBW_Media = (() => {
     }
 
     // ── Verify Image Integrity ───────────────────────────────
-    // Downloads an image and compares its SHA-256 with the
-    // expected hash from the event tags.
     async function verifyImageIntegrity(url, expectedSHA256) {
         if (!expectedSHA256) return { verified: false, reason: 'No hash to compare' };
-
         try {
             const resp = await fetch(url);
             if (!resp.ok) return { verified: false, reason: `HTTP ${resp.status}` };
-
             const buffer = await resp.arrayBuffer();
             const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             const actualHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
             const match = actualHash === expectedSHA256;
             return {
                 verified: match,
@@ -281,23 +324,14 @@ const LBW_Media = (() => {
         }
     }
 
-    // ── Public API ───────────────────────────────────────────
+    // ── Public API (sin cambios respecto a v1.0) ─────────────
     return {
-        // Upload
         uploadImage,
         computeSHA256,
-
-        // Event tags
         buildImageTags,
         extractMediaFromTags,
-
-        // Render
         createFallbackImage,
-
-        // Integrity
         verifyImageIntegrity,
-
-        // Config
         PROVIDERS
     };
 })();
