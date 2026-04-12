@@ -38,17 +38,38 @@
 
         // Nodos físicos de la red
         // ⚠️  TODO: ajustar coords definitivas de LiberAtlas cuando estén confirmadas.
-        //         Mientras tanto, placeholder en Madrid (~centro Península).
         //         CityBunker NO aparece aquí (separación absoluta).
         physicalNodes: [
             {
                 id: 'LBTC-1',
                 name: 'LiberAtlas',
-                subtitle: 'Nodo capital · Península Ibérica',
+                subtitle: 'Nodo capital · Cáceres',
                 coords: [39.4753, -6.3724], // Cáceres
                 description: '~400 ha · hasta 10.000 residentes en 5 fases',
                 url: 'https://liberatlas.org',
                 color: '#E5B95C'
+            }
+        ],
+
+        // Relays privados de la red (infraestructura Nostr soberana)
+        relays: [
+            {
+                id: 'relay-1',
+                name: 'relay.liberbitworld.org',
+                subtitle: 'Relay principal · Sevilla',
+                coords: [37.3891, -5.9845], // Sevilla
+                description: 'nostr-rs-relay · WSL2 · Cloudflare Tunnel',
+                operator: 'Fundación LiberBit',
+                url: 'wss://relay.liberbitworld.org'
+            },
+            {
+                id: 'relay-2',
+                name: 'relay2.liberbitworld.org',
+                subtitle: 'Relay secundario · Toledo',
+                coords: [39.8628, -4.0273], // Toledo
+                description: 'strfry · AS214819 · 82.41.171.3',
+                operator: 'Kevin · Buzzster Ltd · npub1hz5700snnsndlezaa80',
+                url: 'wss://relay2.liberbitworld.org'
             }
         ],
 
@@ -180,8 +201,10 @@
     let loadingCitizens = false;
     let nodeLayer = null;
     let citizenLayer = null;
+    let relayLayer = null;
     let nodeLayerVisible = true;
     let citizenLayerVisible = true;
+    let relayLayerVisible = true;
 
     // ═══════════════════════════════════════════════════════════════
     // GEOCODING (tabla local → cache → Nominatim)
@@ -288,6 +311,16 @@
         });
     }
 
+    function relayIcon() {
+        return L.divIcon({
+            className: 'lbw-relay-marker',
+            html: '<div class="lbw-relay-pin"><span>📡</span></div>',
+            iconSize: [44, 44],
+            iconAnchor: [22, 22],
+            popupAnchor: [0, -18]
+        });
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // RENDER
     // ═══════════════════════════════════════════════════════════════
@@ -312,6 +345,33 @@
         });
 
         if (nodeLayerVisible && !map.hasLayer(nodeLayer)) nodeLayer.addTo(map);
+        updateStatsBar();
+    }
+
+    function renderRelays() {
+        if (!map) return;
+        if (relayLayer) relayLayer.clearLayers();
+        else relayLayer = L.layerGroup();
+
+        CONFIG.relays.forEach(relay => {
+            const marker = L.marker(relay.coords, { icon: relayIcon() });
+            marker.bindPopup(`
+                <div class="lbw-map-popup">
+                    <div class="lbw-map-popup-title">📡 ${relay.name}</div>
+                    <div class="lbw-map-popup-subtitle">${relay.subtitle}</div>
+                    <div class="lbw-map-popup-desc">${relay.description}</div>
+                    <div class="lbw-map-popup-desc" style="font-size:0.75rem;opacity:0.75;">
+                        Operador: ${relay.operator}
+                    </div>
+                    <div class="lbw-map-popup-desc" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--color-gold);">
+                        ${relay.url}
+                    </div>
+                </div>
+            `);
+            marker.addTo(relayLayer);
+        });
+
+        if (relayLayerVisible && !map.hasLayer(relayLayer)) relayLayer.addTo(map);
         updateStatsBar();
     }
 
@@ -388,9 +448,11 @@
         const citizenCountEl = document.getElementById('lbwMapCitizenCount');
         const cityCountEl = document.getElementById('lbwMapCityCount');
         const nodeCountEl = document.getElementById('lbwMapNodeCount');
+        const relayCountEl = document.getElementById('lbwMapRelayCount');
         if (citizenCountEl && typeof totalCitizens === 'number') citizenCountEl.textContent = totalCitizens;
         if (cityCountEl && typeof mappedCities === 'number') cityCountEl.textContent = mappedCities;
         if (nodeCountEl) nodeCountEl.textContent = CONFIG.physicalNodes.length;
+        if (relayCountEl) relayCountEl.textContent = CONFIG.relays.length;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -411,6 +473,14 @@
         else map.removeLayer(citizenLayer);
         const btn = document.getElementById('lbwMapToggleCitizens');
         if (btn) btn.classList.toggle('active', citizenLayerVisible);
+    }
+    function toggleRelays() {
+        if (!map || !relayLayer) return;
+        relayLayerVisible = !relayLayerVisible;
+        if (relayLayerVisible) relayLayer.addTo(map);
+        else map.removeLayer(relayLayer);
+        const btn = document.getElementById('lbwMapToggleRelays');
+        if (btn) btn.classList.toggle('active', relayLayerVisible);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -488,7 +558,8 @@
 
             /* Markers */
             .lbw-node-marker,
-            .lbw-citizen-marker {
+            .lbw-citizen-marker,
+            .lbw-relay-marker {
                 background: transparent;
                 border: none;
             }
@@ -505,6 +576,19 @@
                 font-size: 24px;
                 animation: lbw-pulse-gold 2.4s infinite;
             }
+            .lbw-relay-pin {
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+                background: radial-gradient(circle, #9C27B0 0%, #6A1B9A 100%);
+                border: 3px solid var(--color-bg-dark);
+                box-shadow: 0 0 0 2px #CE93D8, 0 4px 14px rgba(156, 39, 176, 0.6);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                animation: lbw-pulse-purple 3s infinite;
+            }
             .lbw-citizen-pin {
                 border-radius: 50%;
                 background: radial-gradient(circle, rgba(44, 95, 111, 0.95) 0%, rgba(26, 61, 74, 0.95) 100%);
@@ -520,6 +604,10 @@
             @keyframes lbw-pulse-gold {
                 0%, 100% { box-shadow: 0 0 0 2px #E5B95C, 0 4px 16px rgba(229, 185, 92, 0.5); }
                 50%      { box-shadow: 0 0 0 2px #E5B95C, 0 4px 24px rgba(229, 185, 92, 0.9); }
+            }
+            @keyframes lbw-pulse-purple {
+                0%, 100% { box-shadow: 0 0 0 2px #CE93D8, 0 4px 14px rgba(156, 39, 176, 0.6); }
+                50%      { box-shadow: 0 0 0 2px #CE93D8, 0 4px 22px rgba(156, 39, 176, 1); }
             }
 
             /* Popups */
@@ -633,6 +721,7 @@
         }).addTo(map);
 
         renderNodes();
+        renderRelays();
         renderCitizens();
 
         initialized = true;
@@ -646,6 +735,7 @@
         const statusEl = document.getElementById('lbwMapStatus');
         if (statusEl) statusEl.textContent = '🔄 Refrescando...';
         renderNodes();
+        renderRelays();
         await renderCitizens();
     }
 
@@ -680,6 +770,7 @@
         init: init,
         refresh: refresh,
         toggleNodes: toggleNodes,
-        toggleCitizens: toggleCitizens
+        toggleCitizens: toggleCitizens,
+        toggleRelays: toggleRelays
     };
 })(window);
