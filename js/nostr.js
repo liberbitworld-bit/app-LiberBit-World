@@ -1460,6 +1460,7 @@ const LBW_Nostr = (() => {
         // Subscriptions
         subscribe, unsubscribe, onEventKind,
         publishEvent,
+        signEvent: _signEvent,
 
         // Chat
         subscribeCommunityChat, publishCommunityMessage,
