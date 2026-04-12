@@ -23,6 +23,9 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
     <link rel="stylesheet" href="css/main.css?v=zap3b">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
 
     <!-- PWA MANIFEST + SERVICE WORKER -->
     <link rel="manifest" href="/manifest.json">
@@ -1351,11 +1354,49 @@
         </section>
 
         <section class="section" id="mapaSection">
-            <div class="placeholder">
-                <button class="back-btn" onclick="backToMenu()">← Volver</button>
-                <h3>🗺️ Mapa P2P Tokenizado</h3>
-                <p>Funcionalidad en desarrollo</p>
-                <p style="margin-top: 1rem; font-size: 0.9rem;">Red social descentralizada basada en ubicación</p>
+            <div class="chat-section">
+                <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
+
+                <h2 style="color: var(--color-gold); margin-bottom: 0.5rem; text-align: center;">
+                    🗺️ Mapa de la Red LiberBit
+                </h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">
+                    Nodos físicos y ciudadanía federada
+                </p>
+
+                <!-- Stats -->
+                <div class="lbw-map-stats-bar">
+                    <div class="lbw-map-stat">
+                        <div class="lbw-map-stat-value" id="lbwMapNodeCount">—</div>
+                        <div class="lbw-map-stat-label">🏛️ Nodos físicos</div>
+                    </div>
+                    <div class="lbw-map-stat">
+                        <div class="lbw-map-stat-value" id="lbwMapCitizenCount">—</div>
+                        <div class="lbw-map-stat-label">👥 Ciudadanos</div>
+                    </div>
+                    <div class="lbw-map-stat">
+                        <div class="lbw-map-stat-value" id="lbwMapCityCount">—</div>
+                        <div class="lbw-map-stat-label">📍 Ciudades</div>
+                    </div>
+                </div>
+
+                <!-- Controles de capa -->
+                <div class="lbw-map-controls">
+                    <button class="lbw-map-toggle active" id="lbwMapToggleNodes"
+                            onclick="LBW_Map.toggleNodes()">🏛️ Nodos físicos</button>
+                    <button class="lbw-map-toggle active" id="lbwMapToggleCitizens"
+                            onclick="LBW_Map.toggleCitizens()">👥 Ciudadanos por ciudad</button>
+                    <button class="lbw-map-toggle" onclick="LBW_Map.refresh()">🔄 Refrescar</button>
+                </div>
+
+                <div class="lbw-map-status" id="lbwMapStatus">Inicializando...</div>
+
+                <!-- Mapa -->
+                <div id="lbwMapContainer"></div>
+
+                <p style="color: var(--color-text-secondary); font-size: 0.8rem; margin-top: 1rem; text-align: center; opacity: 0.7;">
+                    🔒 Por privacidad, los ciudadanos se muestran agregados por ciudad — nunca individualmente.
+                </p>
             </div>
         </section>
 
@@ -2787,6 +2828,10 @@
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->
     <script src="js/missions.js?v=apr10g"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="js/map.js?v=1"></script>
 
     <!-- Emoji Picker -->
     <style>
