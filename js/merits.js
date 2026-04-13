@@ -318,7 +318,39 @@ function updateVotingBlocksDisplay() {
 // Leaderboard (updated with level & bloc display)
 // ═══════════════════════════════════════════════════════════════
 async function loadLeaderboard() {
-    const leaderboard = (typeof LBW_Merits !== 'undefined') ? LBW_Merits.getLeaderboard(20) : [];
+    // FIX (apr13-c): use Supabase ledger as primary source so the leaderboard
+    // shows TOTAL merits (nostr + activity), matching dashboard, ledger maestro
+    // and ranking pioneros. Was using LBW_Merits.getLeaderboard() which only
+    // has formal nostr merits (no activity), causing inconsistent numbers.
+    let leaderboard = [];
+
+    if (typeof LBW_MeritsSync !== 'undefined' && LBW_MeritsSync.loadSupabaseLedger) {
+        try {
+            const ledger = await LBW_MeritsSync.loadSupabaseLedger({ limit: 20, orderBy: 'total' });
+            if (ledger && ledger.users && ledger.users.length > 0) {
+                // Derive bloc from level name (Supabase doesn't store bloc directly)
+                const blocFor = (lvl) => {
+                    if (lvl === 'Génesis') return 'Gobernanza';
+                    if (lvl === 'Custodio' || lvl === 'Ciudadano Senior') return 'Ciudadanía';
+                    return 'Comunidad';
+                };
+                leaderboard = ledger.users.map(u => ({
+                    pubkey: u.pubkey,
+                    npub: u.npub || '',
+                    total: u.total || 0,
+                    level: { name: u.nivel || 'Amigo', emoji: u.nivel_emoji || '👋', bloc: blocFor(u.nivel) }
+                }));
+            }
+        } catch (e) {
+            console.warn('[Merits] Supabase leaderboard failed, falling back to Nostr local:', e);
+        }
+    }
+
+    // Fallback: local Nostr leaderboard if Supabase unavailable
+    if (leaderboard.length === 0 && typeof LBW_Merits !== 'undefined') {
+        leaderboard = LBW_Merits.getLeaderboard(20) || [];
+    }
+
     const myPubkey = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : '';
 
     let html = '';
