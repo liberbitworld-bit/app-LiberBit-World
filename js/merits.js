@@ -643,11 +643,20 @@ function switchLbwmTab(tabName) {
     if (content) content.classList.add('active');
 
     // [v2.0] Refresh data on tab switch
+    // FIX (apr13): use getUnifiedMerits() as source of truth, not DOM (which can be stale '0')
     if (tabName === 'bloques-voto') updateVotingBlocksDisplay();
-    if (tabName === 'dashboard') { var m = parseInt(document.getElementById('userTotalMerits')?.textContent) || 0; updateDashboardDisplay(m); }
+    if (tabName === 'dashboard') {
+        var m = (typeof getUnifiedMerits === 'function') ? (getUnifiedMerits().total || 0) : 0;
+        var el1 = document.getElementById('userTotalMerits');
+        if (el1) el1.textContent = m;
+        updateDashboardDisplay(m);
+    }
     if (tabName === 'propuestas') loadMeritProposals();
     if (tabName === 'verificaciones') loadPendingVerifications();
-    if (tabName === 'niveles') { var m2 = parseInt(document.getElementById('userTotalMerits')?.textContent) || 0; renderCitizenshipLevels(m2); }
+    if (tabName === 'niveles') {
+        var m2 = (typeof getUnifiedMerits === 'function') ? (getUnifiedMerits().total || 0) : 0;
+        renderCitizenshipLevels(m2);
+    }
     if (tabName === 'mis-aportaciones') loadMyContributions();
     if (tabName === 'misiones') {
         LBW_Missions.renderMissionsTab();
@@ -1310,6 +1319,18 @@ function _renderGauge(canvas, merits, needleAng, level) {
 function updateDashboardDisplay(merits) {
     var level = _getGaugeLevel(merits);
     var next = _getNextLevel(merits);
+
+    // FIX (apr13): keep userTotalMerits and userRanking in sync — they were
+    // only set in loadMeritsData(), which doesn't run on every tab switch.
+    var totalEl = document.getElementById('userTotalMerits');
+    if (totalEl) totalEl.textContent = merits;
+    var rankingEl = document.getElementById('userRanking');
+    if (rankingEl && typeof LBW_Merits !== 'undefined' && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
+        const lb = LBW_Merits.getLeaderboard(999) || [];
+        const myPk = LBW_Nostr.getPubkey();
+        const idx = lb.findIndex(e => e.pubkey === myPk);
+        rankingEl.textContent = idx >= 0 ? '#' + (idx + 1) : '—';
+    }
 
     // Gauge merit count
     var countEl = document.getElementById('meritsGaugeMeritCount');
