@@ -1,7 +1,8 @@
 // ================================================================
-// LiberBit World — supabase-merits-sync.js  v1.4
+// LiberBit World — supabase-merits-sync.js  v1.5
 // Sincroniza eventos de mérito Nostr (kind 31002) + actividad
 // (kind 1, 30402, 31000, 31001) → Supabase.
+// v1.5 (apr13): NIP-33 deduplication via nostr_d_tag column.
 // ================================================================
 
 const LBW_MeritsSync = (() => {
@@ -68,21 +69,44 @@ const LBW_MeritsSync = (() => {
         if (!merit || !merit.id || !merit.pubkey) return;
         if (typeof supabaseClient === 'undefined') return;
 
+        // FIX (apr13): use nostr_d_tag for NIP-33 dedup so replaceable events
+        // don't accumulate as separate rows (was causing 4× founder bootstrap
+        // entries summed to 12000 in user_merits.total).
+        const dTag = merit.dTag || null;
+
+        const row = {
+            id:               merit.id,
+            pubkey:           merit.pubkey,
+            npub:             typeof LBW_Nostr !== 'undefined'
+                                ? LBW_Nostr.pubkeyToNpub(merit.pubkey) : '',
+            amount:           merit.amount || 0,
+            category:         _normalizeCategory(merit.category),
+            reason:           merit.reason || '',
+            awarded_by:       merit.awardedBy || '',
+            nostr_kind:       31002,
+            nostr_d_tag:      dTag,
+            source:           merit.source || 'award',
+            nostr_created_at: merit.created_at || Math.floor(Date.now() / 1000)
+        };
+
+        // If we have a dTag, dedup by (pubkey, nostr_d_tag) — replaces older
+        // versions of the same logical event. Otherwise fall back to id-only dedup.
+        if (dTag) {
+            // Two-step: delete any older version with same (pubkey, dTag) but different id,
+            // then upsert. Single-step ON CONFLICT (pubkey, nostr_d_tag) is unsupported when id
+            // is the PK and there's a separate unique on (pubkey, nostr_d_tag).
+            const { error: delErr } = await supabaseClient
+                .from('lbwm_merit_events')
+                .delete()
+                .eq('pubkey', merit.pubkey)
+                .eq('nostr_d_tag', dTag)
+                .neq('id', merit.id);
+            if (delErr) { _logSupabaseErr('merit_events dedup-delete', delErr); }
+        }
+
         const { error: evtErr } = await supabaseClient
             .from('lbwm_merit_events')
-            .upsert({
-                id:               merit.id,
-                pubkey:           merit.pubkey,
-                npub:             typeof LBW_Nostr !== 'undefined'
-                                    ? LBW_Nostr.pubkeyToNpub(merit.pubkey) : '',
-                amount:           merit.amount || 0,
-                category:         _normalizeCategory(merit.category),
-                reason:           merit.reason || '',
-                awarded_by:       merit.awardedBy || '',
-                nostr_kind:       31002,
-                source:           merit.source || 'award',
-                nostr_created_at: merit.created_at || Math.floor(Date.now() / 1000)
-            }, { onConflict: 'id' });
+            .upsert(row, { onConflict: 'id' });
 
         if (evtErr) { _logSupabaseErr('merit_events upsert', evtErr); return; }
 
@@ -260,6 +284,7 @@ const LBW_MeritsSync = (() => {
             for (const record of records) {
                 await syncMeritEvent({
                     id:         record.id,
+                    dTag:       record.dTag || null,   // FIX (apr13): forward dTag for NIP-33 dedup
                     pubkey:     entry.pubkey,
                     amount:     record.amount,
                     category:   record.category,
