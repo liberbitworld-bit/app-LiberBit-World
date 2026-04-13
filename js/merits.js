@@ -658,6 +658,11 @@ function switchLbwmTab(tabName) {
         renderCitizenshipLevels(m2);
     }
     if (tabName === 'mis-aportaciones') loadMyContributions();
+    // FIX (apr13-b): estos tabs solo se cargaban via loadMeritsData inicial;
+    // si el usuario cambia de tab y vuelve, el contenido quedaba "⏳ Cargando"
+    if (tabName === 'ledger') {
+        if (typeof loadLedgerFromSupabase === 'function') loadLedgerFromSupabase('total');
+    }
     if (tabName === 'misiones') {
         LBW_Missions.renderMissionsTab();
         // Update badge
