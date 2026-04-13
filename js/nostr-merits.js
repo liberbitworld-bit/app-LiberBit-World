@@ -394,12 +394,18 @@ const LBW_Merits = (() => {
                 const afterReload = _merits.get(founderHex);
                 if (!afterReload || afterReload.total < 3000) {
                     const fallbackId = 'bootstrap-offline-' + founderHex.substring(0, 8);
+                    // FIX (apr12-b): use the same dTag as the real relay event
+                    // ('bootstrap-fundacional-XXXXXXXX') so that NIP-33 deduplication
+                    // (in _processMerit) replaces this offline record cleanly when
+                    // the real signed event arrives from the relay.
+                    const fallbackDTag = 'bootstrap-fundacional-' + founderHex.substring(0, 8);
                     const alreadyFallback = afterReload && afterReload.records &&
                         afterReload.records.some(r => r.id === fallbackId);
                     if (!alreadyFallback) {
                         console.warn('[Merits] Relay inaccesible — restaurando meritos fundacionales (offline fallback)');
                         _processMerit({
                             id: fallbackId,
+                            dTag: fallbackDTag,   // FIX (apr12-b): enable NIP-33 dedup
                             pubkey: founderHex,
                             amount: FOUNDER_BOOTSTRAP_AMOUNT,
                             category: 'fundacional',
@@ -809,6 +815,25 @@ const LBW_Merits = (() => {
 
         // Dedup by event id
         if (userData.records.some(r => r.id === id)) return;
+
+        // FIX (apr12-b): retroactive cleanup of legacy bootstrap-offline records.
+        // Older app versions persisted the offline fallback without a dTag, which
+        // prevented NIP-33 dedup when the real signed event later arrived from the
+        // relay — leaving founders with double credit (e.g. 6000 instead of 3000).
+        // When a real 'award' fundacional event arrives for the same pubkey, drop
+        // any pre-existing offline record for that category.
+        if (source === 'award' && category === 'fundacional') {
+            const legacyIdx = userData.records.findIndex(r =>
+                r.source === 'bootstrap-offline' && r.category === 'fundacional'
+            );
+            if (legacyIdx !== -1) {
+                const legacy = userData.records[legacyIdx];
+                userData.total -= legacy.amount;
+                userData.byCategory[legacy.category] = (userData.byCategory[legacy.category] || 0) - legacy.amount;
+                userData.records.splice(legacyIdx, 1);
+                console.log('[Merits] Limpiado record offline legacy (' + legacy.amount + ' ' + legacy.category + ')');
+            }
+        }
 
         // NIP-33: parameterized replaceable events — same d-tag = same logical event.
         // Keep only the newest (highest created_at).
