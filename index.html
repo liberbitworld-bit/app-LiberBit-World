@@ -22,7 +22,7 @@
     <!-- DaisyUI -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
     <!-- LiberBit Custom Styles (loaded last to override) -->
-    <link rel="stylesheet" href="css/main.css?v=apr17a">
+    <link rel="stylesheet" href="css/main.css?v=apr17b">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin=""/>
@@ -287,7 +287,7 @@
         <!-- Main Menu Section -->
         <section class="section" id="mainMenuSection">
             <div class="main-menu">
-                <!-- Welcome row: Card + Aportar Valor button -->
+                <!-- Welcome row: just notification card -->
                 <div style="display: flex; gap: 1rem; align-items: stretch; margin-bottom: 2rem;" class="welcome-row-mobile">
                     <!-- User Welcome & Notifications Card -->
                     <div class="notification-inbox" onclick="openNotificationCenter()" style="flex: 1; margin-bottom: 0;">
@@ -329,18 +329,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- Aportar Valor Button -->
-                    <div onclick="openSubApp('merits')" class="welcome-btn-mobile" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2) 0%, rgba(229, 185, 92, 0.05) 100%); border: 2px solid var(--color-gold); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(229, 185, 92, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
-                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
-                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-gold); line-height: 1.3;">Aportar<br>Valor</div>
-                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Ganar LBWM</div>
-                    </div>
-                    <!-- Aportación Económica Button -->
-                    <div onclick="openApp('aportacionEconomica')" class="welcome-btn-mobile" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 110px; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.05) 100%); border: 2px solid #FF9800; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(255, 152, 0, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
-                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">₿</div>
-                        <div style="font-size: 0.85rem; font-weight: 700; color: #FFB74D; line-height: 1.3;">Aportación<br>Económica</div>
-                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Lightning ⚡</div>
                     </div>
                 </div>
                 
@@ -407,6 +395,22 @@
                         <div class="app-icon">🚨</div>
                         <div class="app-name">SOS</div>
                         <div class="app-description">Seguridad y Respuesta Inmediata</div>
+                    </div>
+                </div>
+
+                <!-- Fila de acciones destacadas: Aportar Valor + Aportación Económica -->
+                <div class="action-row-mobile" style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Aportar Valor Button -->
+                    <div onclick="openSubApp('merits')" class="welcome-btn-mobile" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(229, 185, 92, 0.2) 0%, rgba(229, 185, 92, 0.05) 100%); border: 2px solid var(--color-gold); border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(229, 185, 92, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: var(--color-gold); line-height: 1.3;">Aportar<br>Valor</div>
+                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Ganar LBWM</div>
+                    </div>
+                    <!-- Aportación Económica Button -->
+                    <div onclick="openApp('aportacionEconomica')" class="welcome-btn-mobile" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.25rem 1rem; background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.05) 100%); border: 2px solid #FF9800; border-radius: 16px; cursor: pointer; transition: all 0.3s ease; text-align: center;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(255, 152, 0, 0.3)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">₿</div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #FFB74D; line-height: 1.3;">Aportación<br>Económica</div>
+                        <div style="font-size: 0.65rem; color: var(--color-text-secondary); margin-top: 0.4rem;">Lightning ⚡</div>
                     </div>
                 </div>
 
