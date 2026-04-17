@@ -493,27 +493,75 @@
         style.textContent = `
             #lbwMapContainer {
                 width: 100%;
-                height: 520px;
+                height: calc(100vh - 260px);
+                min-height: 400px;
                 border-radius: 16px;
                 border: 2px solid var(--color-border);
                 background: var(--color-bg-dark);
                 overflow: hidden;
                 z-index: 1;
             }
+            /* Header compacto con título + stats inline + privacy */
+            .lbw-map-header {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+                margin-bottom: 0.75rem;
+            }
+            .lbw-map-title {
+                color: var(--color-gold);
+                font-size: 1.4rem;
+                margin: 0;
+                flex-shrink: 0;
+            }
+            .lbw-map-stats-inline {
+                display: flex;
+                gap: 0.9rem;
+                flex: 1;
+                flex-wrap: wrap;
+                align-items: center;
+                font-family: 'JetBrains Mono', monospace;
+            }
+            .lbw-map-stat-inline {
+                color: var(--color-text-secondary);
+                font-size: 0.9rem;
+                white-space: nowrap;
+            }
+            .lbw-map-stat-inline .v {
+                color: var(--color-gold);
+                font-weight: 700;
+                font-size: 1rem;
+                margin-right: 0.2rem;
+            }
+            .lbw-map-privacy {
+                font-size: 1rem;
+                opacity: 0.6;
+                cursor: help;
+                flex-shrink: 0;
+            }
+            .lbw-map-privacy:hover { opacity: 1; }
+            /* Controles + status en misma fila */
+            .lbw-map-controls-row {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+                margin-bottom: 0.6rem;
+            }
             .lbw-map-controls {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 0.5rem;
-                margin-bottom: 1rem;
+                gap: 0.4rem;
             }
             .lbw-map-toggle {
-                padding: 0.5rem 1rem;
-                border-radius: 10px;
+                padding: 0.35rem 0.75rem;
+                border-radius: 8px;
                 border: 2px solid var(--color-border);
                 background: var(--color-bg-card);
                 color: var(--color-text-secondary);
                 cursor: pointer;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 font-weight: 600;
                 transition: all 0.2s ease;
             }
@@ -528,32 +576,11 @@
             }
             .lbw-map-status {
                 color: var(--color-text-secondary);
-                font-size: 0.85rem;
-                margin-bottom: 0.75rem;
-                font-family: 'JetBrains Mono', monospace;
-            }
-            .lbw-map-stats-bar {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-                gap: 1rem;
-                margin-bottom: 1rem;
-            }
-            .lbw-map-stat {
-                background: var(--color-bg-card);
-                padding: 1rem;
-                border-radius: 12px;
-                border: 2px solid var(--color-border);
-                text-align: center;
-            }
-            .lbw-map-stat-value {
-                font-size: 1.8rem;
-                font-weight: 700;
-                color: var(--color-gold);
-            }
-            .lbw-map-stat-label {
                 font-size: 0.8rem;
-                color: var(--color-text-secondary);
-                margin-top: 0.25rem;
+                font-family: 'JetBrains Mono', monospace;
+                opacity: 0.75;
+                flex: 1;
+                min-width: 120px;
             }
 
             /* Markers */
@@ -675,7 +702,16 @@
             }
 
             @media (max-width: 600px) {
-                #lbwMapContainer { height: 420px; }
+                #lbwMapContainer {
+                    height: calc(100vh - 220px);
+                    min-height: 350px;
+                }
+                .lbw-map-title { font-size: 1.15rem; width: 100%; }
+                .lbw-map-stats-inline { gap: 0.6rem; }
+                .lbw-map-stat-inline { font-size: 0.8rem; }
+                .lbw-map-stat-inline .v { font-size: 0.9rem; }
+                .lbw-map-toggle { padding: 0.3rem 0.6rem; font-size: 0.78rem; }
+                .lbw-map-status { font-size: 0.72rem; width: 100%; }
             }
         `;
         document.head.appendChild(style);
