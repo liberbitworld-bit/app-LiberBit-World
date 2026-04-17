@@ -1056,10 +1056,13 @@ const LBW_NostrBridge = (() => {
     }
 
     function _updateDMSidebar() {
-        // Actualizar badge de privados (usamos número de conversaciones como proxy)
-        const n = Object.keys(_dmConversations).length;
+        // Actualizar badge de privados con DMs NO LEÍDOS (no total de conversaciones)
+        const unread = getUnreadDMCount();
         const badge = document.getElementById('badgePrivate');
-        if (badge && n > 0) { badge.style.display = 'flex'; badge.textContent = n; }
+        if (badge) {
+            if (unread > 0) { badge.style.display = 'flex'; badge.textContent = unread; }
+            else { badge.style.display = 'none'; }
+        }
 
         // Delegar el RENDER del sidebar a chat.js (única fuente de verdad).
         // loadChatSidebar() decide qué mostrar según currentChatTab (community/debates/private).
@@ -1194,11 +1197,8 @@ const LBW_NostrBridge = (() => {
     }
 
     function _updateDMBadge() {
-        const n = Object.keys(_dmConversations).length;
-        const b2 = document.getElementById('badge-chat');
-        if (b2 && n > 0) { b2.classList.remove('hidden'); b2.textContent = n; }
-        // notifCountMessages lo gestiona notifications.js::updateNotificationBadges()
-        // (valor correcto: DMs no leídos, no número de conversaciones)
+        // badge-chat lo gestiona ui.js::updateChatBadge() (unifica posts comunidad + DMs no leídos).
+        // notifCountMessages lo gestiona notifications.js::updateNotificationBadges().
         _scheduleNotifRefresh();
     }
 
@@ -1214,6 +1214,11 @@ const LBW_NostrBridge = (() => {
             if (typeof loadAllNotifications === 'function') {
                 try { loadAllNotifications(); } catch (e) {
                     console.warn('[Bridge] loadAllNotifications failed:', e);
+                }
+            }
+            if (typeof updateChatBadge === 'function') {
+                try { updateChatBadge(); } catch (e) {
+                    console.warn('[Bridge] updateChatBadge failed:', e);
                 }
             }
         }, 500);
