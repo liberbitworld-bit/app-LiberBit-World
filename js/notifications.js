@@ -41,39 +41,39 @@ async function loadAllNotifications() {
 
     try {
         // ── 1. Mensajes directos no leidos (via LBW_NostrBridge) ─────────────
-        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getConversations) {
-            const conversations = LBW_NostrBridge.getConversations();
-            const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
-                ? LBW_Nostr.getPubkey() : null;
-            for (const conv of conversations) {
-                if (!conv.timestamp) continue;
-                // Saltar conversaciones cuyo último mensaje lo envié yo
-                if (myPubkey && conv.lastMessageFrom === myPubkey) continue;
+        // Usamos getUnreadDMs() que identifica mensajes entrantes posteriores a
+        // lastSeen_private. Ignora mensajes que envié yo, así que responder a
+        // una conversación no elimina la notificación si hay msgs sin leer del otro.
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getUnreadDMs) {
+            const unreadConvs = LBW_NostrBridge.getUnreadDMs();
+            for (const conv of unreadConvs) {
                 const msgTime = conv.timestamp * 1000;
-                if (msgTime > lastVisitDM) {
-                    const senderId = conv.pubkey;
-                    let senderName = senderId.substring(0, 12) + '...';
-                    if (LBW_NostrBridge._resolveProfileData) {
-                        try {
-                            const profile = await LBW_NostrBridge._resolveProfileData(senderId);
-                            if (profile && profile.name) senderName = profile.name;
-                        } catch(e) {}
-                    }
-                    const notifId = 'msg_' + senderId + '_' + msgTime;
-                    if (!dismissed.has(notifId)) {
-                        allNotifications.push({
-                            id: notifId,
-                            type: 'messages',
-                            title: 'Mensaje de ' + senderName,
-                            content: (conv.lastMessage || '(mensaje cifrado)').substring(0, 100),
-                            timestamp: msgTime,
-                            unread: true,
-                            action: () => {
-                                closeNotificationCenter();
-                                if (LBW_NostrBridge.openDMConversation) LBW_NostrBridge.openDMConversation(senderId);
-                            }
-                        });
-                    }
+                const senderId = conv.pubkey;
+                let senderName = senderId.substring(0, 12) + '...';
+                if (LBW_NostrBridge._resolveProfileData) {
+                    try {
+                        const profile = await LBW_NostrBridge._resolveProfileData(senderId);
+                        if (profile && profile.name) senderName = profile.name;
+                    } catch(e) {}
+                }
+                // notifId basado en el eventId del último mensaje no leído: dedup estable
+                const notifId = 'msg_' + conv.lastMessageId;
+                if (!dismissed.has(notifId)) {
+                    const titleSuffix = conv.unreadCount > 1
+                        ? ` (${conv.unreadCount} mensajes)`
+                        : '';
+                    allNotifications.push({
+                        id: notifId,
+                        type: 'messages',
+                        title: 'Mensaje de ' + senderName + titleSuffix,
+                        content: (conv.lastMessage || '(mensaje cifrado)').substring(0, 100),
+                        timestamp: msgTime,
+                        unread: true,
+                        action: () => {
+                            closeNotificationCenter();
+                            if (LBW_NostrBridge.openDMConversation) LBW_NostrBridge.openDMConversation(senderId);
+                        }
+                    });
                 }
             }
         }
