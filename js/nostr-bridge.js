@@ -843,6 +843,7 @@ const LBW_NostrBridge = (() => {
                             eventId,
                             created_at: event.created_at
                         });
+                        _scheduleNotifRefresh();
                     }
                 }
             }
@@ -865,6 +866,7 @@ const LBW_NostrBridge = (() => {
                             content: event.content,
                             created_at: event.created_at
                         });
+                        _scheduleNotifRefresh();
                     }
                 }
             );
@@ -1213,10 +1215,28 @@ const LBW_NostrBridge = (() => {
 
     function _updateDMBadge() {
         const n = Object.keys(_dmConversations).length;
-        const b1 = document.getElementById('notifCountMessages');
-        if (b1) b1.textContent = n;
         const b2 = document.getElementById('badge-chat');
         if (b2 && n > 0) { b2.classList.remove('hidden'); b2.textContent = n; }
+        // notifCountMessages lo gestiona notifications.js::updateNotificationBadges()
+        // (valor correcto: DMs no leídos, no número de conversaciones)
+        _scheduleNotifRefresh();
+    }
+
+    // ── Refresco debounced del centro de notificaciones ───────
+    // Al llegar un DM/zap/reply en tiempo real, programamos una llamada
+    // a loadAllNotifications() tras 500ms de silencio. Evita hammer durante
+    // el burst inicial de eventos históricos al login.
+    let _notifRefreshTimer = null;
+    function _scheduleNotifRefresh() {
+        if (_notifRefreshTimer) clearTimeout(_notifRefreshTimer);
+        _notifRefreshTimer = setTimeout(() => {
+            _notifRefreshTimer = null;
+            if (typeof loadAllNotifications === 'function') {
+                try { loadAllNotifications(); } catch (e) {
+                    console.warn('[Bridge] loadAllNotifications failed:', e);
+                }
+            }
+        }, 500);
     }
 
     // ── Marketplace (Synced + MediaService) ──────────────────
@@ -1746,6 +1766,7 @@ const LBW_NostrBridge = (() => {
                     pubkey,
                     name: _nameCache[pubkey] || lastMsg?._resolvedName || null,
                     lastMessage: lastMsg?.content || '',
+                    lastMessageFrom: lastMsg?.from || null,
                     timestamp: lastMsg?.created_at || 0,
                     messageCount: messages.length,
                     encrypted: true // Todos los DMs Nostr están cifrados
