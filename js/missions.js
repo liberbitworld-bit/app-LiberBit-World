@@ -24,10 +24,12 @@ const LBW_Missions = (function () {
     const MIN_MERITS_TO_CREATE = 1000;
 
     // ── Helpers ──────────────────────────────────────────────
-    function _esc(str) {
+    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
+    // Previous version was missing `'` escape — now fully covered.
+    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
         if (!str) return '';
-        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
 
     function _myPubkey() {
         return LBW_Nostr?.isLoggedIn() ? LBW_Nostr.getPubkey() : (currentUser?.pubkey || '');
@@ -348,7 +350,7 @@ const LBW_Missions = (function () {
         const style = active
             ? 'background:rgba(229,185,92,0.2);color:var(--color-gold);border:1px solid var(--color-gold);'
             : 'background:var(--color-bg-dark);color:var(--color-text-secondary);border:1px solid var(--color-border);';
-        return `<button style="font-size:0.75rem;padding:0.3rem 0.7rem;border-radius:20px;cursor:pointer;${style}" onclick="LBW_Missions.setFilter('${value}')">${label}</button>`;
+        return `<button style="font-size:0.75rem;padding:0.3rem 0.7rem;border-radius:20px;cursor:pointer;${style}" data-lbw-action="missionSetFilter" data-value="${_esc(value)}">${label}</button>`;
     }
 
     function _emptyState() {
@@ -393,14 +395,14 @@ const LBW_Missions = (function () {
                 </div>
                 <!-- Actions -->
                 <div style="display:flex;flex-direction:column;gap:0.4rem;align-items:flex-end;">
-                    ${canClaim ? `<button onclick="LBW_Missions.claim('${m.id}')" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(229,185,92,0.15);border:1.5px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-weight:700;">🎯 Reclamar</button>` : ''}
-                    ${canDeliver ? `<button onclick="LBW_Missions.showDeliveryForm('${m.id}')" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(38,166,154,0.15);border:1.5px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-weight:700;">📤 Entregar</button>` : ''}
-                    ${canApprove ? `<button onclick="LBW_Missions.approve('${m.id}')" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(76,175,80,0.15);border:1.5px solid #4CAF50;border-radius:8px;color:#4CAF50;cursor:pointer;font-weight:700;">✅ Aprobar</button>` : ''}
-                    <button onclick="LBW_Missions.share('${m.id}')" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;">🔗 Compartir</button>
-                    ${canCancel ? `<button onclick="LBW_Missions.cancel('${m.id}')" style="font-size:0.72rem;padding:0.3rem 0.6rem;background:rgba(255,82,82,0.1);border:1px solid #FF5252;border-radius:8px;color:#FF5252;cursor:pointer;">✕ Cancelar</button>` : ''}
+                    ${canClaim ? `<button data-lbw-action="missionClaim" data-id="${_esc(m.id)}" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(229,185,92,0.15);border:1.5px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-weight:700;">🎯 Reclamar</button>` : ''}
+                    ${canDeliver ? `<button data-lbw-action="missionShowDelivery" data-id="${_esc(m.id)}" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(38,166,154,0.15);border:1.5px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-weight:700;">📤 Entregar</button>` : ''}
+                    ${canApprove ? `<button data-lbw-action="missionApprove" data-id="${_esc(m.id)}" style="font-size:0.78rem;padding:0.4rem 0.9rem;background:rgba(76,175,80,0.15);border:1.5px solid #4CAF50;border-radius:8px;color:#4CAF50;cursor:pointer;font-weight:700;">✅ Aprobar</button>` : ''}
+                    <button data-lbw-action="missionShare" data-id="${_esc(m.id)}" style="font-size:0.75rem;padding:0.35rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;">🔗 Compartir</button>
+                    ${canCancel ? `<button data-lbw-action="missionCancel" data-id="${_esc(m.id)}" style="font-size:0.72rem;padding:0.3rem 0.6rem;background:rgba(255,82,82,0.1);border:1px solid #FF5252;border-radius:8px;color:#FF5252;cursor:pointer;">✕ Cancelar</button>` : ''}
                 </div>
             </div>
-            ${m.claimed_by_name ? `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--color-border);font-size:0.75rem;color:var(--color-text-secondary);">👤 Reclamada por <strong style="color:var(--color-text-primary);">${_esc(m.claimed_by_name)}</strong>${m.delivery_url ? ` · <a href="${_esc(m.delivery_url)}" target="_blank" style="color:var(--color-teal-light);">Ver entrega ↗</a>` : ''}</div>` : ''}
+            ${m.claimed_by_name ? `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--color-border);font-size:0.75rem;color:var(--color-text-secondary);">👤 Reclamada por <strong style="color:var(--color-text-primary);">${_esc(m.claimed_by_name)}</strong>${m.delivery_url ? ` · <a href="${_esc(LBW.safeUrl(m.delivery_url))}" target="_blank" rel="noopener noreferrer" style="color:var(--color-teal-light);">Ver entrega ↗</a>` : ''}</div>` : ''}
         </div>`;
     }
 
@@ -440,8 +442,8 @@ const LBW_Missions = (function () {
                         <span style="font-size:0.7rem;color:var(--color-text-secondary);">${cat.weight}</span>
                     </div>
                     <div style="display:flex;gap:0.5rem;">
-                        <button onclick="event.stopPropagation();LBW_Missions.claim('${m.id}')" style="flex:1;padding:0.45rem;background:rgba(229,185,92,0.15);border:1.5px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.78rem;font-weight:700;">🎯 Reclamar</button>
-                        <button onclick="event.stopPropagation();LBW_Missions.share('${m.id}')" style="padding:0.45rem 0.6rem;background:rgba(255,255,255,0.05);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;font-size:0.78rem;">🔗</button>
+                        <button data-lbw-action="missionClaim" data-id="${_esc(m.id)}" style="flex:1;padding:0.45rem;background:rgba(229,185,92,0.15);border:1.5px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.78rem;font-weight:700;">🎯 Reclamar</button>
+                        <button data-lbw-action="missionShare" data-id="${_esc(m.id)}" style="padding:0.45rem 0.6rem;background:rgba(255,255,255,0.05);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);cursor:pointer;font-size:0.78rem;">🔗</button>
                     </div>
                 </div>`;
 
@@ -490,8 +492,8 @@ const LBW_Missions = (function () {
                 </div>
                 ${m.delivery_instructions ? `<div style="padding:0.85rem;background:rgba(38,166,154,0.08);border-radius:10px;border-left:3px solid var(--color-teal-light);margin-bottom:1.5rem;"><div style="font-size:0.75rem;font-weight:700;color:var(--color-teal-light);margin-bottom:0.3rem;">📋 Instrucciones de entrega</div><p style="font-size:0.85rem;color:var(--color-text-secondary);line-height:1.6;margin:0;">${_esc(m.delivery_instructions)}</p></div>` : ''}
                 <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-                    ${m.status === 'open' && m.creator_pubkey !== _myPubkey() ? `<button onclick="document.getElementById('missionDetailModal').remove();LBW_Missions.claim('${m.id}')" class="btn btn-primary" style="flex:1;">🎯 Reclamar esta Misión</button>` : ''}
-                    <button onclick="LBW_Missions.share('${m.id}')" class="btn btn-secondary">🔗 Compartir</button>
+                    ${m.status === 'open' && m.creator_pubkey !== _myPubkey() ? `<button data-lbw-action="missionClaim" data-id="${_esc(m.id)}" data-close-modal="missionDetailModal" class="btn btn-primary" style="flex:1;">🎯 Reclamar esta Misión</button>` : ''}
+                    <button data-lbw-action="missionShare" data-id="${_esc(m.id)}" class="btn btn-secondary">🔗 Compartir</button>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -541,8 +543,8 @@ const LBW_Missions = (function () {
                 
                 <div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
                     <button onclick="LBW_Missions._copyShare()" class="btn btn-primary" style="flex:1;">📋 Copiar texto</button>
-                    <button onclick="LBW_Missions._shareTwitter('${m.id}')" style="flex:1;padding:0.6rem 1rem;background:rgba(29,161,242,0.15);border:1.5px solid rgba(29,161,242,0.5);border-radius:8px;color:#1DA1F2;cursor:pointer;font-weight:600;font-size:0.85rem;">𝕏 Twitter/X</button>
-                    <button onclick="LBW_Missions._shareTelegram('${m.id}')" style="flex:1;padding:0.6rem 1rem;background:rgba(0,136,204,0.15);border:1.5px solid rgba(0,136,204,0.5);border-radius:8px;color:#0088CC;cursor:pointer;font-weight:600;font-size:0.85rem;">✈️ Telegram</button>
+                    <button data-lbw-action="missionShareTwitter" data-id="${_esc(m.id)}" style="flex:1;padding:0.6rem 1rem;background:rgba(29,161,242,0.15);border:1.5px solid rgba(29,161,242,0.5);border-radius:8px;color:#1DA1F2;cursor:pointer;font-weight:600;font-size:0.85rem;">𝕏 Twitter/X</button>
+                    <button data-lbw-action="missionShareTelegram" data-id="${_esc(m.id)}" style="flex:1;padding:0.6rem 1rem;background:rgba(0,136,204,0.15);border:1.5px solid rgba(0,136,204,0.5);border-radius:8px;color:#0088CC;cursor:pointer;font-weight:600;font-size:0.85rem;">✈️ Telegram</button>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -708,7 +710,7 @@ const LBW_Missions = (function () {
                 </div>
                 <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
                     <button onclick="document.getElementById('missionDeliveryModal').remove()" class="btn btn-secondary">Cancelar</button>
-                    <button onclick="LBW_Missions.submitDeliveryForm('${missionId}')" class="btn btn-primary">📤 Enviar Entrega</button>
+                    <button data-lbw-action="missionSubmitDelivery" data-id="${_esc(missionId)}" class="btn btn-primary">📤 Enviar Entrega</button>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -829,3 +831,57 @@ const LBW_Missions = (function () {
 window.LBW_Missions = LBW_Missions;
 
 console.log('✅ LBW Missions loaded');
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for mission actions.
+// ═══════════════════════════════════════════════════════════════════
+(function installMissionsEventDelegation() {
+    if (window.__lbwMissionsListenerInstalled) return;
+    window.__lbwMissionsListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        if (!action || action.indexOf('mission') !== 0) return;
+        var id = el.dataset.id;
+        var closeModal = el.dataset.closeModal;
+        try {
+            if (closeModal) {
+                var m = document.getElementById(closeModal);
+                if (m) m.remove();
+            }
+            switch (action) {
+                case 'missionSetFilter':
+                    LBW_Missions.setFilter(el.dataset.value);
+                    break;
+                case 'missionClaim':
+                    LBW_Missions.claim(id);
+                    break;
+                case 'missionShowDelivery':
+                    LBW_Missions.showDeliveryForm(id);
+                    break;
+                case 'missionApprove':
+                    LBW_Missions.approve(id);
+                    break;
+                case 'missionShare':
+                    LBW_Missions.share(id);
+                    break;
+                case 'missionCancel':
+                    LBW_Missions.cancel(id);
+                    break;
+                case 'missionShareTwitter':
+                    LBW_Missions._shareTwitter(id);
+                    break;
+                case 'missionShareTelegram':
+                    LBW_Missions._shareTelegram(id);
+                    break;
+                case 'missionSubmitDelivery':
+                    LBW_Missions.submitDeliveryForm(id);
+                    break;
+            }
+        } catch (err) {
+            console.error('[Missions delegation] Error dispatching', action, err);
+        }
+    });
+})();
