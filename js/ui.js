@@ -446,6 +446,9 @@ function openSubApp(subAppName) {
         showSection('meritsSection');
         loadMeritsData();
         loadMyContributions();
+    } else if (subAppName === 'delegations') {
+        showSection('delegationsSection');
+        if (typeof loadDelegationsUI === 'function') loadDelegationsUI();
     }
 }
 
@@ -486,7 +489,7 @@ function showSection(sectionId) {
     // Configurar el botón de volver en el header según la sección activa
     const backBtn = document.getElementById('headerBackBtn');
     if (backBtn) {
-        const backToGobernanza = ['gobernanzaProposalsSection', 'meritsSection'];
+        const backToGobernanza = ['gobernanzaProposalsSection', 'meritsSection', 'delegationsSection'];
         const noBack = ['mainMenuSection', 'registrationSection'];
         if (noBack.includes(sectionId)) {
             backBtn.classList.add('hidden');
