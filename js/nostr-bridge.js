@@ -1371,10 +1371,10 @@ const LBW_NostrBridge = (() => {
                         </div>
                         <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;" class="card-actions">
                             ${(!isMine && listing.price && listing.price !== 'A negociar' && !isNaN(parseInt(listing.price)) && listing.status === 'active')
-                                ? `<button onclick="LBW_NostrBridge.buyListing('${listing.id}')" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.75rem;font-weight:600;">⚡ Comprar</button>`
+                                ? `<button data-lbw-action="bridgeBuyListing" data-id="${_esc(listing.id)}" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.75rem;font-weight:600;">⚡ Comprar</button>`
                                 : ''}
-                            <button onclick="LBW_NostrBridge.startDMWith('${listing.pubkey}')" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">💬 Contactar</button>
-                            ${isMine ? `<button onclick="LBW_NostrBridge.deleteListing('${listing.id}')" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>` : ''}
+                            <button data-lbw-action="bridgeStartDM" data-pubkey="${_esc(listing.pubkey)}" style="flex:1;min-width:80px;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">💬 Contactar</button>
+                            ${isMine ? `<button data-lbw-action="bridgeDeleteListing" data-id="${_esc(listing.id)}" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>` : ''}
                         </div>
                     </div>`;
 
@@ -1721,12 +1721,13 @@ const LBW_NostrBridge = (() => {
         } catch(e) {}
     }
 
-    function _esc(s) {
-        if (!s) return '';
+    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
+    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (s) {
+        if (s === null || s === undefined) return '';
         const d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
-    }
+    };
 
     // ── Debug ────────────────────────────────────────────────
     async function getDebugStats() {
@@ -1919,3 +1920,33 @@ document.addEventListener('DOMContentLoaded', () => {
     LBW_NostrBridge.init();
     LBW_NostrBridge.restoreSession();
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for marketplace listing actions.
+// ═══════════════════════════════════════════════════════════════════
+(function installBridgeEventDelegation() {
+    if (window.__lbwBridgeListenerInstalled) return;
+    window.__lbwBridgeListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        if (!action || action.indexOf('bridge') !== 0) return;
+        try {
+            switch (action) {
+                case 'bridgeBuyListing':
+                    LBW_NostrBridge.buyListing(el.dataset.id);
+                    break;
+                case 'bridgeStartDM':
+                    LBW_NostrBridge.startDMWith(el.dataset.pubkey);
+                    break;
+                case 'bridgeDeleteListing':
+                    LBW_NostrBridge.deleteListing(el.dataset.id);
+                    break;
+            }
+        } catch (err) {
+            console.error('[Bridge delegation] Error dispatching', action, err);
+        }
+    });
+})();
