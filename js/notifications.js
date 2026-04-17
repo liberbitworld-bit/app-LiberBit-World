@@ -43,9 +43,13 @@ async function loadAllNotifications() {
         // ── 1. Mensajes directos no leidos (via LBW_NostrBridge) ─────────────
         if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getConversations) {
             const conversations = LBW_NostrBridge.getConversations();
+            const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
+                ? LBW_Nostr.getPubkey() : null;
             for (const conv of conversations) {
-                if (!conv.lastMessage || !conv.lastMessage.created_at) continue;
-                const msgTime = conv.lastMessage.created_at * 1000;
+                if (!conv.timestamp) continue;
+                // Saltar conversaciones cuyo último mensaje lo envié yo
+                if (myPubkey && conv.lastMessageFrom === myPubkey) continue;
+                const msgTime = conv.timestamp * 1000;
                 if (msgTime > lastVisitDM) {
                     const senderId = conv.pubkey;
                     let senderName = senderId.substring(0, 12) + '...';
@@ -61,7 +65,7 @@ async function loadAllNotifications() {
                             id: notifId,
                             type: 'messages',
                             title: 'Mensaje de ' + senderName,
-                            content: (conv.lastMessage.content || '(mensaje cifrado)').substring(0, 100),
+                            content: (conv.lastMessage || '(mensaje cifrado)').substring(0, 100),
                             timestamp: msgTime,
                             unread: true,
                             action: () => {
@@ -211,12 +215,13 @@ async function loadAllNotifications() {
                         if (p && p.name) senderName = p.name;
                     } catch(e) {}
                 }
-                const preview = (event.content || '').substring(0, 80);
+                const rawContent = event.content || '';
+                const preview = rawContent.substring(0, 80);
                 allNotifications.push({
                     id: notifId,
                     type: 'replies',
                     title: '↩️ ' + senderName + ' respondió a tu mensaje',
-                    content: preview + (event.content.length > 80 ? '…' : ''),
+                    content: preview + (rawContent.length > 80 ? '…' : ''),
                     timestamp: event.created_at * 1000,
                     unread: true,
                     action: () => {
