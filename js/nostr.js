@@ -1479,7 +1479,12 @@ const LBW_Nostr = (() => {
         isUsingExtension, isLoggedIn, getEventKinds,
         // Pool / relay access for NIP-15 stalls module
         getPool: () => _getPool(),
-        getReadRelays: () => [..._getUserReadRelays()]
+        getReadRelays: () => [..._getUserReadRelays()],
+
+        // SEC-19: Event validation exposed for modules that receive events
+        // outside the main pool (stalls, p2p, bridge, etc.). Callers MUST
+        // invoke this on every incoming event before trusting its contents.
+        validateIncomingEvent: _validateIncomingEvent
     };
 })();
 
