@@ -82,6 +82,7 @@ async function updateAllBadges() {
 }
 
 async function updateChatBadge() {
+    if (!currentUser) return;
     try {
         const pubKey = currentUser.pubkey || currentUser.publicKey;
         
@@ -95,10 +96,16 @@ async function updateChatBadge() {
             .gte('created_at', new Date(lastVisit).toISOString())
             .neq('author_public_key', pubKey); // Exclude own posts
         
+        let communityUnread = 0;
         if (!error && data) {
-            const unreadCount = data.length;
-            updateBadge('chat', unreadCount);
+            communityUnread = data.length;
         }
+        // Incluir DMs no leídos (entrantes posteriores a lastSeen_private)
+        let dmUnread = 0;
+        if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.getUnreadDMCount) {
+            try { dmUnread = LBW_NostrBridge.getUnreadDMCount(); } catch (e) {}
+        }
+        updateBadge('chat', communityUnread + dmUnread);
     } catch (err) {
         console.error('Error updating chat badge:', err);
     }
