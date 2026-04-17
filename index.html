@@ -1357,52 +1357,34 @@
             <div class="chat-section">
                 <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
 
-                <h2 style="color: var(--color-gold); margin-bottom: 0.5rem; text-align: center;">
-                    🗺️ Mapa de la Red LiberBit
-                </h2>
-                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">
-                    Nodos físicos y ciudadanía federada
-                </p>
-
-                <!-- Stats -->
-                <div class="lbw-map-stats-bar">
-                    <div class="lbw-map-stat">
-                        <div class="lbw-map-stat-value" id="lbwMapNodeCount">—</div>
-                        <div class="lbw-map-stat-label">🏛️ Nodos físicos</div>
+                <!-- Header compacto: título + stats inline + privacy tooltip -->
+                <div class="lbw-map-header">
+                    <h2 class="lbw-map-title">🗺️ Mapa de la Red LiberBit</h2>
+                    <div class="lbw-map-stats-inline">
+                        <span class="lbw-map-stat-inline" title="Nodos físicos"><span class="v" id="lbwMapNodeCount">—</span> 🏛</span>
+                        <span class="lbw-map-stat-inline" title="Relays privados"><span class="v" id="lbwMapRelayCount">—</span> 📡</span>
+                        <span class="lbw-map-stat-inline" title="Ciudadanos"><span class="v" id="lbwMapCitizenCount">—</span> 👥</span>
+                        <span class="lbw-map-stat-inline" title="Ciudades"><span class="v" id="lbwMapCityCount">—</span> 📍</span>
                     </div>
-                    <div class="lbw-map-stat">
-                        <div class="lbw-map-stat-value" id="lbwMapRelayCount">—</div>
-                        <div class="lbw-map-stat-label">📡 Relays privados</div>
-                    </div>
-                    <div class="lbw-map-stat">
-                        <div class="lbw-map-stat-value" id="lbwMapCitizenCount">—</div>
-                        <div class="lbw-map-stat-label">👥 Ciudadanos</div>
-                    </div>
-                    <div class="lbw-map-stat">
-                        <div class="lbw-map-stat-value" id="lbwMapCityCount">—</div>
-                        <div class="lbw-map-stat-label">📍 Ciudades</div>
-                    </div>
+                    <span class="lbw-map-privacy" title="Por privacidad, los ciudadanos se muestran agregados por ciudad — nunca individualmente.">🔒</span>
                 </div>
 
-                <!-- Controles de capa -->
-                <div class="lbw-map-controls">
-                    <button class="lbw-map-toggle active" id="lbwMapToggleNodes"
-                            onclick="LBW_Map.toggleNodes()">🏛️ Nodos físicos</button>
-                    <button class="lbw-map-toggle active" id="lbwMapToggleRelays"
-                            onclick="LBW_Map.toggleRelays()">📡 Relays</button>
-                    <button class="lbw-map-toggle active" id="lbwMapToggleCitizens"
-                            onclick="LBW_Map.toggleCitizens()">👥 Ciudadanos</button>
-                    <button class="lbw-map-toggle" onclick="LBW_Map.refresh()">🔄 Refrescar</button>
+                <!-- Controles + status en misma fila -->
+                <div class="lbw-map-controls-row">
+                    <div class="lbw-map-controls">
+                        <button class="lbw-map-toggle active" id="lbwMapToggleNodes"
+                                onclick="LBW_Map.toggleNodes()">🏛️ Nodos</button>
+                        <button class="lbw-map-toggle active" id="lbwMapToggleRelays"
+                                onclick="LBW_Map.toggleRelays()">📡 Relays</button>
+                        <button class="lbw-map-toggle active" id="lbwMapToggleCitizens"
+                                onclick="LBW_Map.toggleCitizens()">👥 Ciudadanos</button>
+                        <button class="lbw-map-toggle" onclick="LBW_Map.refresh()" title="Refrescar">🔄</button>
+                    </div>
+                    <div class="lbw-map-status" id="lbwMapStatus">Inicializando...</div>
                 </div>
-
-                <div class="lbw-map-status" id="lbwMapStatus">Inicializando...</div>
 
                 <!-- Mapa -->
                 <div id="lbwMapContainer"></div>
-
-                <p style="color: var(--color-text-secondary); font-size: 0.8rem; margin-top: 1rem; text-align: center; opacity: 0.7;">
-                    🔒 Por privacidad, los ciudadanos se muestran agregados por ciudad — nunca individualmente.
-                </p>
             </div>
         </section>
 
@@ -2839,7 +2821,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
-    <script src="js/map.js?v=3"></script>
+    <script src="js/map.js?v=4-compact"></script>
 
     <!-- Emoji Picker -->
     <style>
