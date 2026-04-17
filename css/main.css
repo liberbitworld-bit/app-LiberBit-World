@@ -4022,3 +4022,24 @@
         padding: 0.35rem 0.6rem;
     }
 }
+
+/* ── Action row (Aportar Valor + Aportación Económica) después de apps-grid ── */
+.action-row-mobile {
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+@media (max-width: 600px) {
+    .action-row-mobile {
+        gap: 0.65rem !important;
+        margin-bottom: 1.25rem !important;
+        max-width: none;
+    }
+    .action-row-mobile .welcome-btn-mobile {
+        padding: 0.9rem 0.5rem !important;
+    }
+    .action-row-mobile .welcome-btn-mobile > div:first-child {
+        font-size: 1.8rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+}
