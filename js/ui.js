@@ -482,6 +482,24 @@ function showSection(sectionId) {
             el.classList.add('hidden');
         }
     });
+
+    // Configurar el botón de volver en el header según la sección activa
+    const backBtn = document.getElementById('headerBackBtn');
+    if (backBtn) {
+        const backToGobernanza = ['gobernanzaProposalsSection', 'meritsSection'];
+        const noBack = ['mainMenuSection', 'registrationSection'];
+        if (noBack.includes(sectionId)) {
+            backBtn.classList.add('hidden');
+        } else if (backToGobernanza.includes(sectionId)) {
+            backBtn.classList.remove('hidden');
+            backBtn.textContent = '← Volver a Gobernanza';
+            backBtn.onclick = () => backToGobernanzaMenu();
+        } else {
+            backBtn.classList.remove('hidden');
+            backBtn.textContent = '← Volver al Menú';
+            backBtn.onclick = () => backToMenu();
+        }
+    }
 }
 
 function showRegisterForm() {
