@@ -1437,6 +1437,13 @@
                         <div class="app-name">Méritos LBWM</div>
                         <div class="app-description">Sistema de Recompensas</div>
                     </div>
+
+                    <!-- Delegación de Voto -->
+                    <div class="app-card" onclick="openSubApp('delegations')">
+                        <div class="app-icon">🗳️</div>
+                        <div class="app-name">Delegación</div>
+                        <div class="app-description">Liquid Democracy</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1566,6 +1573,110 @@
                 </div>
             </div>
         </section>
+
+
+        <!-- Delegations Section (Liquid Democracy) -->
+        <section class="section" id="delegationsSection">
+            <div class="chat-section">
+                <button class="back-btn" onclick="backToGobernanzaMenu()">← Volver a Gobernanza</button>
+
+                <h2 style="color: var(--color-gold); margin-bottom: 0.5rem;">🗳️ Delegación de Voto</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">
+                    Confía tu voto en quien tú decidas. Sistema de liquid democracy soberano sobre Nostr.
+                </p>
+
+                <!-- My current delegation -->
+                <div style="background: var(--color-bg-card); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-border); margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-gold); font-size: 1rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Mi delegación
+                    </h3>
+                    <div id="myDelegationCard">
+                        <div style="padding: 1.5rem; text-align: center; color: var(--color-text-secondary);">
+                            Cargando…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Received delegations -->
+                <div style="background: var(--color-bg-card); padding: 1.5rem; border-radius: 12px; border: 2px solid var(--color-border); margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--color-gold); font-size: 1rem; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Confianza recibida
+                    </h3>
+                    <div id="receivedDelegationsCard">
+                        <div style="padding: 1.5rem; text-align: center; color: var(--color-text-secondary);">
+                            Cargando…
+                        </div>
+                    </div>
+                </div>
+
+                <!-- How it works -->
+                <div style="background: rgba(229, 185, 92, 0.08); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(229, 185, 92, 0.3);">
+                    <h3 style="color: var(--color-gold); font-size: 1rem; margin-bottom: 1rem;">
+                        ℹ️ Cómo funciona la delegación
+                    </h3>
+                    <ul style="color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.7; padding-left: 1.25rem; margin: 0;">
+                        <li><strong style="color: var(--color-text-primary);">Voto directo prevalece:</strong> si votas en una propuesta, tu voto directo anula la delegación para esa propuesta.</li>
+                        <li><strong style="color: var(--color-text-primary);">Bloque preservado:</strong> si un Génesis delega, su 51% de Gobernanza sigue contando como tal, no se convierte en Comunidad.</li>
+                        <li><strong style="color: var(--color-text-primary);">No transitiva:</strong> si A delega en B y B delega en C, el voto de A solo llega a B. Si B no vota, el poder de A se pierde.</li>
+                        <li><strong style="color: var(--color-text-primary);">Revocable:</strong> puedes revocar o cambiar tu delegación en cualquier momento.</li>
+                        <li><strong style="color: var(--color-text-primary);">Quórum:</strong> la delegación de un Génesis cuyo delegado haya votado cuenta para el quórum del bloque Gobernanza.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Delegate Modal -->
+        <div id="delegateModal" class="hidden" style="
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            padding: 1rem;
+        ">
+            <div style="
+                background: var(--color-bg-card); border: 2px solid var(--color-gold);
+                border-radius: 16px; padding: 2rem; max-width: 480px; width: 100%;
+                max-height: 90vh; overflow-y: auto;
+            ">
+                <h3 style="color: var(--color-gold); margin-bottom: 1rem;">🗳️ Delegar voto</h3>
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    Tu poder de voto pasará a esta persona en todas las propuestas en las que tú no votes directamente.
+                </p>
+
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.85rem;">
+                        npub o pubkey hex del delegado
+                    </label>
+                    <input type="text" id="delegateInput"
+                        placeholder="npub1… o hex de 64 caracteres"
+                        style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.85rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: var(--color-gold); font-size: 0.85rem;">
+                        Nota opcional
+                    </label>
+                    <input type="text" id="delegateNote"
+                        placeholder="Ej: Confío en su criterio para referéndums"
+                        maxlength="140"
+                        style="width: 100%; padding: 0.75rem; background: var(--color-bg-dark); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-display);">
+                </div>
+
+                <div style="background: rgba(229, 185, 92, 0.1); padding: 0.9rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid rgba(229, 185, 92, 0.3);">
+                    <p style="font-size: 0.8rem; color: var(--color-text-secondary); margin: 0;">
+                        ⚠️ La delegación se publica en el relay privado y es revocable en cualquier momento.
+                    </p>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-secondary" onclick="closeDelegateModal()" style="flex: 1;">
+                        Cancelar
+                    </button>
+                    <button id="confirmDelegateBtn" class="btn btn-primary" onclick="confirmDelegation()" style="flex: 1;">
+                        Confirmar delegación
+                    </button>
+                </div>
+            </div>
+        </div>
 
 
         <!-- Merits LBWM Section -->
@@ -2798,7 +2909,7 @@
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/escape-utils.js?v=sec11"></script>
     <script src="js/config.js?v=phase2"></script>
     <script src="js/auth.js?v=phase2"></script>
-    <script src="js/ui.js?v=apr17b"></script>
+    <script src="js/ui.js?v=apr17c"></script>
     <!-- SOS Functions -->
     <script>
         function selectSOSType(type) {
@@ -2830,6 +2941,7 @@
     <script src="js/nostr-sync.js?v=phase1"></script>
     <script src="js/nostr-governance.js?v=apr17b"></script>
     <script src="js/nostr-delegations.js?v=apr17a"></script>
+    <script src="js/delegations-ui.js?v=apr17a"></script>
     <script src="js/nostr-merits.js?v=sec25"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
     <script src="js/merits.js?v=apr13c"></script>
