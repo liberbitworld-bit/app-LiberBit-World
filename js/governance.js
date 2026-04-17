@@ -198,7 +198,7 @@ function displayProposals() {
             : '';
 
         return `
-            <div class="proposal-card ${statusConf.class}" onclick="showProposalDetail('${proposal.dTag || proposal.id}')">
+            <div class="proposal-card ${statusConf.class}" data-lbw-action="showProposalDetail" data-dtag="${escapeHtml(proposal.dTag || proposal.id)}">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
                     <div class="proposal-type-badge">${PROPOSAL_TYPE_LABELS[proposal.proposal_type] || proposal.proposal_type}</div>
                     ${prpLabel ? `<div style="font-size:0.75rem;font-weight:700;color:var(--color-gold);opacity:0.85;letter-spacing:0.05em;font-family:monospace;">${prpLabel}</div>` : ''}
@@ -226,9 +226,9 @@ function displayProposals() {
                     </div>
                     <button
                         class="debate-open-btn"
+                        data-lbw-action="openProposalDebate"
                         data-dtag="${escapeHtml(proposal.dTag || proposal.id)}"
                         data-title="${escapeHtml(proposal.title)}"
-                        onclick="event.stopPropagation(); openProposalDebate(this.dataset.dtag, this.dataset.title)"
                         style="display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; font-weight:600; padding:0.25rem 0.65rem; border-radius:20px; background:rgba(229,185,92,0.1); color:var(--color-gold); border:1px solid rgba(229,185,92,0.3); cursor:pointer; transition:all 0.2s; position:relative; z-index:2;"
                         onmouseover="this.style.background='rgba(229,185,92,0.25)'"
                         onmouseout="this.style.background='rgba(229,185,92,0.1)'"
@@ -253,7 +253,7 @@ function _renderResultBadge(result, proposal) {
     if (result.quorum_met === false) {
         const dTagId = proposal.dTag || proposal.id;
         const recalcBtn = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn())
-            ? `<br><button onclick="event.stopPropagation();recalculateGovResult('${dTagId}')"
+            ? `<br><button data-lbw-action="recalculateGovResult" data-dtag="${escapeHtml(dTagId)}"
                   style="margin-top:0.4rem;background:#faad14;color:#000;border:none;border-radius:6px;padding:0.25rem 0.7rem;font-size:0.78rem;cursor:pointer;font-weight:700;">
                   🔄 Recalcular — voté como Génesis
               </button>`
@@ -379,7 +379,7 @@ async function showProposalDetail(proposalIdentifier) {
                     <div style="background:var(--color-bg-dark);padding:1.5rem;border-radius:12px;border:2px solid var(--color-gold);">
                         <h3 style="color:var(--color-gold);margin-bottom:1rem;">Tu Voto</h3>
                         <div id="voteOptions">${getVoteOptions(proposal)}</div>
-                        <button class="btn btn-primary" onclick="submitVote('${proposal.dTag}')" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
+                        <button class="btn btn-primary" data-lbw-action="submitVote" data-dtag="${escapeHtml(proposal.dTag)}" style="width:100%;margin-top:1rem;">🗳️ Emitir Voto</button>
                     </div>
                 ` : hasVoted ? `
                     <div style="background:rgba(82,196,26,0.1);padding:1.25rem;border-radius:12px;border:1px solid #52c41a;text-align:center;">
@@ -449,7 +449,7 @@ function _renderResultSection(result, proposal) {
                         ⚠️ Detectado: votaste como Génesis pero el resultado no lo registró.<br>
                         Esto ocurre por un desfase de sincronización de méritos. Puedes recalcular:
                     </div>
-                    <button onclick="recalculateGovResult('${dTagId}')"
+                    <button data-lbw-action="recalculateGovResult" data-dtag="${escapeHtml(dTagId)}"
                         style="background:#faad14;color:#000;border:none;border-radius:8px;padding:0.6rem 1.2rem;font-weight:700;cursor:pointer;font-size:0.9rem;">
                         🔄 Recalcular Resultado
                     </button>
@@ -507,7 +507,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
                     style="width:100%;min-height:100px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;resize:vertical;"></textarea>
                 <input type="text" id="executionLinks" placeholder="Links de evidencia (opcional, separados por coma)" 
                     style="width:100%;margin-top:0.75rem;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:0.75rem;color:white;font-size:0.9rem;">
-                <button class="btn btn-primary" onclick="submitExecutionReport('${proposal.dTag}')" style="width:100%;margin-top:1rem;">
+                <button class="btn btn-primary" data-lbw-action="submitExecutionReport" data-dtag="${escapeHtml(proposal.dTag)}" style="width:100%;margin-top:1rem;">
                     📤 Publicar Reporte de Ejecución
                 </button>
             </div>
@@ -522,7 +522,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
                 <p style="color:var(--color-text-secondary);font-size:0.9rem;line-height:1.6;">${escapeHtml(execution.description)}</p>
                 ${execution.links?.length > 0 ? `
                     <div style="margin-top:0.75rem;">
-                        ${execution.links.map(l => `<a href="${escapeHtml(l)}" target="_blank" style="color:var(--color-gold);font-size:0.85rem;display:block;">${escapeHtml(l)}</a>`).join('')}
+                        ${execution.links.map(l => `<a href="${escapeHtml(LBW.safeUrl(l))}" target="_blank" rel="noopener noreferrer" style="color:var(--color-gold);font-size:0.85rem;display:block;">${escapeHtml(l)}</a>`).join('')}
                     </div>
                 ` : ''}
                 <div style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:0.5rem;">
@@ -535,7 +535,7 @@ function _renderExecutionSection(proposal, execution, isAuthor, isGovernor) {
         if (proposal.status === 'in_execution' && isGovernor && proposal.author_id !== LBW_Nostr.getPubkey()) {
             html += `
                 <div style="margin-top:1rem;">
-                    <button class="btn btn-primary" onclick="submitExecVerification('${proposal.dTag}')" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);">
+                    <button class="btn btn-primary" data-lbw-action="submitExecVerification" data-dtag="${escapeHtml(proposal.dTag)}" style="width:100%;background:linear-gradient(135deg,#9C27B0,#7B1FA2);">
                         👑 Verificar Ejecución (+50 méritos al autor)
                     </button>
                 </div>
@@ -602,15 +602,15 @@ function _renderMeritInfo(proposal, result, myVote, isAuthor) {
 function getVoteOptions(proposal) {
     const options = proposal.options || proposal._nostrOriginal?.options || [];
     if (options.length > 0) {
-        return options.map(opt => `<button class="vote-option-btn" onclick="selectVoteOption(this, '${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`).join('');
+        return options.map(opt => `<button class="vote-option-btn" data-lbw-action="selectVoteOption" data-option="${escapeHtml(opt)}">${escapeHtml(opt)}</button>`).join('');
     }
     if (proposal.proposal_type === 'election') {
-        return (proposal.candidates || []).map(c => `<button class="vote-option-btn" onclick="selectVoteOption(this, '${escapeHtml(c)}')" style="display:block;width:100%;">${escapeHtml(c)}</button>`).join('');
+        return (proposal.candidates || []).map(c => `<button class="vote-option-btn" data-lbw-action="selectVoteOption" data-option="${escapeHtml(c)}" style="display:block;width:100%;">${escapeHtml(c)}</button>`).join('');
     }
     return `
-        <button class="vote-option-btn" onclick="selectVoteOption(this, 'A favor')">✅ A favor</button>
-        <button class="vote-option-btn" onclick="selectVoteOption(this, 'En contra')">❌ En contra</button>
-        <button class="vote-option-btn" onclick="selectVoteOption(this, 'Abstención')">⚪ Abstención</button>
+        <button class="vote-option-btn" data-lbw-action="selectVoteOption" data-option="A favor">✅ A favor</button>
+        <button class="vote-option-btn" data-lbw-action="selectVoteOption" data-option="En contra">❌ En contra</button>
+        <button class="vote-option-btn" data-lbw-action="selectVoteOption" data-option="Abstención">⚪ Abstención</button>
     `;
 }
 
@@ -796,3 +796,48 @@ function updateVoteResultsInModal(proposalDTag) {
         `;
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for governance actions.
+// Replaces inline onclick="foo('${value}')" handlers that were vulnerable
+// to XSS via HTML entity decoding in attribute contexts when values came
+// from attacker-controlled proposal data (dTag, option, candidate, etc.).
+// ═══════════════════════════════════════════════════════════════════
+(function installGovernanceEventDelegation() {
+    if (window.__lbwGovernanceListenerInstalled) return;
+    window.__lbwGovernanceListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        try {
+            switch (action) {
+                case 'selectVoteOption':
+                    selectVoteOption(el, el.dataset.option);
+                    break;
+                case 'showProposalDetail':
+                    showProposalDetail(el.dataset.dtag);
+                    break;
+                case 'openProposalDebate':
+                    openProposalDebate(el.dataset.dtag, el.dataset.title);
+                    break;
+                case 'recalculateGovResult':
+                    recalculateGovResult(el.dataset.dtag);
+                    break;
+                case 'submitVote':
+                    submitVote(el.dataset.dtag);
+                    break;
+                case 'submitExecutionReport':
+                    submitExecutionReport(el.dataset.dtag);
+                    break;
+                case 'submitExecVerification':
+                    submitExecVerification(el.dataset.dtag);
+                    break;
+                // Other actions handled by other modules.
+            }
+        } catch (err) {
+            console.error('[Governance delegation] Error dispatching', action, err);
+        }
+    });
+})();
