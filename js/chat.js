@@ -218,7 +218,7 @@ async function appendPrivateConversationsToSidebar(container) {
             const timeStr = conv.timestamp ? timeAgo(conv.timestamp * 1000) : '';
             
             container.innerHTML += `
-                <div class="sidebar-conversation ${isActive ? 'active' : ''}" onclick="openPrivateChat('${escapeHtml(conv.pubkey)}', '${escapeHtml(name)}')">
+                <div class="sidebar-conversation ${isActive ? 'active' : ''}" data-lbw-action="openPrivateChat" data-pubkey="${escapeHtml(conv.pubkey)}" data-name="${escapeHtml(name)}">
                     ${avatarHtml}
                     <div class="sidebar-conv-info">
                         <div class="sidebar-conv-name">${escapeHtml(name)}</div>
@@ -430,7 +430,7 @@ async function searchChatUsers(query) {
                 : `<div style="width:32px; height:32px; border-radius:50%; background:var(--color-teal-dark); display:flex; align-items:center; justify-content:center; color:var(--color-gold); font-weight:700; font-size:0.9rem; flex-shrink:0;">${initial}</div>`;
             
             return `
-                <div onclick="startChatFromSearch('${escapeHtml(user.public_key)}', '${escapeHtml(user.name || 'Usuario')}')" style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem; border-radius:8px; cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(229,185,92,0.1)'" onmouseout="this.style.background='none'">
+                <div data-lbw-action="startChatFromSearch" data-pubkey="${escapeHtml(user.public_key)}" data-name="${escapeHtml(user.name || 'Usuario')}" style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem; border-radius:8px; cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(229,185,92,0.1)'" onmouseout="this.style.background='none'">
                     ${avatarHtml}
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:0.85rem; font-weight:600; color:var(--color-text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(user.name || 'Usuario')}</div>
@@ -534,7 +534,7 @@ async function loadDebatesSidebar() {
 
         container.innerHTML += `
             <div class="sidebar-conversation ${isCurrent ? 'active' : ''}"
-                 onclick="openDebateChannel('${escapeHtml(dTag)}', '${escapeHtml(title)}')"
+                 data-lbw-action="openDebateChannel" data-dtag="${escapeHtml(dTag)}" data-title="${escapeHtml(title)}"
                  style="cursor:pointer;">
                 <div class="sidebar-conv-avatar" style="background:linear-gradient(135deg,rgba(229,185,92,0.25),rgba(229,185,92,0.05)); font-size:1.1rem; flex-shrink:0;">
                     ${typeEmoji}
@@ -681,7 +681,7 @@ async function _renderDebateMessage(msg, msgMap) {
         const rawContent = parent.content || '';
         const preview = rawContent.substring(0, 60) + (rawContent.length > 60 ? '…' : '');
         replyBlock = `
-            <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" onclick="_scrollToDebateMessage('${escapeHtml(msg.replyTo)}')">
+            <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" data-lbw-action="scrollToDebateMessage" data-event-id="${escapeHtml(msg.replyTo)}">
                 <span style="color:var(--color-gold); font-weight:600;">↩ ${escapeHtml(parentAuthor)}</span>
                 <span style="margin-left:0.4rem;">${escapeHtml(preview)}</span>
             </div>`;
@@ -707,7 +707,7 @@ async function _renderDebateMessage(msg, msgMap) {
                     ${typeof LBW_ChatAttach !== 'undefined' ? LBW_ChatAttach.renderContent(msg.content) : escapeHtml(msg.content).replace(/\n/g, '<br>')}
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.25rem; ${isMe ? 'flex-direction:row-reverse;' : ''}">
-                    <button onclick="replyToDebateMessage('${escapeHtml(msg.id)}', '${escapeHtml(authorName)}')"
+                    <button data-lbw-action="replyToDebateMessage" data-event-id="${escapeHtml(msg.id)}" data-name="${escapeHtml(authorName)}"
                             style="font-size:0.65rem; color:var(--color-text-secondary); background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px; transition:all 0.2s;"
                             onmouseover="this.style.color='var(--color-gold)'" onmouseout="this.style.color='var(--color-text-secondary)'">
                         ↩ Responder
@@ -792,3 +792,44 @@ function openProposalDebate(proposalDTag, proposalTitle) {
     switchChatTab('debates');
     setTimeout(() => openDebateChannel(proposalDTag, proposalTitle), 200);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for chat actions.
+// Replaces inline onclick="foo('${value}')" handlers that were vulnerable
+// to XSS via HTML entity decoding in attribute contexts.
+// All rendered elements now use data-lbw-action + data-* attributes,
+// which are safely HTML-escaped and read via element.dataset at dispatch time.
+// ═══════════════════════════════════════════════════════════════════
+(function installChatEventDelegation() {
+    if (window.__lbwChatListenerInstalled) return;
+    window.__lbwChatListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        try {
+            switch (action) {
+                case 'openPrivateChat':
+                    openPrivateChat(el.dataset.pubkey, el.dataset.name);
+                    break;
+                case 'startChatFromSearch':
+                    startChatFromSearch(el.dataset.pubkey, el.dataset.name);
+                    break;
+                case 'openDebateChannel':
+                    openDebateChannel(el.dataset.dtag, el.dataset.title);
+                    break;
+                case 'scrollToDebateMessage':
+                    _scrollToDebateMessage(el.dataset.eventId);
+                    break;
+                case 'replyToDebateMessage':
+                    replyToDebateMessage(el.dataset.eventId, el.dataset.name);
+                    break;
+                // Non-matching actions fall through silently — other modules
+                // may register additional actions on the same event space.
+            }
+        } catch (err) {
+            console.error('[Chat delegation] Error dispatching', action, err);
+        }
+    });
+})();
