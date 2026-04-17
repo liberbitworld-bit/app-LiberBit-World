@@ -1,5 +1,5 @@
 // ============================================================
-// LiberBit World — Governance Module v2.0 (nostr-governance.js)
+// LiberBit World — Governance Module v2.1 (nostr-governance.js)
 //
 // Decentralized governance over Nostr protocol.
 // Proposals (kind 31000) + Votes (kind 31001)
@@ -9,6 +9,14 @@
 // Lifecycle: active → expired → approved/rejected/quorum_failed
 //            → [approved] in_execution → executed
 //
+// v2.1 (apr 2026): Liquid democracy — vote delegation (kind 31004)
+//   integrated into _calculateWeightedResult(). When a ledger
+//   participant did NOT vote directly but has an active delegation,
+//   and the delegate DID vote, the delegator's power flows to the
+//   delegate's chosen option while preserving the delegator's OWN
+//   bloc. Non-transitive (no chain resolution). Direct vote always
+//   overrides delegation. Génesis delegation counts for quorum.
+//
 // Merit awards (auto):
 //   - Voting Senior+: 5 Responsabilidad (1.2×)
 //   - Voting resto:   3 Productiva (1.0×)
@@ -16,7 +24,8 @@
 //   - Author rejected: 10 Productiva
 //   - Author execution verified: 50 Productiva (via awardMerit, Génesis)
 //
-// Dependencies: nostr.js (LBW_Nostr), nostr-merits.js (LBW_Merits)
+// Dependencies: nostr.js (LBW_Nostr), nostr-merits.js (LBW_Merits),
+//               nostr-delegations.js (LBW_Delegations, optional)
 // ============================================================
 
 const LBW_Governance = (() => {
@@ -772,6 +781,7 @@ const LBW_Governance = (() => {
             weighted_votes: calc.weighted,
             total_votes: calc.total_votes,
             voter_count: calc.voter_count,
+            delegated_count: calc.delegated_count || 0,
             calculated_at: nowSecs,
             calculatedBy: LBW_Nostr.getPubkey()
         });
@@ -785,6 +795,7 @@ const LBW_Governance = (() => {
             ['status', status],
             ['winner', calc.winner || ''],
             ['total-votes', String(calc.total_votes)],
+            ['delegated-count', String(calc.delegated_count || 0)],
             ['quorum-met', String(calc.quorum_met)],
             ['t', 'lbw-governance'],
             ['t', 'lbw-result'],
@@ -821,7 +832,11 @@ const LBW_Governance = (() => {
         const category = proposal?.category || 'referendum';
 
         if (votes.length === 0) {
-            return { quorum_met: false, winner: null, approved: false, weighted: {}, total_votes: 0, voter_count: 0 };
+            return {
+                quorum_met: false, winner: null, approved: false,
+                weighted: {}, total_votes: 0, voter_count: 0,
+                delegated_count: 0, delegated_pubkeys: []
+            };
         }
 
         // Pre-compute voting power for every ledger participant.
@@ -841,10 +856,17 @@ const LBW_Governance = (() => {
             }
         }
 
+        // Build lookup: who voted, and for what option
+        const voteByPubkey = {};
+        for (const v of votes) {
+            if (v.option) voteByPubkey[v.pubkey] = v.option;
+        }
+
         const weighted = {};
         let genesisVoted = false;
         let voterCount = 0;
 
+        // ── Pass 1: Direct votes ─────────────────────────────
         for (const vote of votes) {
             if (!vote.option) continue;
 
@@ -865,14 +887,63 @@ const LBW_Governance = (() => {
             voterCount++;
         }
 
-        // [SEC-20] Quorum requires at least one Génesis to participate.
+        // ── Pass 2: Delegated votes (Fase 2 — liquid democracy) ──
+        // For each ledger participant who did NOT vote directly, check
+        // if they have an active delegation. If so, and if their delegate
+        // voted, their power flows to the delegate's chosen option while
+        // preserving the delegator's OWN bloc.
+        //
+        // Policy (set by founder, apr 2026):
+        //   - Non-transitive: if A→B→C and B didn't vote, A's power is lost.
+        //   - Bloc preserved: a Génesis delegator's power stays in
+        //     Gobernanza bloc regardless of the delegate's bloc.
+        //   - Counts for quorum: a Génesis who delegated and whose
+        //     delegate voted DOES satisfy the quorum requirement, because
+        //     delegation is an explicit form of participation.
+        //   - Direct vote overrides delegation (checked via voteByPubkey).
+        const delegatedPubkeys = [];
+        let delegatedCount = 0;
+
+        if (typeof LBW_Delegations !== 'undefined' && LBW_Delegations.getActiveDelegation) {
+            for (const delegatorPubkey in powerByPubkey) {
+                // Skip if this user voted directly — direct vote prevails
+                if (voteByPubkey[delegatorPubkey]) continue;
+
+                const delegate = LBW_Delegations.getActiveDelegation(delegatorPubkey, category);
+                if (!delegate) continue;
+
+                // Non-transitive: we only care if the delegate voted DIRECTLY
+                const delegateOption = voteByPubkey[delegate];
+                if (!delegateOption) continue;
+
+                const userPower = powerByPubkey[delegatorPubkey];
+                const weight = userPower?.power || 0;
+                const bloc   = userPower?.bloc  || 'Comunidad';
+
+                if (weight <= 0) continue;
+
+                // Delegation of a Génesis counts for quorum
+                if (bloc === 'Gobernanza') genesisVoted = true;
+
+                weighted[delegateOption] = (weighted[delegateOption] || 0) + weight;
+                delegatedPubkeys.push(delegatorPubkey);
+                delegatedCount++;
+            }
+        }
+
+        // [SEC-20] Quorum requires at least one Génesis to participate
+        // (either directly or via delegation, per founder policy).
         // The Governance bloc holds the structural 51% of voting power; if
-        // no Génesis casts a vote, the maximum reachable power on any
+        // no Génesis participates, the maximum reachable power on any
         // option is 0.49, which by definition cannot win a referendum.
         const quorum_met = genesisVoted;
 
         if (!quorum_met) {
-            return { quorum_met: false, winner: null, approved: false, weighted, total_votes: votes.length, voter_count: voterCount };
+            return {
+                quorum_met: false, winner: null, approved: false,
+                weighted, total_votes: votes.length, voter_count: voterCount,
+                delegated_count: delegatedCount, delegated_pubkeys: delegatedPubkeys
+            };
         }
 
         // Determine winner: option with highest accumulated power
@@ -889,7 +960,11 @@ const LBW_Governance = (() => {
             }
         }
 
-        return { quorum_met: true, winner, approved, weighted, total_votes: votes.length, voter_count: voterCount };
+        return {
+            quorum_met: true, winner, approved, weighted,
+            total_votes: votes.length, voter_count: voterCount,
+            delegated_count: delegatedCount, delegated_pubkeys: delegatedPubkeys
+        };
     }
 
     // ── Auto-Claim Voting Merits ──────────────────────────────
@@ -1242,6 +1317,7 @@ const LBW_Governance = (() => {
                 approved: parsed.approved || false,
                 weighted_votes: parsed.weighted_votes || {},
                 total_votes: parsed.total_votes || parseInt(g('total-votes')) || 0,
+                delegated_count: parsed.delegated_count || parseInt(g('delegated-count')) || 0,
                 calculated_at: parsed.calculated_at || event.created_at,
                 calculatedBy: parsed.calculatedBy || event.pubkey,
                 status: g('status')
