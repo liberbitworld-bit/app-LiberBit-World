@@ -975,32 +975,50 @@ const LBW_Merits = (() => {
         }
 
         const results = {};
+        const govCount  = blocs.Gobernanza.length;
+        const ciudTotal = blocs['Ciudadanía'].reduce((s, v) => s + v.effectiveMerits, 0);
+        const comTotal  = blocs.Comunidad.reduce((s, v) => s + v.effectiveMerits, 0);
 
-        // Gobernanza: equitable (each Génesis gets equal share of 51%)
-        const govCount = blocs.Gobernanza.length;
+        // SEC-25: Normalize bloc weights across only the blocs that
+        // actually have voters. The previous formula
+        //     remainingPct = 1.0 - govPct
+        //     ciudPct = min(0.29, remainingPct * 0.59)
+        //     comPct  = min(0.20, remainingPct * 0.41)
+        // lost voting power when a bloc was absent. In particular, when
+        // govCount === 0 the caps collapsed the maximum reachable power
+        // to 0.29 + 0.20 = 0.49, making any quorum >50% mathematically
+        // impossible. The caps only make sense while Gobernanza is
+        // present (their purpose is to protect Gobernanza's 51% floor);
+        // when a bloc has no voters, its reserved share is redistributed
+        // proportionally to the remaining blocs.
+        const weights = {
+            Gobernanza:   govCount  > 0 ? VOTING_BLOCKS.Gobernanza.minPct    : 0,
+            'Ciudadanía': ciudTotal > 0 ? VOTING_BLOCKS['Ciudadanía'].maxPct : 0,
+            Comunidad:    comTotal  > 0 ? VOTING_BLOCKS.Comunidad.maxPct     : 0
+        };
+        const weightSum = weights.Gobernanza + weights['Ciudadanía'] + weights.Comunidad;
+        if (weightSum === 0) return results; // no voters in any bloc
+
+        const govPct  = weights.Gobernanza    / weightSum;
+        const ciudPct = weights['Ciudadanía'] / weightSum;
+        const comPct  = weights.Comunidad     / weightSum;
+
+        // Gobernanza: equitable (each Génesis gets equal share of govPct)
         if (govCount > 0) {
-            const sharePerGov = VOTING_BLOCKS.Gobernanza.minPct / govCount;
+            const sharePerGov = govPct / govCount;
             for (const g of blocs.Gobernanza) {
                 results[g.pubkey] = { power: sharePerGov, bloc: 'Gobernanza', level: g.level };
             }
         }
 
-        // Remaining percentage for proportional blocs
-        const govPct = govCount > 0 ? VOTING_BLOCKS.Gobernanza.minPct : 0;
-        const remainingPct = 1.0 - govPct;
-
-        // Ciudadanía: proportional within max 29%
-        const ciudTotal = blocs['Ciudadanía'].reduce((s, v) => s + v.effectiveMerits, 0);
-        const ciudPct = Math.min(VOTING_BLOCKS['Ciudadanía'].maxPct, remainingPct * 0.59);
+        // Ciudadanía: proportional to effective merits within the bloc
         if (ciudTotal > 0) {
             for (const c of blocs['Ciudadanía']) {
                 results[c.pubkey] = { power: (c.effectiveMerits / ciudTotal) * ciudPct, bloc: 'Ciudadanía', level: c.level };
             }
         }
 
-        // Comunidad: proportional within max 20%
-        const comTotal = blocs.Comunidad.reduce((s, v) => s + v.effectiveMerits, 0);
-        const comPct = Math.min(VOTING_BLOCKS.Comunidad.maxPct, remainingPct * 0.41);
+        // Comunidad: proportional to effective merits within the bloc
         if (comTotal > 0) {
             for (const c of blocs.Comunidad) {
                 results[c.pubkey] = { power: (c.effectiveMerits / comTotal) * comPct, bloc: 'Comunidad', level: c.level };
