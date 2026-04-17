@@ -501,9 +501,13 @@ const LBW_P2P = (() => {
                 }],
                 {
                     onevent: (event) => {
-                        // [bug 19] Verificar firma + estructura antes de procesar
-                        if (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.validateIncomingEvent
-                            && !LBW_Nostr.validateIncomingEvent(event, 'p2p')) return;
+                        // SEC-19: Fail-safe signature/structure validation.
+                        // If validator is missing, reject instead of processing.
+                        if (typeof LBW_Nostr === 'undefined' || typeof LBW_Nostr.validateIncomingEvent !== 'function') {
+                            console.error('[P2P] validateIncomingEvent unavailable — rejecting event');
+                            return;
+                        }
+                        if (!LBW_Nostr.validateIncomingEvent(event, 'p2p')) return;
                         const order = _parseOrder(event);
 
                         // Skip expired orders
