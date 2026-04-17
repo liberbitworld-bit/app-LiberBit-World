@@ -14,11 +14,12 @@
     const BONUS_REVIEWS_NEEDED = 5; // reseñas positivas para +10 LBWM
 
     // ── Escape HTML ───────────────────────────────────────────
-    function _esc(str) {
+    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
+    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
         return String(str || '')
             .replace(/&/g,'&amp;').replace(/</g,'&lt;')
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
+    };
 
     // ── Publicar reseña (kind:1985, NIP-85) ──────────────────
     // reviewedPubkey: pubkey del que se reseña (hex)
@@ -215,7 +216,7 @@
                             ${[1,2,3,4,5].map(n => `
                                 <button type="button"
                                     data-star="${n}"
-                                    onclick="LBW_Reviews._selectStar(${n})"
+                                    data-lbw-action="reviewSelectStar"
                                     style="font-size:2rem;background:none;border:none;cursor:pointer;opacity:0.3;padding:0;line-height:1;transition:opacity 0.15s;">★</button>
                             `).join('')}
                         </div>
@@ -408,4 +409,24 @@
     };
 
     console.log('✅ LBW_Reviews (NIP-85) listo');
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for review star selection.
+// ═══════════════════════════════════════════════════════════════════
+(function installReviewsEventDelegation() {
+    if (window.__lbwReviewsListenerInstalled) return;
+    window.__lbwReviewsListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        if (el.dataset.lbwAction !== 'reviewSelectStar') return;
+        try {
+            var n = parseInt(el.dataset.star, 10);
+            if (!isNaN(n) && n >= 1 && n <= 5) LBW_Reviews._selectStar(n);
+        } catch (err) {
+            console.error('[Reviews delegation] Error', err);
+        }
+    });
 })();
