@@ -287,8 +287,14 @@
             { kinds: [KIND_STALL], '#t': [LBW_TAG], limit: 50 }
         ], {
             onevent: (event) => {
-                // [bug 19] Verificar firma + estructura antes de procesar
-                if (LBW_Nostr.validateIncomingEvent && !LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
+                // SEC-19: Fail-safe signature/structure validation.
+                // If validator is missing (shouldn't happen, but defensively),
+                // reject the event instead of processing unvalidated data.
+                if (typeof LBW_Nostr === 'undefined' || typeof LBW_Nostr.validateIncomingEvent !== 'function') {
+                    console.error('[Stalls] validateIncomingEvent unavailable — rejecting event');
+                    return;
+                }
+                if (!LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
                 const stall = _parseStall(event);
                 if (stall) {
                     _upsertStall(stall);
@@ -306,8 +312,12 @@
             { kinds: [KIND_PRODUCT], '#t': [LBW_TAG], limit: 200 }
         ], {
             onevent: (event) => {
-                // [bug 19] Verificar firma + estructura antes de procesar
-                if (LBW_Nostr.validateIncomingEvent && !LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
+                // SEC-19: Fail-safe signature/structure validation.
+                if (typeof LBW_Nostr === 'undefined' || typeof LBW_Nostr.validateIncomingEvent !== 'function') {
+                    console.error('[Stalls] validateIncomingEvent unavailable — rejecting event');
+                    return;
+                }
+                if (!LBW_Nostr.validateIncomingEvent(event, 'stalls')) return;
                 const product = _parseProduct(event);
                 if (product) _upsertProduct(product);
             }
