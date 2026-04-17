@@ -1056,38 +1056,18 @@ const LBW_NostrBridge = (() => {
     }
 
     function _updateDMSidebar() {
-        const sidebar = document.getElementById('chatSidebarList');
-        if (!sidebar) return;
-
-        const convos = Object.entries(_dmConversations)
-            .map(([pk, msgs]) => ({ pubkey: pk, lastMsg: msgs[msgs.length - 1], count: msgs.length }))
-            .sort((a, b) => b.lastMsg.created_at - a.lastMsg.created_at);
-
+        // Actualizar badge de privados (usamos número de conversaciones como proxy)
+        const n = Object.keys(_dmConversations).length;
         const badge = document.getElementById('badgePrivate');
-        if (badge && convos.length > 0) { badge.style.display = 'flex'; badge.textContent = convos.length; }
+        if (badge && n > 0) { badge.style.display = 'flex'; badge.textContent = n; }
 
-        sidebar.innerHTML = '';
-        convos.forEach(c => {
-            _resolveProfileData(c.pubkey).then(profile => {
-                const name = profile.name;
-                const item = document.createElement('div');
-                item.className = 'sidebar-conversation';
-                if (_activeDMPubkey === c.pubkey) item.classList.add('active');
-                item.onclick = () => openDMConversation(c.pubkey);
-                item.dataset.pubkey = c.pubkey;
-                const t = new Date(c.lastMsg.created_at * 1000).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-                const prev = c.lastMsg.content.substring(0, 40) + (c.lastMsg.content.length > 40 ? '...' : '');
-                item.innerHTML = `
-                    ${_avatarHtml('sidebar-conv-avatar', name, profile.picture)}
-                    <div class="sidebar-conv-info">
-                        <div class="sidebar-conv-name">${_esc(name)}</div>
-                        <div class="sidebar-conv-preview">🔒 ${_esc(prev)}</div>
-                    </div>
-                    <span class="sidebar-conv-time">${t}</span>`;
-                sidebar.appendChild(item);
-                _injectAvatarImg(item, 'sidebar-conv-avatar', name, profile.picture);
-            });
-        });
+        // Delegar el RENDER del sidebar a chat.js (única fuente de verdad).
+        // loadChatSidebar() decide qué mostrar según currentChatTab (community/debates/private).
+        if (typeof loadChatSidebar === 'function') {
+            try { loadChatSidebar(); } catch (e) {
+                console.warn('[Bridge] loadChatSidebar failed:', e);
+            }
+        }
     }
 
     function openDMConversation(pk) {
@@ -1793,6 +1773,39 @@ const LBW_NostrBridge = (() => {
         return count;
     }
 
+    // Devuelve una entrada por cada conversación que tenga al menos un mensaje
+    // ENTRANTE posterior a `lastSeen_private`. Ignora mensajes enviados por mí.
+    // Usado por notifications.js para el centro de notificaciones.
+    function getUnreadDMs() {
+        const lastSeenSec = parseInt(localStorage.getItem('lastSeen_private') || '0') / 1000;
+        const myPubkey = LBW_Nostr.getPubkey();
+        if (!myPubkey) return [];
+
+        const result = [];
+        Object.entries(_dmConversations).forEach(([otherPubkey, messages]) => {
+            let latestUnread = null;
+            let unreadCount = 0;
+            for (const msg of messages) {
+                if (msg.from !== myPubkey && msg.created_at > lastSeenSec) {
+                    unreadCount++;
+                    if (!latestUnread || msg.created_at > latestUnread.created_at) {
+                        latestUnread = msg;
+                    }
+                }
+            }
+            if (latestUnread) {
+                result.push({
+                    pubkey: otherPubkey,
+                    lastMessage: latestUnread.content || '',
+                    lastMessageId: latestUnread.id,
+                    timestamp: latestUnread.created_at,
+                    unreadCount: unreadCount
+                });
+            }
+        });
+        return result.sort((a, b) => b.timestamp - a.timestamp);
+    }
+
     // Re-render marketplace grid on navigation
     function refreshMarketplace() {
         _renderMarketplaceGrid();
@@ -1873,7 +1886,7 @@ const LBW_NostrBridge = (() => {
         _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
         resolveName: _resolveName,
         // Nuevos métodos para integración con chat.js
-        getConversations, getUnreadDMCount,
+        getConversations, getUnreadDMCount, getUnreadDMs,
         getIncomingZaps, getIncomingReplies, clearIncomingZaps, clearIncomingReplies
     };
 })();
