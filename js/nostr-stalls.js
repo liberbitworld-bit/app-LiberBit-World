@@ -20,9 +20,11 @@
     let _subProduct = null;
 
     // ── Helpers ───────────────────────────────────────────────
-    function _esc(str) {
-        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
+    // Previous version was missing `'` escape — now fully covered.
+    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
 
     function _stallKey(pubkey, dTag) {
         return `30017:${pubkey}:${dTag}`;
@@ -356,14 +358,14 @@
                         <span style="font-size:0.7rem;color:var(--color-gold);">⚡ ${_esc(stall.currency)}</span>
                     </div>
                     <div style="display:flex;gap:0.5rem;">
-                        <button onclick="event.stopPropagation();LBW_Stalls.showStallDetail('${_esc(stall.stallKey)}')" style="flex:1;padding:0.4rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.75rem;font-weight:600;">
+                        <button data-lbw-action="stallShowDetail" data-key="${_esc(stall.stallKey)}" style="flex:1;padding:0.4rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.75rem;font-weight:600;">
                             🛍️ Ver tienda
                         </button>
                         ${isMine ? `
-                        <button onclick="event.stopPropagation();LBW_Stalls.showAddProductForm('${_esc(stall.dTag)}')" style="flex:1;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">
+                        <button data-lbw-action="stallAddProduct" data-dtag="${_esc(stall.dTag)}" style="flex:1;padding:0.4rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.75rem;">
                             ➕ Producto
                         </button>
-                        <button onclick="event.stopPropagation();LBW_Stalls.confirmDeleteStall('${stall.id}')" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>
+                        <button data-lbw-action="stallConfirmDelete" data-id="${_esc(stall.id)}" style="padding:0.4rem 0.6rem;background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:8px;color:#ff4444;cursor:pointer;font-size:0.75rem;">🗑️</button>
                         ` : ''}
                     </div>
                 </div>`;
@@ -405,7 +407,7 @@
             ? `<div style="text-align:center;padding:2rem;color:var(--color-text-secondary);opacity:0.6;">
                 <div style="font-size:2rem;margin-bottom:0.5rem;">📦</div>
                 <p>Esta tienda aún no tiene productos</p>
-                ${isMine ? `<button onclick="LBW_Stalls.showAddProductForm('${_esc(stall.dTag)}');document.getElementById('stallDetailModal').remove();" style="margin-top:0.75rem;padding:0.5rem 1.2rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.85rem;">➕ Añadir primer producto</button>` : ''}
+                ${isMine ? `<button data-lbw-action="stallAddProduct" data-dtag="${_esc(stall.dTag)}" data-close-modal="stallDetailModal" style="margin-top:0.75rem;padding:0.5rem 1.2rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.85rem;">➕ Añadir primer producto</button>` : ''}
                </div>`
             : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:1rem;">
                 ${products.map(p => _renderProductCard(p, isMine)).join('')}
@@ -423,7 +425,7 @@
         modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;';
         modal.innerHTML = `
             <div style="background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:20px;padding:1.5rem;width:100%;max-width:700px;margin:auto;position:relative;">
-                <button onclick="document.getElementById('stallDetailModal').remove()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--color-text-secondary);font-size:1.4rem;cursor:pointer;line-height:1;">✕</button>
+                <button data-lbw-action="stallCloseDetailModal" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--color-text-secondary);font-size:1.4rem;cursor:pointer;line-height:1;">✕</button>
 
                 <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
                     <span style="font-size:2rem;">🏪</span>
@@ -438,8 +440,8 @@
 
                 ${isMine ? `
                 <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
-                    <button onclick="LBW_Stalls.showAddProductForm('${_esc(stall.dTag)}');document.getElementById('stallDetailModal').remove();" style="padding:0.4rem 1rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.8rem;font-weight:600;">➕ Añadir producto</button>
-                    <button onclick="LBW_Stalls.showEditMyStall();document.getElementById('stallDetailModal').remove();" style="padding:0.4rem 1rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.8rem;">✏️ Editar tienda</button>
+                    <button data-lbw-action="stallAddProduct" data-dtag="${_esc(stall.dTag)}" data-close-modal="stallDetailModal" style="padding:0.4rem 1rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:8px;color:var(--color-gold);cursor:pointer;font-size:0.8rem;font-weight:600;">➕ Añadir producto</button>
+                    <button data-lbw-action="stallEditMine" data-close-modal="stallDetailModal" style="padding:0.4rem 1rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);cursor:pointer;font-size:0.8rem;">✏️ Editar tienda</button>
                 </div>` : ''}
 
                 <hr style="border-color:var(--color-border);margin:1rem 0;">
@@ -477,7 +479,7 @@
                 ${product.description ? `<p style="color:var(--color-text-secondary);font-size:0.75rem;margin-bottom:0.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${_esc(product.description)}</p>` : ''}
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="color:var(--color-gold);font-weight:700;font-size:0.85rem;">⚡ ${priceStr}</span>
-                    ${isMine ? `<button onclick="LBW_Stalls.confirmDeleteProduct('${product.id}')" style="background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:6px;color:#ff4444;cursor:pointer;font-size:0.7rem;padding:0.2rem 0.5rem;">🗑️</button>` : ''}
+                    ${isMine ? `<button data-lbw-action="stallConfirmDeleteProduct" data-id="${_esc(product.id)}" style="background:rgba(255,68,68,0.15);border:1px solid #ff4444;border-radius:6px;color:#ff4444;cursor:pointer;font-size:0.7rem;padding:0.2rem 0.5rem;">🗑️</button>` : ''}
                 </div>
             </div>`;
     }
@@ -622,7 +624,7 @@
                         style="width:100%;padding:0.65rem;background:var(--color-bg-dark);border:2px solid var(--color-border);border-radius:8px;color:var(--color-text-primary);font-size:0.9rem;box-sizing:border-box;">
                 </div>
 
-                <button onclick="LBW_Stalls._submitProductForm('${_esc(stallDTag)}')" style="width:100%;padding:0.75rem;background:var(--color-gold);color:#000;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;">
+                <button data-lbw-action="stallSubmitProductForm" data-dtag="${_esc(stallDTag)}" style="width:100%;padding:0.75rem;background:var(--color-gold);color:#000;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;">
                     📡 Publicar Producto en Nostr
                 </button>
                 <p style="font-size:0.7rem;color:var(--color-text-secondary);text-align:center;margin-top:0.75rem;opacity:0.7;">
@@ -732,4 +734,56 @@
     };
 
     console.log('✅ LBW_Stalls (NIP-15) listo');
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for stall/product actions.
+// ═══════════════════════════════════════════════════════════════════
+(function installStallsEventDelegation() {
+    if (window.__lbwStallsListenerInstalled) return;
+    window.__lbwStallsListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        if (!action || action.indexOf('stall') !== 0) return;
+        var closeModal = el.dataset.closeModal;
+        try {
+            switch (action) {
+                case 'stallShowDetail':
+                    LBW_Stalls.showStallDetail(el.dataset.key);
+                    break;
+                case 'stallAddProduct':
+                    if (closeModal) {
+                        var m = document.getElementById(closeModal);
+                        if (m) m.remove();
+                    }
+                    LBW_Stalls.showAddProductForm(el.dataset.dtag);
+                    break;
+                case 'stallConfirmDelete':
+                    LBW_Stalls.confirmDeleteStall(el.dataset.id);
+                    break;
+                case 'stallConfirmDeleteProduct':
+                    LBW_Stalls.confirmDeleteProduct(el.dataset.id);
+                    break;
+                case 'stallCloseDetailModal':
+                    var modal = document.getElementById('stallDetailModal');
+                    if (modal) modal.remove();
+                    break;
+                case 'stallEditMine':
+                    if (closeModal) {
+                        var m2 = document.getElementById(closeModal);
+                        if (m2) m2.remove();
+                    }
+                    LBW_Stalls.showEditMyStall();
+                    break;
+                case 'stallSubmitProductForm':
+                    LBW_Stalls._submitProductForm(el.dataset.dtag);
+                    break;
+            }
+        } catch (err) {
+            console.error('[Stalls delegation] Error dispatching', action, err);
+        }
+    });
 })();
