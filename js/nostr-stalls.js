@@ -171,10 +171,11 @@
     }
 
     // ── Eliminar (kind:5, NIP-09 addressable) ─────────────────
-    // [bug 14] Stalls (30017) y productos (30018) son eventos addressable (NIP-33).
-    // Hay que borrarlos con un tag `a` (kind:pubkey:dTag) y un tag `k` (NIP-09 ≥2024),
-    // no con `e` (que solo invalida una revisión específica). Mantenemos `e` por
-    // compatibilidad con relays/clientes que aún lo honran.
+    // SEC-14: Stalls (30017) y productos (30018) son eventos addressable (NIP-33).
+    // Se borran con tag `a` (kind:pubkey:dTag) + tag `k` (NIP-09 ≥2024).
+    // NO incluimos `e` tag: event.id cambia con cada edición, y mezclar e+a
+    // en relays estrictos (strfry, nostr-rs-relay) causa ambigüedad — algunos
+    // aplican solo `e` y dejan la coordenada addressable sin borrar.
     async function deleteStall(stallId) {
         const stall = _stalls.find(s => s.id === stallId);
         if (!stall) throw new Error('Tienda no encontrada en estado local');
@@ -189,8 +190,7 @@
             content: 'Tienda eliminada',
             tags: [
                 ['a', `${KIND_STALL}:${stall.pubkey}:${stall.dTag}`],
-                ['k', String(KIND_STALL)],
-                ['e', stallId]
+                ['k', String(KIND_STALL)]
             ]
         });
         _stalls = _stalls.filter(s => s.id !== stallId);
@@ -219,8 +219,7 @@
             content: 'Producto eliminado',
             tags: [
                 ['a', `${KIND_PRODUCT}:${product.pubkey}:${product.dTag}`],
-                ['k', String(KIND_PRODUCT)],
-                ['e', productId]
+                ['k', String(KIND_PRODUCT)]
             ]
         });
         if (stallKey && _products[stallKey]) {
