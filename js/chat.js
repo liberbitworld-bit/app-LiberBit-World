@@ -1,6 +1,10 @@
 // ========== DIRECT MESSAGES FUNCTIONS ==========
 
 function startDirectMessage(recipientId, recipientName) {
+    if (!currentUser) {
+        showNotification('Debes iniciar sesión primero', 'error');
+        return;
+    }
     if (recipientId === currentUser.publicKey) {
         showNotification('No puedes enviarte mensajes a ti mismo', 'error');
         return;
@@ -131,6 +135,7 @@ function updateChatTabBadge(tab, count) {
 }
 
 async function updateChatBadges() {
+    if (!currentUser) return;
     const pubKey = currentUser.pubkey || currentUser.publicKey;
     
     try {
@@ -376,6 +381,13 @@ function handleChatUserSearch(query) {
 
 async function searchChatUsers(query) {
     const resultsContainer = document.getElementById('chatSearchResults');
+    if (!currentUser) {
+        if (resultsContainer) {
+            resultsContainer.style.display = 'block';
+            resultsContainer.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: var(--color-text-secondary); font-size: 0.8rem;">Inicia sesión para buscar</div>';
+        }
+        return;
+    }
     const pubKey = currentUser.pubkey || currentUser.publicKey;
     
     resultsContainer.style.display = 'block';
@@ -674,7 +686,8 @@ async function _renderDebateMessage(msg, msgMap) {
     if (msg.replyTo && msgMap[msg.replyTo]) {
         const parent = msgMap[msg.replyTo];
         let parentAuthor = parent.pubkey.substring(0, 8) + '...';
-        const preview = (parent.content || '').substring(0, 60) + (parent.content.length > 60 ? '…' : '');
+        const rawContent = parent.content || '';
+        const preview = rawContent.substring(0, 60) + (rawContent.length > 60 ? '…' : '');
         replyBlock = `
             <div style="background:rgba(229,185,92,0.06); border-left:3px solid var(--color-gold); border-radius:4px; padding:0.35rem 0.6rem; margin-bottom:0.4rem; font-size:0.75rem; color:var(--color-text-secondary); cursor:pointer;" onclick="_scrollToDebateMessage('${escapeHtml(msg.replyTo)}')">
                 <span style="color:var(--color-gold); font-weight:600;">↩ ${escapeHtml(parentAuthor)}</span>
