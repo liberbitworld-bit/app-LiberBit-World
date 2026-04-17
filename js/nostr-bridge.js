@@ -518,6 +518,7 @@ const LBW_NostrBridge = (() => {
         _incomingReplies = [];
         if (typeof LBW_Governance !== 'undefined') LBW_Governance.reset();
         if (typeof LBW_Merits !== 'undefined') LBW_Merits.reset();
+        if (typeof LBW_Delegations !== 'undefined') LBW_Delegations.reset();
         _updateLoginModeUI(null);
         
         // ══ Clear ALL session data to prevent data bleeding ══
@@ -736,6 +737,9 @@ const LBW_NostrBridge = (() => {
         try {
             await startMerits();
         } catch (e) { console.error('[Bridge] ❌ Merits failed:', e); }
+        try {
+            await startDelegations();
+        } catch (e) { console.error('[Bridge] ❌ Delegations failed:', e); }
         console.log('[Bridge] ✅ All feeds started');
     }
 
@@ -745,6 +749,7 @@ const LBW_NostrBridge = (() => {
         stopMarketplace();
         stopGovernance();
         stopMerits();
+        stopDelegations();
     }
 
     // ── Governance (Nostr) ───────────────────────────────────
@@ -796,6 +801,23 @@ const LBW_NostrBridge = (() => {
     function stopMerits() {
         if (typeof LBW_Merits !== 'undefined') {
             LBW_Merits.unsubscribeAll();
+        }
+    }
+
+    // ── Delegations (Nostr) ─────────────────────────────────
+    async function startDelegations() {
+        if (typeof LBW_Delegations === 'undefined') return;
+        LBW_Delegations.subscribeDelegations((delegation, action) => {
+            const who = delegation.delegator?.substring(0, 8);
+            const to  = delegation.delegate?.substring(0, 8) || '—';
+            console.log(`[Bridge] 🗳️ Delegation ${action}: ${who} → ${to} (${delegation.scope})`);
+        });
+        console.log('[Bridge] ✅ Delegations feed started');
+    }
+
+    function stopDelegations() {
+        if (typeof LBW_Delegations !== 'undefined') {
+            LBW_Delegations.unsubscribeAll();
         }
     }
 
@@ -1907,14 +1929,14 @@ document.addEventListener('DOMContentLoaded', () => {
         'LBW_Store', 'LBW_Media', 'LBW_ChatAttach', 'LBW_Nostr', 'LBW_DM',
         'LBW_Sync', 'LBW_Governance', 'LBW_Merits', 'LBW_MeritsSync',
         'LBW_Reviews', 'LBW_MarketPay', 'LBW_Stalls', 'LBW_NostrBridge',
-        'LBW_Debate', 'LBW_Missions'
+        'LBW_Debate', 'LBW_Missions', 'LBW_Delegations'
     ];
     const missing = expected.filter(name => typeof window[name] === 'undefined');
     if (missing.length) {
         console.error('[Bridge] ❌ Módulos LBW faltantes en window:', missing);
         console.error('[Bridge] Esto suele indicar un orden de carga incorrecto en index.html o un error de parse en el módulo.');
     } else {
-        console.log('[Bridge] ✅ Audit OK — los 15 módulos LBW están cargados');
+        console.log('[Bridge] ✅ Audit OK — los 16 módulos LBW están cargados');
     }
 
     LBW_NostrBridge.init();
