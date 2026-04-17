@@ -28,12 +28,11 @@ const LBW_P2P = (() => {
     let _isLoading = false;
 
     // ── Helpers ──────────────────────────────────────────────
-    function _esc(s) {
-        if (!s) return '';
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-    }
+    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
+    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    };
 
     function _getTagValue(tags, key) {
         const tag = (tags || []).find(t => t[0] === key);
@@ -392,7 +391,7 @@ const LBW_P2P = (() => {
                 <button onclick="LBW_P2P.filterPlatform('all')" style="${_btnStyle(_activePlatform==='all')}">🌐 Todas</button>
                 ${platforms.map(p => {
                     const meta = platformMeta[p] || { label: p, color: 'var(--color-teal-light)' };
-                    return `<button onclick="LBW_P2P.filterPlatform('${p}')" style="${_btnStyle(_activePlatform===p, meta.color)}">${_esc(meta.label)}</button>`;
+                    return `<button data-lbw-action="p2pFilterPlatform" data-value="${_esc(p)}" style="${_btnStyle(_activePlatform===p, meta.color)}">${_esc(meta.label)}</button>`;
                 }).join('')}
             </div>
 
@@ -401,7 +400,7 @@ const LBW_P2P = (() => {
                 <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Moneda:</span>
                 <button onclick="LBW_P2P.filterCurrency('all')" style="${_btnStyle(_activeCurrency==='all')}">🌍 Todas</button>
                 ${currencies.map(c => `
-                    <button onclick="LBW_P2P.filterCurrency('${c}')" style="${_btnStyle(_activeCurrency===c)}">${_esc(c)}</button>
+                    <button data-lbw-action="p2pFilterCurrency" data-value="${_esc(c)}" style="${_btnStyle(_activeCurrency===c)}">${_esc(c)}</button>
                 `).join('')}
                 <span style="flex:1;"></span>
                 <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">Ordenar:</span>
@@ -453,7 +452,7 @@ const LBW_P2P = (() => {
                     <label style="font-size:0.7rem;color:var(--color-gold);display:block;margin-bottom:0.3rem;">npub de NostroMostro (España)</label>
                     <div style="display:flex;gap:0.5rem;align-items:center;">
                         <code id="mostroNpubText" style="font-size:0.6rem;color:var(--color-text-primary);word-break:break-all;flex:1;">${NOSTROMOSTRO_NPUB}</code>
-                        <button onclick="navigator.clipboard.writeText('${NOSTROMOSTRO_NPUB}');this.textContent='✅';setTimeout(()=>this.textContent='📋',1500);" style="background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:6px;color:var(--color-gold);cursor:pointer;padding:0.3rem 0.5rem;font-size:0.75rem;white-space:nowrap;">📋</button>
+                        <button data-lbw-action="p2pCopyMostroNpub" style="background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:6px;color:var(--color-gold);cursor:pointer;padding:0.3rem 0.5rem;font-size:0.75rem;white-space:nowrap;">📋</button>
                     </div>
                 </div>
 
@@ -600,3 +599,38 @@ const LBW_P2P = (() => {
 
 window.LBW_P2P = LBW_P2P;
 console.log('⚡ P2P Exchange (NIP-69 Aggregator) listo');
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for P2P exchange actions.
+// ═══════════════════════════════════════════════════════════════════
+(function installP2PEventDelegation() {
+    if (window.__lbwP2PListenerInstalled) return;
+    window.__lbwP2PListenerInstalled = true;
+
+    var MOSTRO_NPUB = 'npub1qqqvcqssrmpfa65uuc3jtp6jh8ta5ekz0pz76f5ydhgtplrnddqqrqe7xr';
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        if (!action || action.indexOf('p2p') !== 0) return;
+        try {
+            switch (action) {
+                case 'p2pFilterPlatform':
+                    LBW_P2P.filterPlatform(el.dataset.value);
+                    break;
+                case 'p2pFilterCurrency':
+                    LBW_P2P.filterCurrency(el.dataset.value);
+                    break;
+                case 'p2pCopyMostroNpub':
+                    navigator.clipboard.writeText(MOSTRO_NPUB);
+                    var orig = el.textContent;
+                    el.textContent = '✅';
+                    setTimeout(function () { el.textContent = orig || '📋'; }, 1500);
+                    break;
+            }
+        } catch (err) {
+            console.error('[P2P delegation] Error dispatching', action, err);
+        }
+    });
+})();
