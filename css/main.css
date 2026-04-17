@@ -3976,3 +3976,49 @@
     position: relative;
     z-index: 100;
 }
+
+/* ── Header back button (alineado con el logo) ──────────── */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.header-back-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.header-back-btn:hover {
+    border-color: var(--color-gold);
+    background: var(--color-bg-card);
+}
+.header-back-btn.hidden {
+    display: none;
+}
+
+/* Ocultar los botones Volver dentro de cada sección: ahora vive en el header */
+.section .back-btn {
+    display: none !important;
+}
+
+@media (max-width: 600px) {
+    .header-left {
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .header-back-btn {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.6rem;
+    }
+}
