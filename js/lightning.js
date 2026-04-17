@@ -126,7 +126,7 @@ async function loadConversationsList() {
             .sort((a, b) => b.timestamp - a.timestamp);
 
         container.innerHTML = sortedConversations.map(conv => `
-            <div class="conversation-item" onclick="openChatWith('${conv.userId}', '${escapeHtml(conv.userName)}')">
+            <div class="conversation-item" data-lbw-action="openChatWith" data-user-id="${escapeHtml(conv.userId)}" data-user-name="${escapeHtml(conv.userName)}">
                 <div class="conversation-info">
                     <div class="conversation-name">${escapeHtml(conv.userName)}</div>
                     <div class="conversation-preview">${escapeHtml(conv.lastMessage.substring(0, 60))}${conv.lastMessage.length > 60 ? '...' : ''}</div>
@@ -233,3 +233,24 @@ async function sendDirectMessage() {
         showNotification('Error al enviar mensaje', 'error');
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for lightning chat actions.
+// ═══════════════════════════════════════════════════════════════════
+(function installLightningEventDelegation() {
+    if (window.__lbwLightningListenerInstalled) return;
+    window.__lbwLightningListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        try {
+            if (action === 'openChatWith' && typeof openChatWith === 'function') {
+                openChatWith(el.dataset.userId, el.dataset.userName);
+            }
+        } catch (err) {
+            console.error('[Lightning delegation] Error dispatching', action, err);
+        }
+    });
+})();
