@@ -336,19 +336,19 @@ function displayNotifications() {
                      notif.type === 'marketplace' ? '🏪' :
                      notif.type === 'zaps' ? '⚡' :
                      notif.type === 'replies' ? '↩️' : '🏅';
-        const safeId = CSS.escape(String(notif.id));
+        const escId = escapeHtml(String(notif.id));
         return `
-            <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escapeHtml(String(notif.id))}" onclick="handleNotificationById('${safeId}')">
+            <div class="notification-item ${notif.unread ? 'unread' : ''}" data-notif-id="${escId}" data-lbw-action="handleNotificationById" data-notif-primary="0">
                 <div class="notification-item-header">
                     <div class="notification-item-title">${icon} ${escapeHtml(notif.title)}</div>
                     <div class="notification-item-time">${timeAgo(notif.timestamp)}</div>
                 </div>
                 <div class="notification-item-content">${escapeHtml(notif.content)}</div>
                 <div class="notification-item-footer">
-                    <button class="notification-item-action primary" onclick="event.stopPropagation(); handleNotificationById('${safeId}', true)">
+                    <button class="notification-item-action primary" data-lbw-action="handleNotificationById" data-notif-id="${escId}" data-notif-primary="1">
                         Ver
                     </button>
-                    <button class="notification-item-action secondary" onclick="event.stopPropagation(); dismissNotificationById('${safeId}')">
+                    <button class="notification-item-action secondary" data-lbw-action="dismissNotificationById" data-notif-id="${escId}">
                         Descartar
                     </button>
                 </div>
@@ -421,3 +421,36 @@ backToMenu = function() {
     originalBackToMenu();
     loadAllNotifications();
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// SEC-11/12: Event delegation for notification actions.
+// Previous implementation used CSS.escape() on notification IDs inside
+// inline onclick handlers, which is NOT safe for JS string contexts
+// and left an XSS vector open. All handlers now use data-lbw-action
+// and read values from dataset at dispatch time.
+// ═══════════════════════════════════════════════════════════════════
+(function installNotificationsEventDelegation() {
+    if (window.__lbwNotificationsListenerInstalled) return;
+    window.__lbwNotificationsListenerInstalled = true;
+
+    document.addEventListener('click', function (e) {
+        var el = e.target && e.target.closest ? e.target.closest('[data-lbw-action]') : null;
+        if (!el) return;
+        var action = el.dataset.lbwAction;
+        try {
+            switch (action) {
+                case 'handleNotificationById':
+                    // Primary button ("Ver") passes true as second arg.
+                    var isPrimary = el.dataset.notifPrimary === '1';
+                    handleNotificationById(el.dataset.notifId, isPrimary);
+                    break;
+                case 'dismissNotificationById':
+                    dismissNotificationById(el.dataset.notifId);
+                    break;
+                // Other actions handled by other modules.
+            }
+        } catch (err) {
+            console.error('[Notifications delegation] Error dispatching', action, err);
+        }
+    });
+})();
