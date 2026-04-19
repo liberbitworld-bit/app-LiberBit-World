@@ -1063,24 +1063,33 @@
                 <div id="walletDisconnected" style="background: var(--color-bg-card); padding: 2rem; border-radius: 16px; border: 2px solid var(--color-border); margin-bottom: 2rem; text-align: center;">
                     <div style="font-size: 4rem; margin-bottom: 1rem;">⚡</div>
                     <h3 style="color: var(--color-gold); margin-bottom: 1rem;">Conecta tu Billetera Lightning</h3>
-                    <p style="color: var(--color-text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
-                        Usa Blink Wallet para gestionar BTC y USD de forma instantánea y sin comisiones altas
+                    <p style="color: var(--color-text-secondary); margin-bottom: 2rem; max-width: 560px; margin-left: auto; margin-right: auto;">
+                        Elige cómo quieres pagar y cobrar: extensión de navegador, app móvil, o conexión remota vía Nostr Wallet Connect
                     </p>
                     
                     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="connectBlinkWallet()">
-                            🏖️ Conectar Blink Wallet
+                        <button class="btn btn-primary" onclick="showNwcModal()" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none;">
+                            🔌 Conectar NWC
                         </button>
                         <button class="btn btn-secondary" onclick="connectWebLN()">
-                            ⚡ Conectar WebLN (Alby)
+                            ⚡ Conectar Alby (WebLN)
+                        </button>
+                        <button class="btn btn-secondary" onclick="connectBlinkWallet()" style="opacity: 0.75;">
+                            🏖️ Blink (demo)
                         </button>
                     </div>
 
-                    <div style="background: rgba(229, 185, 92, 0.1); padding: 1.25rem; border-radius: 12px; margin-top: 2rem; border: 1px solid var(--color-gold);">
-                        <p style="font-size: 0.85rem; color: var(--color-text-secondary);">
-                            💡 <strong>¿No tienes wallet?</strong><br>
-                            Descarga <a href="https://www.blink.sv/" target="_blank" style="color: var(--color-gold);">Blink Wallet</a> (Android/iOS) o 
-                            <a href="https://getalby.com/" target="_blank" style="color: var(--color-gold);">Alby</a> (Browser Extension)
+                    <div style="background: rgba(139, 92, 246, 0.08); padding: 1.25rem; border-radius: 12px; margin-top: 2rem; border: 1px solid rgba(139, 92, 246, 0.4); text-align: left; max-width: 560px; margin-left: auto; margin-right: auto;">
+                        <p style="font-size: 0.9rem; color: var(--color-text-primary); margin-bottom: 0.5rem;">
+                            🔌 <strong style="color:#a78bfa;">Nostr Wallet Connect (recomendado)</strong>
+                        </p>
+                        <p style="font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.55;">
+                            Protocolo soberano y estándar (NIP-47). Compatible con
+                            <a href="https://albyhub.com" target="_blank" rel="noopener" style="color: var(--color-gold);">Alby Hub</a>,
+                            <a href="https://primal.net" target="_blank" rel="noopener" style="color: var(--color-gold);">Primal</a>,
+                            <a href="https://coinos.io" target="_blank" rel="noopener" style="color: var(--color-gold);">Coinos</a>,
+                            <a href="https://www.mutinywallet.com" target="_blank" rel="noopener" style="color: var(--color-gold);">Mutiny</a>,
+                            <a href="https://zeusln.app" target="_blank" rel="noopener" style="color: var(--color-gold);">Zeus</a> y más. En tu wallet genera una conexión NWC y pega aquí el URI <code style="color:#a78bfa;">nostr+walletconnect://…</code>
                         </p>
                     </div>
                 </div>
@@ -1244,6 +1253,47 @@
                             • Promociones especiales
                         </p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NWC Connect Modal -->
+        <div class="modal" id="nwcModal">
+            <div class="modal-content" style="max-width: 560px;">
+                <button class="modal-close" onclick="closeNwcModal()">✕</button>
+
+                <h2 style="color: #a78bfa; margin-bottom: 0.5rem; text-align: center;">🔌 Conectar vía NWC</h2>
+                <p style="text-align:center; color: var(--color-text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
+                    Nostr Wallet Connect (NIP-47) — protocolo soberano y descentralizado
+                </p>
+
+                <div style="background: var(--color-bg-dark); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.25rem;">
+                    <label style="display:block; margin-bottom: 0.5rem; color: var(--color-text-secondary); font-size: 0.9rem;">
+                        URI de conexión
+                    </label>
+                    <textarea id="nwcUriInput" rows="5" placeholder="nostr+walletconnect://...?relay=wss://...&secret=..."
+                        style="width:100%; padding: 0.75rem; background: var(--color-bg-card); border: 2px solid var(--color-border); border-radius: 8px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.8rem; resize: vertical; word-break: break-all;"></textarea>
+                    <p style="font-size: 0.75rem; color: var(--color-text-secondary); margin-top: 0.5rem; line-height: 1.5;">
+                        🔒 El URI contiene una clave que tu wallet emitió específicamente para esta app. Permisos y presupuesto los controlas desde tu wallet.
+                    </p>
+                </div>
+
+                <div style="background: rgba(139, 92, 246, 0.08); padding: 1rem; border-radius: 10px; border: 1px solid rgba(139, 92, 246, 0.3); margin-bottom: 1.25rem;">
+                    <p style="font-size: 0.8rem; color: var(--color-text-primary); margin-bottom: 0.4rem;">
+                        <strong style="color:#a78bfa;">¿Cómo obtengo un URI?</strong>
+                    </p>
+                    <ul style="font-size: 0.78rem; color: var(--color-text-secondary); padding-left: 1.2rem; line-height: 1.7; margin: 0;">
+                        <li><strong>Alby Hub / Alby Go:</strong> Apps → Connect App → "Custom"</li>
+                        <li><strong>Primal Wallet:</strong> Settings → Wallet → Nostr Wallet Connect</li>
+                        <li><strong>Coinos:</strong> Settings → Connected Apps → New Connection</li>
+                        <li><strong>Mutiny:</strong> Settings → Connections → Add NWC</li>
+                        <li><strong>Zeus:</strong> Settings → NWC → Create Connection</li>
+                    </ul>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="closeNwcModal()">Cancelar</button>
+                    <button class="btn btn-primary" id="nwcSubmitBtn" onclick="submitNwcUri()" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border: none;">Conectar</button>
                 </div>
             </div>
         </div>
@@ -2930,7 +2980,8 @@
     <script src="js/lightning.js?v=sec11"></script>
     <script src="js/governance.js?v=sec11"></script>
     <script src="js/profile.js?v=phase1"></script>
-    <script src="js/wallet.js?v=phase1"></script>
+    <script src="js/nwc.js?v=nwc1"></script>
+    <script src="js/wallet.js?v=nwc1"></script>
 
     <!-- Nostr Integration Layer: debe cargarse ANTES que los modulos UI que dependen de el -->
     <script src="js/nostr-store.js?v=phase1"></script>
