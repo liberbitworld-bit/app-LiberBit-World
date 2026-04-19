@@ -1,14 +1,15 @@
-// city-prompt.js — Pop-up para animar a usuarios sin ciudad registrada
+// city-prompt.js v3 — Pop-up para usuarios sin ciudad registrada
+// Lee datos desde localStorage (profile.js está en IIFE, sus variables no están en window)
 // Triggers:
-//   1. Tras login (delay 4s)
-//   2. Al entrar en la sección de perfil (si aún no tiene ciudad)
-// Botón "No volver a mostrar": flag persistente por pubkey (respetado en ambos triggers).
+//   1. Tras login/carga (delay 4s)
+//   2. Al entrar en la sección de perfil (si aún no hay ciudad)
+// Respeta el flag "No volver a mostrar" en ambos triggers.
 (function () {
   'use strict';
 
   const STORAGE_PREFIX = 'lbw_city_prompt_dismissed_';
-  const LOGIN_DELAY_MS = 4000;    // delay tras login para no molestar
-  const PROFILE_DELAY_MS = 900;   // delay al entrar a perfil (espera loadUserProfile)
+  const LOGIN_DELAY_MS = 4000;
+  const PROFILE_DELAY_MS = 1200;   // margen para que loadUserProfile termine y actualice localStorage
   const MODAL_ID = 'lbw-city-prompt-modal';
   const STYLES_ID = 'lbw-city-prompt-styles';
 
@@ -113,39 +114,35 @@
 
   // -------------------- helpers --------------------
   function getCurrentPubkey() {
-    // Estructura real observada en la app: variable global currentUser
-    if (window.currentUser) {
-      return window.currentUser.pubkey || window.currentUser.publicKey || null;
+    // Fuente real: localStorage['liberbit_keys'] contiene {pubkey, privateKey, ...}
+    try {
+      const raw = localStorage.getItem('liberbit_keys');
+      if (!raw) return null;
+      const keys = JSON.parse(raw);
+      return keys?.pubkey || keys?.publicKey || null;
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
   function getUserProfileCity() {
     // Devuelve:
-    //   string con ciudad  → ya la tiene
-    //   ''                 → perfil cargado y sin ciudad (mostrar popup)
-    //   null               → perfil aún no cargado (no interrumpir)
-
-    // 1) Variable global del módulo profile.js (fuente de verdad en runtime)
-    if (window.userProfile && typeof window.userProfile === 'object') {
-      if (typeof window.userProfile.city === 'string' && window.userProfile.city.trim()) {
-        return window.userProfile.city.trim();
-      }
-      return '';
-    }
-    // 2) Caché en localStorage (por si userProfile no está aún en memoria)
+    //   string con ciudad   → ya la tiene
+    //   ''                  → perfil cargado y sin ciudad (mostrar popup)
+    //   null                → perfil no cargado aún (no molestar)
     const pubkey = getCurrentPubkey();
-    if (pubkey) {
-      try {
-        const cached = localStorage.getItem('userProfile_' + pubkey);
-        if (cached) {
-          const p = JSON.parse(cached);
-          if (p && typeof p.city === 'string' && p.city.trim()) return p.city.trim();
-          if (p) return '';
-        }
-      } catch (_) { /* ignore */ }
+    if (!pubkey) return null;
+    try {
+      const raw = localStorage.getItem('userProfile_' + pubkey);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      if (p && typeof p.city === 'string' && p.city.trim()) {
+        return p.city.trim();
+      }
+      return ''; // perfil existe en caché pero sin ciudad
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
   function keyFor(pubkey) {
@@ -166,10 +163,8 @@
 
   function goToProfileAndEditCity() {
     closeModal();
-    // Navegar al perfil vía la función global de la app
     if (typeof window.openApp === 'function') {
       try { window.openApp('perfil'); } catch (e) { console.warn('[LBW_CityPrompt] openApp fallo:', e); }
-      // Esperar a que cargue la sección y abrir directamente el modal de ciudadanía
       setTimeout(() => {
         if (typeof window.showCitizenshipModal === 'function') {
           try { window.showCitizenshipModal(); } catch (e) { console.warn('[LBW_CityPrompt] showCitizenshipModal fallo:', e); }
@@ -177,7 +172,6 @@
       }, 900);
       return;
     }
-    // Fallbacks defensivos por si openApp cambia de nombre
     const tab = document.querySelector('[onclick*="openApp"][onclick*="perfil"]');
     if (tab) { tab.click(); return; }
     window.location.hash = '#profileSection';
@@ -230,20 +224,20 @@
     document.body.appendChild(overlay);
   }
 
-  // -------------------- flujo principal --------------------
+  // -------------------- flujo --------------------
   let _checking = false;
-  async function check(context) {
+  function check(context) {
     if (_checking) return;
     _checking = true;
     try {
       const pubkey = getCurrentPubkey();
-      if (!pubkey) return;                              // no logueado
-      if (isDismissed(pubkey)) return;                  // usuario descartó permanentemente
-      if (document.getElementById(MODAL_ID)) return;    // ya abierto
+      if (!pubkey) return;
+      if (isDismissed(pubkey)) return;
+      if (document.getElementById(MODAL_ID)) return;
 
       const city = getUserProfileCity();
-      if (city === null) return;                        // perfil aún no cargado, no interrumpir
-      if (city) return;                                 // ya tiene ciudad registrada
+      if (city === null) return; // perfil aún no está en caché
+      if (city) return;           // ya tiene ciudad
 
       console.warn('[LBW_CityPrompt] mostrando popup (trigger: ' + (context || 'auto') + ')');
       showModal(pubkey);
@@ -258,7 +252,6 @@
     setTimeout(() => check('login'), LOGIN_DELAY_MS);
   }
 
-  // Observa la sección de perfil para disparar el check cuando se active
   function attachProfileSectionTrigger() {
     const profileSec = document.getElementById('profileSection');
     if (!profileSec) {
@@ -273,7 +266,7 @@
     obs.observe(profileSec, { attributes: true, attributeFilter: ['class'] });
   }
 
-  // API pública (debug desde consola)
+  // API pública
   window.LBW_CityPrompt = {
     check: () => check('manual'),
     showModal: () => showModal(getCurrentPubkey()),
@@ -281,35 +274,39 @@
     reset: () => {
       const pk = getCurrentPubkey();
       if (pk) localStorage.removeItem(keyFor(pk));
-      console.warn('[LBW_CityPrompt] dismiss flag limpiado para', pk?.slice(0, 16));
+      console.warn('[LBW_CityPrompt] dismiss flag limpiado para', pk ? pk.slice(0, 16) : 'null');
     },
     debug: () => {
       const pk = getCurrentPubkey();
-      console.log('[LBW_CityPrompt] debug:', {
+      const city = getUserProfileCity();
+      const info = {
         pubkey: pk ? pk.slice(0, 16) + '...' : null,
         dismissed: isDismissed(pk),
-        city: getUserProfileCity(),
-        userProfileExists: !!window.userProfile,
-        currentUserExists: !!window.currentUser
-      });
+        city: city,
+        cityStatus: city === null ? 'perfil no cargado' : (city === '' ? 'sin ciudad (mostraría popup)' : 'ya registrada'),
+        liberbitKeysPresent: !!localStorage.getItem('liberbit_keys'),
+        profileCachePresent: pk ? !!localStorage.getItem('userProfile_' + pk) : false
+      };
+      console.warn('[LBW_CityPrompt] debug:', JSON.stringify(info, null, 2));
+      return info;
     }
   };
 
   // -------------------- init --------------------
   function init() {
-    // Trigger 1: tras login (varios eventos posibles)
+    // Triggers posibles tras login
     window.addEventListener('lbw:logged-in', scheduleLoginCheck);
     window.addEventListener('lbw:ready', scheduleLoginCheck);
     window.addEventListener('lbw:profile-loaded', scheduleLoginCheck);
 
-    // Trigger 2: al entrar en la sección de perfil
+    // Trigger al entrar a perfil
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', attachProfileSectionTrigger);
     } else {
       attachProfileSectionTrigger();
     }
 
-    // Chequeo inicial (si ya hay sesión al cargar)
+    // Chequeo inicial (si hay sesión al cargar)
     if (document.readyState === 'complete') {
       scheduleLoginCheck();
     } else {
