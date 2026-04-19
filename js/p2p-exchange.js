@@ -16,6 +16,85 @@ const LBW_P2P = (() => {
     // NostroMostro npub (Spanish instance)
     const NOSTROMOSTRO_NPUB = 'npub1qqqvcqssrmpfa65uuc3jtp6jh8ta5ekz0pz76f5ydhgtplrnddqqrqe7xr';
 
+    // ── Platform-specific guides ─────────────────────────────
+    // Each entry describes how to operate on that P2P platform.
+    // Keys MUST be lowercase to match the normalized `platform` tag from events.
+    const PLATFORM_GUIDES = {
+        mostro: {
+            label: 'Mostro',
+            color: '#f7931a',
+            emoji: '⚡',
+            description: 'Las órdenes que ves aquí son del exchange P2P <strong style="color:#f7931a;">Mostro</strong>, un protocolo descentralizado sobre Nostr y Lightning Network. Sin KYC, sin custodio.',
+            steps: [
+                'Descarga una wallet Lightning (Phoenix, Zeus, Breez)',
+                'Instala el <a href="https://github.com/MostroP2P/mobile/releases" target="_blank" rel="noopener" style="color:var(--color-gold);">cliente Mostro para Android</a>',
+                'Configura la npub de NostroMostro (instancia española)',
+                'Toma una orden o crea la tuya',
+                'Al confirmar el pago fiat, los sats se liberan'
+            ],
+            showMostroNpub: true,
+            links: [
+                { label: '📱 App Android', href: 'https://github.com/MostroP2P/mobile/releases', variant: 'primary' },
+                { label: '💬 Telegram',    href: 'https://t.me/nostromostro',                      variant: 'secondary' },
+                { label: '📖 Docs',        href: 'https://mostro.network/es/',                     variant: 'muted' }
+            ]
+        },
+        lnp2pbot: {
+            label: 'LNp2pBot',
+            color: '#5b9bd5',
+            emoji: '🤖',
+            description: 'Las órdenes que ves aquí son de <strong style="color:#5b9bd5;">LNp2pBot</strong>, un bot P2P de Telegram sobre Lightning Network. Sin KYC, sin custodio del bot durante el pago fiat.',
+            steps: [
+                'Abre Telegram y accede al <a href="https://t.me/lnp2pBot" target="_blank" rel="noopener" style="color:var(--color-gold);">bot @lnp2pBot</a>',
+                'Envía <code>/start</code> al bot para iniciar',
+                'Usa <code>/buy</code> o <code>/sell</code> para ver órdenes activas',
+                'Toma la orden deseada o crea la tuya con <code>/takebuy</code> / <code>/takesell</code>',
+                'Paga con tu wallet Lightning y confirma en el bot; los sats se liberan tras el pago fiat'
+            ],
+            showMostroNpub: false,
+            links: [
+                { label: '🤖 Abrir bot',  href: 'https://t.me/lnp2pBot',    variant: 'primary' },
+                { label: '📖 Web oficial', href: 'https://lnp2pbot.com',    variant: 'secondary' },
+                { label: '💬 Comunidad',   href: 'https://t.me/lnp2pbotES', variant: 'muted' }
+            ]
+        },
+        robosats: {
+            label: 'RoboSats',
+            color: '#7b68ee',
+            emoji: '🤖',
+            description: 'Las órdenes que ves aquí son de <strong style="color:#7b68ee;">RoboSats</strong>, un exchange P2P web sobre Lightning con identidades "Robot" anónimas. Sin KYC, sin registro.',
+            steps: [
+                'Abre la <a href="https://unsafe.robosats.org" target="_blank" rel="noopener" style="color:var(--color-gold);">web de RoboSats</a> (o la versión Tor para máxima privacidad)',
+                'Genera tu identidad anónima (Robot token) — guárdala bien',
+                'Explora el "Order Book" y toma una orden, o crea la tuya',
+                'Bloquea el bond Lightning (pequeño hold invoice como garantía)',
+                'Completa el pago fiat por chat cifrado; los sats se liberan al confirmar'
+            ],
+            showMostroNpub: false,
+            links: [
+                { label: '🌐 Abrir RoboSats', href: 'https://unsafe.robosats.org',  variant: 'primary' },
+                { label: '📖 Docs',           href: 'https://learn.robosats.org',   variant: 'secondary' },
+                { label: '💬 Telegram',       href: 'https://t.me/robosats_es',     variant: 'muted' }
+            ]
+        }
+    };
+
+    // Fallback para plataformas desconocidas
+    const PLATFORM_GUIDE_FALLBACK = {
+        label: 'P2P',
+        color: 'var(--color-teal-light)',
+        emoji: '⚡',
+        description: 'Esta orden ha sido publicada en la red Nostr mediante el estándar NIP-69 (kind 38383). LiberBit World solo agrega y muestra las órdenes: para operar debes usar el cliente de la plataforma que la publicó.',
+        steps: [
+            'Identifica la plataforma origen en la insignia de la orden',
+            'Instala o abre el cliente oficial de esa plataforma',
+            'Busca la orden por su ID o toma una equivalente en su interfaz',
+            'Completa el trade siguiendo el flujo del protocolo correspondiente'
+        ],
+        showMostroNpub: false,
+        links: []
+    };
+
     // ── State ────────────────────────────────────────────────
     let _orders = [];
     let _sub = null;
@@ -199,7 +278,7 @@ const LBW_P2P = (() => {
         card.dataset.currency = order.currency || '';
         card.dataset.type = order.type || '';
         card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;cursor:pointer;';
-        card.onclick = () => LBW_P2P.openMostroInfo();
+        card.onclick = () => LBW_P2P.openOrderInfo(order.platform);
 
         const satsDisplay = _formatSats(order.amount);
         const fiatDisplay = _formatFiat(order);
@@ -213,6 +292,14 @@ const LBW_P2P = (() => {
             const sym = order.currency === 'EUR' ? '€' : order.currency === 'USD' ? '$' : order.currency;
             effectivePrice = `<span style="font-size:0.65rem;color:var(--color-text-secondary);" title="Precio efectivo con premium">≈ ${sym} ${_formatNum(Math.round(eff))}/BTC</span>`;
         }
+
+        // Compute platform-aware styling for the "Operar" button
+        const _pKey = (order.platform || '').toLowerCase();
+        const _pGuide = PLATFORM_GUIDES[_pKey] || PLATFORM_GUIDE_FALLBACK;
+        const _pBtnColor = _pGuide.color;
+        // Only mostro's orange has a translucent bg baked in; other platforms use a neutral tint
+        const _pBtnBg = _pKey === 'mostro' ? 'rgba(247,147,26,0.15)' : 'rgba(255,255,255,0.04)';
+        const _pKeyEsc = _esc(_pKey);
 
         card.innerHTML = `
             <div style="padding:1rem;">
@@ -255,7 +342,7 @@ const LBW_P2P = (() => {
                         ⚡ ${_esc((order.layer || 'lightning').charAt(0).toUpperCase() + (order.layer || 'lightning').slice(1))}
                         · ${_esc((order.network || 'mainnet'))}
                     </span>
-                    <button onclick="LBW_P2P.openMostroInfo()" style="padding:0.3rem 0.7rem;background:rgba(247,147,26,0.15);border:1px solid #f7931a;border-radius:8px;color:#f7931a;cursor:pointer;font-size:0.7rem;font-weight:600;">
+                    <button onclick="event.stopPropagation();LBW_P2P.openOrderInfo('${_pKeyEsc}')" style="padding:0.3rem 0.7rem;background:${_pBtnBg};border:1px solid ${_pBtnColor};border-radius:8px;color:${_pBtnColor};cursor:pointer;font-size:0.7rem;font-weight:600;">
                         ⚡ Operar
                     </button>
                 </div>
@@ -414,64 +501,77 @@ const LBW_P2P = (() => {
         `;
     }
 
-    // ── Info modal (how to use Mostro) ──────────────────────
-    function openMostroInfo() {
-        // Check for existing modal
-        let modal = document.getElementById('mostroInfoModal');
-        if (modal) { modal.style.display = 'flex'; return; }
+    // ── Info modal — dynamic per platform ───────────────────
+    // Shows how to operate on the platform that published the order
+    // (Mostro / LNp2pBot / RoboSats / fallback).
+    function openOrderInfo(platform) {
+        const key = (platform || '').toString().toLowerCase();
+        const guide = PLATFORM_GUIDES[key] || PLATFORM_GUIDE_FALLBACK;
 
-        modal = document.createElement('div');
-        modal.id = 'mostroInfoModal';
+        // Always remove and recreate the modal so it reflects the current platform
+        const existing = document.getElementById('p2pInfoModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'p2pInfoModal';
+        modal.dataset.platform = key;
         modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;';
         modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
 
+        // Build steps list (steps may contain trusted inline HTML from PLATFORM_GUIDES constant)
+        const stepsHtml = guide.steps.map(s => `<li>${s}</li>`).join('');
+
+        // Build NostroMostro npub block (only for Mostro)
+        const npubBlock = guide.showMostroNpub ? `
+            <div style="background:var(--color-bg-dark);border:1px solid var(--color-border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
+                <label style="font-size:0.7rem;color:var(--color-gold);display:block;margin-bottom:0.3rem;">npub de NostroMostro (España)</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <code id="mostroNpubText" style="font-size:0.6rem;color:var(--color-text-primary);word-break:break-all;flex:1;">${NOSTROMOSTRO_NPUB}</code>
+                    <button data-lbw-action="p2pCopyMostroNpub" style="background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:6px;color:var(--color-gold);cursor:pointer;padding:0.3rem 0.5rem;font-size:0.75rem;white-space:nowrap;">📋</button>
+                </div>
+            </div>` : '';
+
+        // Build links row
+        const linkStyles = {
+            primary:   `background:${guide.color}26;border:1px solid ${guide.color};color:${guide.color};`,
+            secondary: `background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);color:var(--color-teal-light);`,
+            muted:     `background:rgba(255,255,255,0.05);border:1px solid var(--color-border);color:var(--color-text-secondary);`
+        };
+        const linksHtml = (guide.links || []).map(l => {
+            const s = linkStyles[l.variant] || linkStyles.muted;
+            return `<a href="${_esc(l.href)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:0.5rem;border-radius:8px;text-decoration:none;font-size:0.8rem;font-weight:600;${s}">${l.label}</a>`;
+        }).join('');
+        const linksBlock = linksHtml ? `<div style="display:flex;gap:0.5rem;flex-wrap:wrap;">${linksHtml}</div>` : '';
+
         modal.innerHTML = `
-            <div style="background:var(--color-bg-card);border:2px solid var(--color-gold);border-radius:16px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:1.5rem;">
+            <div style="background:var(--color-bg-card);border:2px solid ${guide.color};border-radius:16px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:1.5rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                    <h3 style="color:var(--color-gold);margin:0;">⚡ Cómo operar en Mostro P2P</h3>
-                    <button onclick="document.getElementById('mostroInfoModal').style.display='none'" style="background:none;border:none;color:var(--color-text-secondary);font-size:1.2rem;cursor:pointer;">✕</button>
+                    <h3 style="color:${guide.color};margin:0;">${guide.emoji} Cómo operar en ${_esc(guide.label)} P2P</h3>
+                    <button onclick="document.getElementById('p2pInfoModal').remove()" style="background:none;border:none;color:var(--color-text-secondary);font-size:1.2rem;cursor:pointer;">✕</button>
                 </div>
 
                 <p style="color:var(--color-text-secondary);font-size:0.85rem;margin-bottom:1rem;">
-                    Las órdenes que ves aquí son del exchange P2P <strong style="color:#f7931a;">Mostro</strong>, 
-                    un protocolo descentralizado sobre Nostr y Lightning Network. Sin KYC, sin custodio.
+                    ${guide.description}
                 </p>
 
-                <div style="background:rgba(247,147,26,0.08);border:1px solid rgba(247,147,26,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem;">
-                    <h4 style="color:#f7931a;margin-bottom:0.5rem;font-size:0.9rem;">📋 Pasos para operar</h4>
+                <div style="background:${guide.color}14;border:1px solid ${guide.color}33;border-radius:12px;padding:1rem;margin-bottom:1rem;">
+                    <h4 style="color:${guide.color};margin-bottom:0.5rem;font-size:0.9rem;">📋 Pasos para operar</h4>
                     <ol style="color:var(--color-text-primary);font-size:0.8rem;padding-left:1.2rem;margin:0;line-height:1.8;">
-                        <li>Descarga una wallet Lightning (Phoenix, Zeus, Breez)</li>
-                        <li>Instala el <a href="https://github.com/MostroP2P/mobile/releases" target="_blank" rel="noopener" style="color:var(--color-gold);">cliente Mostro para Android</a></li>
-                        <li>Configura la npub de NostroMostro (instancia española)</li>
-                        <li>Toma una orden o crea la tuya</li>
-                        <li>Al confirmar el pago fiat, los sats se liberan</li>
+                        ${stepsHtml}
                     </ol>
                 </div>
 
-                <div style="background:var(--color-bg-dark);border:1px solid var(--color-border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;">
-                    <label style="font-size:0.7rem;color:var(--color-gold);display:block;margin-bottom:0.3rem;">npub de NostroMostro (España)</label>
-                    <div style="display:flex;gap:0.5rem;align-items:center;">
-                        <code id="mostroNpubText" style="font-size:0.6rem;color:var(--color-text-primary);word-break:break-all;flex:1;">${NOSTROMOSTRO_NPUB}</code>
-                        <button data-lbw-action="p2pCopyMostroNpub" style="background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-radius:6px;color:var(--color-gold);cursor:pointer;padding:0.3rem 0.5rem;font-size:0.75rem;white-space:nowrap;">📋</button>
-                    </div>
-                </div>
+                ${npubBlock}
 
-                <div style="display:flex;gap:0.5rem;">
-                    <a href="https://github.com/MostroP2P/mobile/releases" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:0.5rem;background:rgba(247,147,26,0.15);border:1px solid #f7931a;border-radius:8px;color:#f7931a;text-decoration:none;font-size:0.8rem;font-weight:600;">
-                        📱 App Android
-                    </a>
-                    <a href="https://t.me/nostromostro" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:0.5rem;background:rgba(44,95,111,0.2);border:1px solid var(--color-teal-light);border-radius:8px;color:var(--color-teal-light);text-decoration:none;font-size:0.8rem;font-weight:600;">
-                        💬 Telegram
-                    </a>
-                    <a href="https://mostro.network/es/" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:0.5rem;background:rgba(255,255,255,0.05);border:1px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);text-decoration:none;font-size:0.8rem;font-weight:600;">
-                        📖 Docs
-                    </a>
-                </div>
+                ${linksBlock}
             </div>
         `;
 
         document.body.appendChild(modal);
     }
+
+    // Back-compat alias — anything still calling openMostroInfo() gets the Mostro guide
+    function openMostroInfo() { return openOrderInfo('mostro'); }
 
     // ── Start subscription ──────────────────────────────────
     async function start() {
@@ -596,6 +696,7 @@ const LBW_P2P = (() => {
         filterType,
         filterPlatform,
         sortBy,
+        openOrderInfo,
         openMostroInfo,
         getOrders: () => [..._orders],
     };
