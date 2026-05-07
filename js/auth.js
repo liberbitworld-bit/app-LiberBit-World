@@ -39,7 +39,7 @@ async function checkExistingSession() {
                 currentUser.privateKey = hexToNsec(currentUser.privateKey);
             }
             
-            localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+            window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
             
             // Update in Supabase
             try {
@@ -69,7 +69,7 @@ async function checkExistingSession() {
                 const nostrSession = JSON.parse(localStorage.getItem('lbw_nostr_session') || 'null');
                 if (nostrSession && nostrSession.name && !nostrSession.name.startsWith('npub1') && !nostrSession.name.endsWith('...')) {
                     currentUser.name = nostrSession.name;
-                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
                     console.log('[Auth] Name recovered from Nostr session:', currentUser.name);
                 }
             } catch (e) {}
@@ -103,7 +103,7 @@ async function checkExistingSession() {
                         console.log('[Auth] Name recovered from Supabase:', currentUser.name);
                     }
                     
-                    localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                    window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
                 }
             } catch (err) {
                 console.log('User not in Supabase yet:', err.message);

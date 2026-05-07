@@ -208,19 +208,31 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name: '', picture: '', method: 'nsec', loginTime: Date.now()
         };
-        // Store nsec in localStorage for persistence across tab close/reopen
-        // Also keep in sessionStorage for backward compatibility
-        try { 
-            localStorage.setItem('lbw_nsec_persist', input);
-            sessionStorage.setItem('lbw_nsec_session', input); 
-        } catch (e) {}
+
+        // ══ NIP-49: pedir contraseña y cifrar la nsec antes de persistir ══
+        // El usuario debe configurar una contraseña obligatoriamente. Si cancela,
+        // abortamos el login porque la sesión no se podría restaurar tras recargar.
+        try {
+            await LBW_Passlock.setupPasswordAndStore(result.nsec, {
+                title: '🔒 Crea una contraseña',
+                desc: 'Cifrará tu clave privada (nsec) en este navegador con NIP-49. La pedirás cada vez que vuelvas a entrar.'
+            });
+        } catch (e) {
+            // Cancelación o error → revertir login
+            try { LBW_Nostr.logout(); } catch (_) {}
+            throw new Error('Login cancelado: necesitas crear una contraseña');
+        }
+
+        // Aseguramos que NO queda nsec en claro en ningún almacén
+        try { localStorage.removeItem('lbw_nsec_persist'); } catch (e) {}
+        try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
 
         // ══ CRITICAL: Reset currentUser COMPLETELY for new login ══
-        // This prevents data from previous sessions bleeding into new login
+        // privateKey se mantiene en MEMORIA pero nunca se persiste (LBW_persistKeys la elimina)
         currentUser = {
             pubkey: result.npub,
             publicKey: result.npub,
-            privateKey: input,
+            privateKey: result.nsec,
             name: '',
             id: null
         };
@@ -421,7 +433,7 @@ const LBW_NostrBridge = (() => {
         }
 
         // Save synced currentUser to localStorage
-        try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+        try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
 
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
         _applyLoginToUI(session);
@@ -437,10 +449,20 @@ const LBW_NostrBridge = (() => {
             pubkey: result.pubkeyHex, npub: result.npub,
             name, method: 'created', loginTime: Date.now()
         };
-        try { 
-            localStorage.setItem('lbw_nsec_persist', result.nsec);
-            sessionStorage.setItem('lbw_nsec_session', result.nsec); 
-        } catch (e) {}
+
+        // ══ NIP-49: pedir contraseña y cifrar la nsec recién creada ══
+        try {
+            await LBW_Passlock.setupPasswordAndStore(result.nsec, {
+                title: '🔒 Protege tu nueva identidad',
+                desc: 'Cifraremos tu clave privada (nsec) en este navegador con una contraseña (NIP-49). Apunta también la nsec en un sitio seguro: es tu único respaldo si olvidas la contraseña.'
+            });
+        } catch (e) {
+            try { LBW_Nostr.logout(); } catch (_) {}
+            throw new Error('Creación cancelada: necesitas crear una contraseña');
+        }
+
+        try { localStorage.removeItem('lbw_nsec_persist'); } catch (e) {}
+        try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
         localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
 
         // ══ CRITICAL: Set currentUser so the rest of the app can use it ══
@@ -452,7 +474,7 @@ const LBW_NostrBridge = (() => {
                 name: name,
                 id: null
             };
-            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+            window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
         }
 
         // ══ Save new user to Supabase immediately ══
@@ -484,7 +506,7 @@ const LBW_NostrBridge = (() => {
                     } else if (newUser) {
                         if (typeof currentUser !== 'undefined' && currentUser) {
                             currentUser.id = newUser.id;
-                            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+                            try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
                         }
                         console.log('[Bridge] ✅ Nueva identidad guardada en Supabase:', name, result.npub.substring(0, 20));
                     }
@@ -492,7 +514,7 @@ const LBW_NostrBridge = (() => {
                     console.log('[Bridge] ℹ️ Usuario ya existe en Supabase, id:', existing.id);
                     if (typeof currentUser !== 'undefined' && currentUser) {
                         currentUser.id = existing.id;
-                        try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+                        try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
                     }
                 }
             }
@@ -526,6 +548,11 @@ const LBW_NostrBridge = (() => {
         localStorage.removeItem('lbw_nsec_persist');
         localStorage.removeItem('liberbit_keys');
         try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
+        // NIP-49: borrar también la nsec cifrada
+        if (window.LBW_Passlock) {
+            try { LBW_Passlock.clearEncrypted(); } catch (e) {}
+            try { LBW_Passlock.clearLegacyPlaintext(); } catch (e) {}
+        }
         
         // Reset currentUser
         if (typeof currentUser !== 'undefined') {
@@ -549,19 +576,39 @@ const LBW_NostrBridge = (() => {
                     sessionRestored = true;
                 }
             } else if (s.method === 'nsec' || s.method === 'created') {
-                // Try sessionStorage first (same tab), then localStorage (persists across tabs)
-                let nsec = sessionStorage.getItem('lbw_nsec_session');
-                if (!nsec) {
-                    nsec = localStorage.getItem('lbw_nsec_persist');
-                    if (nsec) {
-                        // Re-populate sessionStorage for this tab
-                        try { sessionStorage.setItem('lbw_nsec_session', nsec); } catch(e) {}
-                        console.log('[Bridge] ✅ nsec recuperada desde localStorage (tab nuevo)');
+                // ── NIP-49: pedir contraseña y descifrar la nsec ──
+                // Tres situaciones posibles, en este orden:
+                //   1) Hay lbw_ncryptsec → flujo normal, pedir contraseña.
+                //   2) Hay nsec en claro (legacy) y no hay ncryptsec → migración obligatoria.
+                //   3) No hay ni una cosa ni la otra → sesión huérfana, limpiar.
+                let nsec = null;
+                if (LBW_Passlock.hasEncrypted()) {
+                    try {
+                        const res = await LBW_Passlock.unlockWithPasswordPrompt({
+                            title: '🔓 Desbloquea LiberBit World',
+                            desc: 'Introduce tu contraseña para descifrar tu identidad Nostr en este navegador.'
+                        });
+                        if (res && res.logout) { handleLogout(); return false; }
+                        nsec = res && res.nsec;
+                    } catch (e) {
+                        console.warn('[Bridge] Desbloqueo cancelado:', e.message);
+                        return false;
+                    }
+                } else if (LBW_Passlock.hasLegacyPlaintext()) {
+                    try {
+                        const res = await LBW_Passlock.migrateLegacyToEncrypted();
+                        if (res && res.logout) { handleLogout(); return false; }
+                        nsec = res && res.nsec;
+                        if (nsec) console.log('[Bridge] ✅ Migración NIP-49 completada');
+                    } catch (e) {
+                        console.error('[Bridge] Error en migración NIP-49:', e);
+                        return false;
                     }
                 }
+
                 if (nsec) {
                     LBW_Nostr.loginWithPrivateKey(nsec);
-                    
+
                     // ══ CRITICAL: Reset currentUser COMPLETELY with session data ══
                     currentUser = {
                         pubkey: s.npub,
@@ -570,8 +617,8 @@ const LBW_NostrBridge = (() => {
                         name: (s.name && !s.name.startsWith('npub1') && !s.name.endsWith('...')) ? s.name : '',
                         id: null
                     };
-                    try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
-                    
+                    window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
+
                     _applyLoginToUI(s);
                     _updateLoginModeUI('nsec');
                     await _startAllFeeds();
@@ -641,7 +688,7 @@ const LBW_NostrBridge = (() => {
                         _updateDisplayName(resolvedName);
                         if (typeof currentUser !== 'undefined' && currentUser) {
                             currentUser.name = resolvedName;
-                            localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                            window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
                         }
                         console.log('[Bridge] ✅ Nombre restaurado:', resolvedName);
                         updated = true;
@@ -701,7 +748,7 @@ const LBW_NostrBridge = (() => {
         // Persist name in currentUser and liberbit_keys so it survives page reloads
         if (typeof currentUser !== 'undefined' && currentUser) {
             currentUser.name = name;
-            try { localStorage.setItem('liberbit_keys', JSON.stringify(currentUser)); } catch(e) {}
+            try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
         }
     }
 
