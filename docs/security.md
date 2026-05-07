@@ -7,12 +7,13 @@
 | Método de login | Almacenamiento | Persistencia | Nivel de seguridad |
 |----------------|---------------|-------------|-------------------|
 | Extensión NIP-07 (Alby, nos2x) | Extensión del browser | Permanente | ✅ Más alto |
-| Importar nsec | sessionStorage | Solo tab actual | ⚠️ Medio |
-| Crear identidad | sessionStorage | Solo tab actual | ⚠️ Medio (guardar nsec!) |
+| Importar nsec / Crear identidad | `lbw_ncryptsec` cifrado con contraseña (NIP-49) | Permanente, requiere contraseña en cada apertura | ✅ Alto |
 
 **Extensión NIP-07 (recomendado):** La clave privada vive en la extensión. La app solo pide firmas — nunca ve la clave.
 
-**nsec import:** La clave se almacena en `sessionStorage` (no `localStorage`), lo que significa que se borra automáticamente al cerrar la pestaña del navegador.
+**nsec import / Crear identidad:** La clave se cifra con tu contraseña usando NIP-49 (scrypt + XChaCha20-Poly1305) y se guarda como `ncryptsec1...` en `localStorage`. La nsec en claro nunca se persiste. Cada apertura del navegador requiere introducir la contraseña para descifrarla en memoria.
+
+> Ver [Cifrado de la clave privada con NIP-49](#cifrado-de-la-clave-privada-con-nip-49) más abajo para detalles del modelo de seguridad y migración.
 
 ---
 
@@ -127,4 +128,66 @@ La verificación criptográfica previene votos duplicados:
 | Pérdida de datos en relay | Multi-relay publish + IndexedDB cache local |
 | XSS via relay URL | Validación estricta de URLs |
 | Manipulación de méritos | Firmas verificables + snapshots por governors |
-| Robo de clave privada | sessionStorage (tab-scoped) + recomendación NIP-07 |
+| Robo de clave privada en disco | NIP-49: la nsec se persiste cifrada con contraseña del usuario, no en claro |
+| XSS / extensión maliciosa lee `localStorage` | Solo encuentra `ncryptsec1...` cifrado — necesita la contraseña para descifrarlo. NIP-07 elimina incluso este vector |
+
+---
+
+## Cifrado de la clave privada con NIP-49
+
+Desde la versión que incorpora `lbw-passlock.js`, la clave privada (`nsec`) **nunca se almacena en claro** en el navegador. Se cifra con la contraseña del usuario siguiendo el estándar [NIP-49](https://github.com/nostr-protocol/nips/blob/master/49.md).
+
+### Cómo funciona
+
+| Paso | Algoritmo |
+|------|-----------|
+| Derivación de clave a partir de la contraseña | scrypt con `logn=16` (N=65536, r=8, p=1) |
+| Cifrado autenticado | XChaCha20-Poly1305 (nonce de 24 bytes, tag de 16 bytes) |
+| Salida | `ncryptsec1...` (bech32) en `localStorage.lbw_ncryptsec` |
+
+El descifrado solo ocurre en memoria al desbloquear la sesión y al firmar eventos. Recargar la pestaña vuelve a pedir la contraseña.
+
+### Qué garantiza NIP-49
+
+- **Reposo cifrado**: si alguien lee tu `localStorage` (volcado del disco, malware con acceso a archivos del navegador, herramientas forenses) solo encuentra el `ncryptsec1...`. Sin la contraseña no es viable computacionalmente recuperar la nsec.
+- **scrypt resiste fuerza bruta**: con `logn=16`, cada intento de contraseña requiere ~1-2 s de CPU intensiva. Una contraseña fuerte (≥12 caracteres aleatorios) es inviable de romper offline.
+- **Cifrado autenticado (Poly1305)**: cualquier modificación del `ncryptsec` lo invalida, no se puede tamper con el cifrado para inyectar otra nsec.
+
+### Qué **NO** garantiza NIP-49
+
+- **Compromiso del navegador en tiempo real**: una vez introducida la contraseña, la nsec descifrada vive en memoria mientras la pestaña está abierta. JS malicioso (XSS, extensión hostil) que se ejecute *durante* la sesión puede leerla.
+- **Contraseñas débiles**: una contraseña corta (`1234`, `password`) sigue siendo factible de romper por fuerza bruta. La app exige mínimo 8 caracteres pero no estima entropía.
+- **Keylogger en el sistema operativo**: captura la contraseña al teclearla. NIP-49 protege el reposo, no la entrada.
+- **Recuperación**: **no hay reset posible**. Si pierdes la contraseña, la nsec es irrecuperable. La app advierte de esto en cada flujo de creación de contraseña.
+
+### Modelo de amenazas cubierto
+
+| Amenaza | NIP-49 ayuda | Mitigación adicional |
+|---------|--------------|----------------------|
+| Volcado de `localStorage` (malware con acceso a archivos) | ✅ Sí | — |
+| Herramientas forenses sobre el disco | ✅ Sí | — |
+| Otra app maliciosa en el mismo navegador (sin acceso al origen) | ✅ Sí (sandboxing del browser ya separa, NIP-49 es defensa en profundidad) | — |
+| XSS en LiberBit World | ⚠️ Solo en reposo — no protege durante sesión activa | Validación estricta de entradas, CSP estricto |
+| Extensión hostil del navegador | ⚠️ Solo en reposo — no protege durante sesión activa | Usar NIP-07 con extensión auditada (Alby) |
+| Phishing de la contraseña | ❌ No protege | Educación del usuario, dominio estable |
+| Keylogger del sistema | ❌ No protege | Higiene del sistema operativo |
+
+### Migración de usuarios existentes
+
+Las cuentas creadas antes de NIP-49 tenían la nsec guardada en claro en `localStorage.lbw_nsec_persist` y dentro de `liberbit_keys.privateKey`. Al detectar este estado al cargar la app:
+
+1. **Modal *"📋 Apunta tu clave privada"*** (obligatorio): muestra la nsec con click-para-revelar y botón Copiar. El usuario debe confirmar que la ha guardado en un sitio seguro (gestor de contraseñas, papel offline) antes de continuar. Como la app guardaba la nsec sola, muchos usuarios nunca llegaron a apuntarla — este paso evita que pierdan la cuenta si olvidan la contraseña.
+2. **Modal *"🛡️ Crea una contraseña"***: el usuario crea una contraseña; la app cifra la nsec, guarda el `ncryptsec`, y borra todo rastro de la nsec en claro (`lbw_nsec_persist`, `lbw_nsec_session`, `liberbit_keys.privateKey`).
+
+En cualquier paso el usuario puede elegir *"Cerrar sesión y usar NIP-07"* en su lugar, lo que hace logout completo y limpia todos los almacenes.
+
+### Comparativa de modelos de gestión de claves
+
+| Modelo | Dónde vive la nsec | UX | Recuperación |
+|--------|-------------------|-----|--------------|
+| nsec en claro (legacy, ya retirado) | `localStorage` en plano | Sin fricción | nsec es el respaldo |
+| **NIP-49 (actual)** | `localStorage` cifrado con contraseña | Una contraseña por sesión | nsec es el respaldo (no la contraseña) |
+| NIP-07 (Alby/nos2x) | Extensión del navegador | Pulsas "firmar" | nsec es el respaldo (la gestiona la extensión) |
+| NIP-46 (bunker remoto, no implementado aún) | Otro dispositivo / servicio | Aprueba cada firma en el bunker | nsec vive solo en el bunker |
+
+El **respaldo soberano siempre es la nsec original**. La contraseña de NIP-49 protege el almacenamiento en disco, no es otro factor recuperable.

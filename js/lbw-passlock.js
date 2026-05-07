@@ -171,8 +171,9 @@ const LBW_Passlock = (() => {
     }
 
     // ── UI: modal único multi-modo ───────────────────────────
-    // mode: 'set' | 'unlock' | 'migrate'
-    // Devuelve Promise<{password: string, switchToExtension?: boolean, logout?: boolean} | null>
+    // mode: 'set' | 'unlock' | 'migrate' | 'migrate-backup'
+    // opts.nsec: solo para 'migrate-backup', nsec a mostrar
+    // Devuelve Promise<{password?: string, switchToExtension?: boolean, logout?: boolean, backupDone?: boolean} | null>
     function showModal(mode, opts = {}) {
         return new Promise((resolve) => {
             _ensureModalDOM();
@@ -180,6 +181,11 @@ const LBW_Passlock = (() => {
             const modal = document.getElementById('lbwPasslockModal');
             const titleEl = document.getElementById('lbwPasslockTitle');
             const descEl = document.getElementById('lbwPasslockDesc');
+            const warnEl = document.getElementById('lbwPasslockWarn');
+            const nsecWrap = document.getElementById('lbwPasslockNsecWrap');
+            const nsecValue = document.getElementById('lbwPasslockNsecValue');
+            const nsecReveal = document.getElementById('lbwPasslockNsecReveal');
+            const nsecCopy = document.getElementById('lbwPasslockNsecCopy');
             const pwd1 = document.getElementById('lbwPasslockPwd1');
             const pwd2 = document.getElementById('lbwPasslockPwd2');
             const pwd2Wrap = document.getElementById('lbwPasslockPwd2Wrap');
@@ -195,13 +201,17 @@ const LBW_Passlock = (() => {
             pwd1.disabled = false;
             pwd2.disabled = false;
             submitBtn.disabled = false;
+            warnEl.style.display = 'none';
+            nsecWrap.style.display = 'none';
+            pwd1.style.display = '';
+            pwd2Wrap.style.display = '';
 
             if (mode === 'set') {
                 titleEl.textContent = opts.title || '🔒 Crea una contraseña';
                 descEl.textContent = opts.desc || 'Cifrará tu clave privada (nsec) en este navegador. La pedirás cada vez que vuelvas a entrar.';
                 pwd1.placeholder = 'Contraseña (mín. 8 caracteres)';
                 pwd2.placeholder = 'Repite la contraseña';
-                pwd2Wrap.style.display = '';
+                warnEl.style.display = '';
                 submitBtn.textContent = 'Crear contraseña';
                 altBtn.style.display = 'none';
             } else if (mode === 'unlock') {
@@ -212,19 +222,48 @@ const LBW_Passlock = (() => {
                 submitBtn.textContent = 'Desbloquear';
                 altBtn.textContent = 'Cerrar sesión';
                 altBtn.style.display = '';
+            } else if (mode === 'migrate-backup') {
+                titleEl.textContent = '📋 Apunta tu clave privada';
+                descEl.textContent = 'Antes de cifrarla, copia y guarda tu nsec en un sitio seguro (gestor de contraseñas, papel offline). Será tu único respaldo si olvidas la contraseña.';
+                nsecValue.textContent = opts.nsec || '';
+                nsecValue.style.filter = 'blur(5px)';
+                nsecValue.title = 'Clic para revelar';
+                nsecValue.onclick = () => { nsecValue.style.filter = 'none'; };
+                nsecReveal.onclick = () => {
+                    const blurred = nsecValue.style.filter !== 'none';
+                    nsecValue.style.filter = blurred ? 'none' : 'blur(5px)';
+                    nsecReveal.textContent = blurred ? '🙈 Ocultar' : '👁️ Mostrar';
+                };
+                nsecCopy.onclick = async () => {
+                    try {
+                        await navigator.clipboard.writeText(opts.nsec || '');
+                        nsecCopy.textContent = '✅ Copiada';
+                        setTimeout(() => { nsecCopy.textContent = '📋 Copiar'; }, 2000);
+                    } catch (e) {
+                        nsecCopy.textContent = '❌ Error';
+                    }
+                };
+                nsecReveal.textContent = '👁️ Mostrar';
+                nsecCopy.textContent = '📋 Copiar';
+                nsecWrap.style.display = '';
+                pwd1.style.display = 'none';
+                pwd2Wrap.style.display = 'none';
+                submitBtn.textContent = 'He guardado mi clave, continuar';
+                altBtn.textContent = 'Cerrar sesión y usar NIP-07';
+                altBtn.style.display = '';
             } else if (mode === 'migrate') {
-                titleEl.textContent = '🛡️ Protege tu cuenta';
-                descEl.textContent = 'Detectamos una sesión antigua con tu clave privada guardada en claro. Crea una contraseña ahora para cifrarla — o cierra sesión y entra de nuevo con extensión Nostr (NIP-07).';
+                titleEl.textContent = '🛡️ Crea una contraseña';
+                descEl.textContent = 'Cifraremos tu clave privada con esta contraseña. La pedirás cada vez que abras la app.';
                 pwd1.placeholder = 'Contraseña (mín. 8 caracteres)';
                 pwd2.placeholder = 'Repite la contraseña';
-                pwd2Wrap.style.display = '';
-                submitBtn.textContent = 'Crear contraseña y migrar';
+                warnEl.style.display = '';
+                submitBtn.textContent = 'Cifrar y continuar';
                 altBtn.textContent = 'Cerrar sesión y usar NIP-07';
                 altBtn.style.display = '';
             }
 
             modal.style.display = 'flex';
-            setTimeout(() => pwd1.focus(), 50);
+            if (mode !== 'migrate-backup') setTimeout(() => pwd1.focus(), 50);
 
             const finish = (val) => {
                 modal.style.display = 'none';
@@ -236,6 +275,10 @@ const LBW_Passlock = (() => {
             };
 
             const submit = async () => {
+                if (mode === 'migrate-backup') {
+                    finish({ backupDone: true });
+                    return;
+                }
                 const p1 = pwd1.value;
                 if (!p1) { errEl.textContent = 'Introduce una contraseña.'; return; }
                 if (mode !== 'unlock') {
@@ -258,7 +301,7 @@ const LBW_Passlock = (() => {
 
             if (mode === 'unlock') {
                 altBtn.onclick = () => finish({ logout: true });
-            } else if (mode === 'migrate') {
+            } else if (mode === 'migrate' || mode === 'migrate-backup') {
                 altBtn.onclick = () => finish({ switchToExtension: true });
             }
         });
@@ -292,9 +335,22 @@ const LBW_Passlock = (() => {
         div.id = 'lbwPasslockModal';
         div.style.cssText = 'display:none;position:fixed;inset:0;z-index:99999;background:rgba(13,23,30,0.85);align-items:center;justify-content:center;padding:1rem;';
         div.innerHTML = `
-            <div style="background:#0F1F2A;border:1px solid var(--color-teal-light,#4DD0E1);border-radius:14px;max-width:420px;width:100%;padding:1.5rem;color:#E0E0E0;font-family:'Poppins',system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+            <div style="background:#0F1F2A;border:1px solid var(--color-teal-light,#4DD0E1);border-radius:14px;max-width:440px;width:100%;padding:1.5rem;color:#E0E0E0;font-family:'Poppins',system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.6);">
                 <h3 id="lbwPasslockTitle" style="margin:0 0 0.5rem 0;font-size:1.1rem;font-weight:700;color:var(--color-gold,#E5B95C);"></h3>
                 <p id="lbwPasslockDesc" style="margin:0 0 1rem 0;font-size:0.85rem;line-height:1.4;color:#B0BEC5;"></p>
+                <div id="lbwPasslockNsecWrap" style="display:none;margin-bottom:1rem;">
+                    <div style="font-size:0.75rem;color:#B0BEC5;margin-bottom:0.35rem;">🔑 Tu clave privada (nsec):</div>
+                    <div style="position:relative;background:#0A1419;border:1px solid #2C5F6F;border-radius:8px;padding:0.55rem 0.75rem;font-family:'JetBrains Mono',monospace;font-size:0.78rem;word-break:break-all;line-height:1.35;">
+                        <span id="lbwPasslockNsecValue" style="filter:blur(5px);cursor:pointer;display:block;color:#E5B95C;" title="Clic para revelar"></span>
+                    </div>
+                    <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+                        <button id="lbwPasslockNsecReveal" type="button" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid #455A64;background:transparent;color:#B0BEC5;cursor:pointer;font-size:0.78rem;">👁️ Mostrar</button>
+                        <button id="lbwPasslockNsecCopy" type="button" style="flex:1;padding:0.4rem;border-radius:6px;border:1px solid #455A64;background:transparent;color:#B0BEC5;cursor:pointer;font-size:0.78rem;">📋 Copiar</button>
+                    </div>
+                </div>
+                <div id="lbwPasslockWarn" style="display:none;background:rgba(229,185,92,0.08);border-left:3px solid #E5B95C;padding:0.6rem 0.75rem;margin-bottom:1rem;border-radius:0 6px 6px 0;font-size:0.78rem;line-height:1.4;color:#E5B95C;">
+                    ⚠️ <strong>Esta contraseña no se puede recuperar.</strong> Si la pierdes, solo podrás recuperar la cuenta si tienes apuntada tu <code style="font-family:'JetBrains Mono',monospace;">nsec1...</code> original.
+                </div>
                 <input id="lbwPasslockPwd1" type="password" autocomplete="new-password" style="width:100%;padding:0.6rem 0.75rem;border-radius:8px;border:1px solid #2C5F6F;background:#0A1419;color:#E0E0E0;margin-bottom:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.9rem;" />
                 <div id="lbwPasslockPwd2Wrap">
                     <input id="lbwPasslockPwd2" type="password" autocomplete="new-password" style="width:100%;padding:0.6rem 0.75rem;border-radius:8px;border:1px solid #2C5F6F;background:#0A1419;color:#E0E0E0;margin-bottom:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.9rem;" />
@@ -344,12 +400,20 @@ const LBW_Passlock = (() => {
         }
     }
 
-    // Migración: sabemos que hay nsec en claro. Pedimos contraseña, ciframos,
-    // borramos la versión en claro. Si el usuario elige "Cerrar sesión", devuelve
-    // {logout:true} y el bridge hace logout completo.
+    // Migración en dos pasos: 1) backup obligatorio de la nsec en claro
+    // (el usuario confirma haberla guardado), 2) crear contraseña y cifrar.
+    // Si el usuario elige "Cerrar sesión" en cualquier paso, devuelve {logout:true}
+    // y el bridge hace logout completo.
     async function migrateLegacyToEncrypted() {
         const legacyNsec = readLegacyNsec();
         if (!legacyNsec) throw new Error('No hay nsec legacy para migrar');
+
+        // Paso 1: backup obligatorio
+        const backup = await showModal('migrate-backup', { nsec: legacyNsec });
+        if (!backup || backup.switchToExtension) { hideModal(); return { logout: true }; }
+        // backup.backupDone === true → continuar a paso 2
+
+        // Paso 2: crear contraseña y cifrar (con bucle por si falla)
         while (true) {
             const res = await showModal('migrate');
             if (!res) { hideModal(); return { logout: true }; }
