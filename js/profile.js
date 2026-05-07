@@ -554,7 +554,7 @@ async function handleAvatarUpload(event) {
 
             if (newUser) {
                 currentUser.id = newUser.id;
-                localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
             }
         } else {
             // Update existing user avatar (and name if we have a good one)
@@ -706,7 +706,7 @@ async function saveCitizenship() {
             }
             
             currentUser.id = newUser.id;
-            localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+            window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
         } else {
             // User exists, update it
             const { data, error } = await supabaseClient

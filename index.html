@@ -2957,8 +2957,10 @@
 
     <!-- JavaScript Modules -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/escape-utils.js?v=sec11"></script>
+    <!-- NIP-49 passlock: cifra la nsec con contraseña en localStorage. Debe ir antes de auth.js y nostr-bridge.js (ambos lo usan). -->
+    <script src="js/lbw-passlock.js?v=nip49-2"></script>
     <script src="js/config.js?v=phase2"></script>
-    <script src="js/auth.js?v=phase2"></script>
+    <script src="js/auth.js?v=nip49-2"></script>
     <script src="js/ui.js?v=apr17c"></script>
     <!-- SOS Functions -->
     <script>
@@ -2979,7 +2981,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="js/lightning.js?v=sec11"></script>
     <script src="js/governance.js?v=sec11"></script>
-    <script src="js/profile.js?v=phase1"></script>
+    <script src="js/profile.js?v=nip49-2"></script>
     <script src="js/nwc.js?v=nwc1"></script>
     <script src="js/wallet.js?v=nwc1"></script>
 
@@ -3003,7 +3005,7 @@
     <script src="js/nostr-reviews.js?v=sec11"></script>
     <script src="js/nostr-marketplace-pay.js?v=sec11"></script>
     <script src="js/nostr-stalls.js?v=sec14"></script>
-    <script src="js/nostr-bridge.js?v=apr17a"></script>
+    <script src="js/nostr-bridge.js?v=nip49-2"></script>
     <script src="js/debate.js?v=1.2"></script>
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->
@@ -3256,7 +3258,7 @@
                             }
                         } catch(sbErr) { console.warn('[Auth] Supabase lookup:', sbErr.message); }
                         
-                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                        window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
                         
                         // Update UI with the best name we have
                         if (typeof LBW_NostrBridge !== 'undefined') {
@@ -3287,7 +3289,7 @@
                                     const freshName = freshSession?.name || '';
                                     if (nameIsGood(freshName)) {
                                         currentUser.name = freshName;
-                                        localStorage.setItem('liberbit_keys', JSON.stringify(currentUser));
+                                        window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
                                         ['homeUserName', 'userName', 'profileName'].forEach(id => {
                                             const el = document.getElementById(id);
                                             if (el) el.textContent = freshName;

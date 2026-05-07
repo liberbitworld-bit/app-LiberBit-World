@@ -1,7 +1,9 @@
-// LiberBit World — Service Worker v1.0
+// LiberBit World — Service Worker v1.1
 // Estrategia: cache-first para assets estáticos, network-first para index.html
+// CACHE_NAME bumpeado a lbw-v2 para invalidar versiones cacheadas de JS
+// previas al despliegue de NIP-49 (lbw-passlock.js).
 
-const CACHE_NAME = 'lbw-v1';
+const CACHE_NAME = 'lbw-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
