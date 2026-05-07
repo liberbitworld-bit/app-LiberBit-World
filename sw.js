@@ -1,19 +1,20 @@
-// LiberBit World — Service Worker v1.1
-// Estrategia: cache-first para assets estáticos, network-first para index.html
-// CACHE_NAME bumpeado a lbw-v2 para invalidar versiones cacheadas de JS
-// previas al despliegue de NIP-49 (lbw-passlock.js).
+// LiberBit World — Service Worker v1.3
+// Estrategia: network-first para HTML (siempre versión fresca),
+// cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
+// Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
+// se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
 
-const CACHE_NAME = 'lbw-v2';
+const CACHE_NAME = 'lbw-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/css/main.css',
-  '/js/config.js',
-  '/js/nostr.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/manifest.json'
 ];
+// Nota: config.js y nostr.js NO se pre-cachean. Sus versiones cambian con
+// frecuencia y pre-cachear sin ?v= dejaría versiones obsoletas atrapadas.
 
 // Instalar: pre-cachear assets críticos
 self.addEventListener('install', event => {
