@@ -645,11 +645,16 @@ const LBW_Merits = (() => {
     }
 
     // ── Parse Helpers ────────────────────────────────────────
+    // [M-15] Antes los catch eran vacíos: parser malformados se silenciaban
+    // sin trazas. Ahora un console.warn por cada fallo para diagnosticar
+    // relays que envíen eventos rotos o cambios de schema futuros.
     function _parseMerit(event) {
         try {
             const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
             let parsed = {};
-            try { parsed = JSON.parse(event.content); } catch (e) {}
+            try { parsed = JSON.parse(event.content); } catch (e) {
+                // content puede ser texto plano o JSON; ambos son válidos.
+            }
 
             return {
                 id: event.id,
@@ -663,6 +668,7 @@ const LBW_Merits = (() => {
                 source: 'award'
             };
         } catch (e) {
+            console.warn('[Merits] [M-15] _parseMerit falló para event.id=' + (event && event.id ? event.id.substring(0, 12) : '?') + ':', e.message);
             return null;
         }
     }
@@ -671,7 +677,9 @@ const LBW_Merits = (() => {
         try {
             const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
             let parsed = {};
-            try { parsed = JSON.parse(event.content); } catch (e) {}
+            try { parsed = JSON.parse(event.content); } catch (e) {
+                // content puede ser texto plano o JSON; ambos son válidos.
+            }
 
             return {
                 id: event.id,
@@ -689,6 +697,7 @@ const LBW_Merits = (() => {
                 created_at: event.created_at
             };
         } catch (e) {
+            console.warn('[Merits] [M-15] _parseContribution falló para event.id=' + (event && event.id ? event.id.substring(0, 12) : '?') + ':', e.message);
             return null;
         }
     }

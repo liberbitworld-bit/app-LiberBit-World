@@ -1297,7 +1297,11 @@ const LBW_Governance = (() => {
                 proposalNumber: parseInt(g('proposal_number'), 10) || 0,
                 tags: event.tags, _rawContent: event.content
             };
-        } catch (e) { return null; }
+        } catch (e) {
+            // [M-15] Antes catch vacío. Ahora warn para diagnosticar relays con eventos malformados.
+            console.warn('[Governance] [M-15] _parseProposal falló para event.id=' + (event && event.id ? event.id.substring(0, 12) : '?') + ':', e.message);
+            return null;
+        }
     }
 
     // ── Parse Result ─────────────────────────────────────────
@@ -1322,7 +1326,11 @@ const LBW_Governance = (() => {
                 calculatedBy: parsed.calculatedBy || event.pubkey,
                 status: g('status')
             };
-        } catch (e) { return null; }
+        } catch (e) {
+            // [M-15] Antes catch vacío.
+            console.warn('[Governance] [M-15] _parseResult falló para event.id=' + (event && event.id ? event.id.substring(0, 12) : '?') + ':', e.message);
+            return null;
+        }
     }
 
     // ── Parse Execution ──────────────────────────────────────
