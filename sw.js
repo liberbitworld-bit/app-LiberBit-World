@@ -1,10 +1,13 @@
-// LiberBit World — Service Worker v1.3
+// LiberBit World — Service Worker v1.4
 // Estrategia: network-first para HTML (siempre versión fresca),
 // cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
 // Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
 // se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
+// CACHE_NAME bumpeado a lbw-v4: al activarse, el handler 'activate' borra
+// todas las caches anteriores automáticamente, así nadie queda atrapado
+// con assets stale tras los PRs de NIP-42 / dm-sidebar / hardening.
 
-const CACHE_NAME = 'lbw-v3';
+const CACHE_NAME = 'lbw-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
