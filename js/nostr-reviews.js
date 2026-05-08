@@ -15,11 +15,8 @@
 
     // ── Escape HTML ───────────────────────────────────────────
     // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
-    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
-        return String(str || '')
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    };
+    // [M-10] LBW.escapeHtml siempre disponible (escape-utils.js carga primero).
+    const _esc = LBW.escapeHtml;
 
     // ── Publicar reseña (kind:1985, NIP-85) ──────────────────
     // reviewedPubkey: pubkey del que se reseña (hex)

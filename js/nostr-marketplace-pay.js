@@ -462,9 +462,8 @@
 
     // Helper escape
     // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
-    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
-        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    };
+    // [M-10] LBW.escapeHtml siempre disponible (escape-utils.js carga primero).
+    const _esc = LBW.escapeHtml;
 
     // Estado temporal del pago activo
     let _activeListing = null, _activeBolt11 = null, _activeConversion = null;

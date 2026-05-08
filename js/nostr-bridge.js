@@ -1848,13 +1848,10 @@ const LBW_NostrBridge = (() => {
         } catch(e) {}
     }
 
-    // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
-    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (s) {
-        if (s === null || s === undefined) return '';
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-    };
+    // [M-10] LBW.escapeHtml siempre disponible (escape-utils.js carga primero
+    // en index.html). El polyfill anterior usaba textContent + innerHTML, que
+    // NO escapa `"` — bug latente para uso en atributos.
+    const _esc = LBW.escapeHtml;
 
     // ── Debug ────────────────────────────────────────────────
     async function getDebugStats() {
