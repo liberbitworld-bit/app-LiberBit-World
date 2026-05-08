@@ -75,7 +75,13 @@ window.LBW_Debate = {
         if (this._subscriptions[proposalDTag]) {
             try {
                 var s = this._subscriptions[proposalDTag];
-                if (s && typeof s.unsub === 'function') s.unsub();
+                // SimplePool subs se cierran con .close(); unsub no existe en nostr-tools 2.x.
+                // LBW_Nostr.unsubscribe limpia _activeSubs y llama close() correctamente.
+                if (window.LBW_Nostr && typeof LBW_Nostr.unsubscribe === 'function') {
+                    LBW_Nostr.unsubscribe(s);
+                } else if (s && typeof s.close === 'function') {
+                    s.close();
+                }
             } catch(e) {}
             delete this._subscriptions[proposalDTag];
         }

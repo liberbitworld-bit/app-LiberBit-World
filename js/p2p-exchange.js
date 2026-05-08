@@ -342,7 +342,7 @@ const LBW_P2P = (() => {
                         ⚡ ${_esc((order.layer || 'lightning').charAt(0).toUpperCase() + (order.layer || 'lightning').slice(1))}
                         · ${_esc((order.network || 'mainnet'))}
                     </span>
-                    <button onclick="event.stopPropagation();LBW_P2P.openOrderInfo('${_pKeyEsc}')" style="padding:0.3rem 0.7rem;background:${_pBtnBg};border:1px solid ${_pBtnColor};border-radius:8px;color:${_pBtnColor};cursor:pointer;font-size:0.7rem;font-weight:600;">
+                    <button data-lbw-action="p2pOpenOrderInfo" data-platform="${_pKeyEsc}" style="padding:0.3rem 0.7rem;background:${_pBtnBg};border:1px solid ${_pBtnColor};border-radius:8px;color:${_pBtnColor};cursor:pointer;font-size:0.7rem;font-weight:600;">
                         ⚡ Operar
                     </button>
                 </div>
@@ -732,6 +732,14 @@ console.log('⚡ P2P Exchange (NIP-69 Aggregator) listo');
                     var orig = el.textContent;
                     el.textContent = '✅';
                     setTimeout(function () { el.textContent = orig || '📋'; }, 1500);
+                    break;
+                // [SEC-A2] Reemplaza el onclick inline anterior que interpolaba el
+                // pubkey de la plataforma (controlado por relay público) en un
+                // literal JS dentro de un atributo HTML — vector XSS si el navegador
+                // des-entitizaba el escape antes de pasarlo al motor JS.
+                case 'p2pOpenOrderInfo':
+                    e.stopPropagation();
+                    LBW_P2P.openOrderInfo(el.dataset.platform);
                     break;
             }
         } catch (err) {
