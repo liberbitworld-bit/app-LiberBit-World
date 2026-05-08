@@ -1089,15 +1089,29 @@ const LBW_NostrBridge = (() => {
     // callback del sub apunten al mismo punto y la dedup por msg.id sea
     // efectiva, sin duplicación en panel ni sidebar.
     function _handleDMArrived(msg) {
-        if (!msg || !msg.id) return;
+        if (!msg || !msg.id) {
+            console.warn('[Bridge] _handleDMArrived: msg sin id, ignorado', msg);
+            return;
+        }
         const other = msg.direction === 'incoming' ? msg.from : msg.to;
-        if (!other) return;
+        if (!other) {
+            console.warn('[Bridge] _handleDMArrived: sin other (from/to faltante)', msg);
+            return;
+        }
         if (!_dmConversations[other]) _dmConversations[other] = [];
-        if (_dmConversations[other].some(m => m.id === msg.id)) return;   // dedup
+        if (_dmConversations[other].some(m => m.id === msg.id)) {
+            console.warn('[Bridge] _handleDMArrived: dedup hit, ya existe id=' + msg.id.substring(0, 8));
+            return;
+        }
         _dmConversations[other].push(msg);
         _dmConversations[other].sort((a, b) => a.created_at - b.created_at);
+        const renderable = _activeDMPubkey === other;
+        console.warn('[Bridge] _handleDMArrived: id=' + msg.id.substring(0, 8) +
+                     ' dir=' + msg.direction + ' other=' + other.substring(0, 8) +
+                     ' active=' + (_activeDMPubkey ? _activeDMPubkey.substring(0, 8) : '∅') +
+                     ' renderable=' + renderable);
         _updateDMSidebar();
-        if (_activeDMPubkey === other) _renderDMMessage(msg);
+        if (renderable) _renderDMMessage(msg);
         _updateDMBadge();
     }
 
@@ -1285,6 +1299,7 @@ const LBW_NostrBridge = (() => {
                 if (res && res.event && res.event.id) {
                     const myPk = LBW_Nostr.getPubkey();
                     const isNip44 = !!(res.event.tags && res.event.tags.some(t => t[0] === 'v' && t[1] === '2'));
+                    console.warn('[Bridge] sendDM: optimistic call → _handleDMArrived id=' + res.event.id.substring(0, 8) + ' to=' + _activeDMPubkey.substring(0, 8));
                     _handleDMArrived({
                         id: res.event.id,
                         from: myPk,
@@ -1297,6 +1312,8 @@ const LBW_NostrBridge = (() => {
                         nip44: isNip44,
                         transport: 'kind4'
                     });
+                } else {
+                    console.warn('[Bridge] sendDM: optimistic skip — res sin event.id', { hasRes: !!res, hasEvent: !!(res && res.event), id: res && res.event && res.event.id });
                 }
             } catch (renderErr) {
                 console.warn('[Bridge] sendDM: optimistic render falló (no crítico):', renderErr);
