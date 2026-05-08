@@ -1157,55 +1157,51 @@ const LBW_Merits = (() => {
 
     // ── Public API ───────────────────────────────────────────
     // ── Marketplace merit auto-award (Phase 2) ────────────────
-    // Se llama después de un pago Lightning verificado.
-    // No requiere que el caller sea Génesis — el pago es la prueba.
+    //
+    // [SEC-A3] DESACTIVADO temporalmente. El flujo anterior publicaba un
+    // kind 31002 firmado por el COMPRADOR a favor del vendedor. SEC-22
+    // (validación de emisor, ver _validateAndProcessMeritEvent) exige
+    // que cualquier emisor de kind 31002 no-fundacional ya sea Génesis
+    // (≥3000 méritos), así que el evento del comprador era APARCADO en
+    // _pendingMeritEvents y nunca aplicado en ningún cliente. Resultado:
+    // el "+5 LBWM por primera venta" prometido a los vendedores nunca
+    // se acreditaba, sólo daba la ilusión de que sí.
+    //
+    // Bug adicional ya arreglado en este commit (por si el flujo se
+    // reactiva): la categoría se publicaba como 'economico' (typo); la
+    // canónica es 'economica' (CATEGORIES en este mismo módulo). Como
+    // _normalizeCategory NO mapea 'economico', caía a 'productiva' por
+    // el default.
+    //
+    // Reimplementación pendiente — opciones a evaluar en el próximo PR:
+    //   (a) bot Génesis externo que firma awards al recibir sold-listings.
+    //   (b) excepción explícita en SEC-22 para `awarded-by:marketplace-auto`
+    //       gateada por verificación off-chain del payment_hash.
+    //   (c) self-claim por el VENDEDOR vía submitContribution(kind 31003)
+    //       cuando su cliente recibe el sold-listing dirigido a él. Encaja
+    //       con el flujo de gobernanza ya establecido (las contribuciones
+    //       se ratifican después).
+    //
+    // Mientras tanto, esta función mantiene el dedupeKey en localStorage
+    // para que el cliente local sepa que la venta ocurrió, pero NO publica
+    // ningún evento. Devuelve { awarded: false, deferred: true } para que
+    // el caller pueda mostrar al usuario una notificación honesta.
     async function awardMarketplaceMerit(sellerPubkey, listing, paymentHash) {
         if (!sellerPubkey) throw new Error('sellerPubkey requerido');
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido');
 
-        // Deduplicación: una sola primera venta por vendedor
         const dedupeKey = 'lbw_firstsale_' + sellerPubkey.substring(0, 16);
-        const alreadyAwarded = localStorage.getItem(dedupeKey);
-
-        if (!alreadyAwarded) {
-            const nowSecs = Math.floor(Date.now() / 1000);
-            const dTag = 'merit-market-firstsale-' + sellerPubkey.substring(0, 8) + '-' + nowSecs;
-            const reason = 'Primera venta completada en el Marketplace — Pago Lightning verificado' +
-                (paymentHash ? ' (' + paymentHash.substring(0, 12) + '...)' : '');
-
-            const content = JSON.stringify({
-                reason,
-                amount: 5,
-                awardedBy: 'marketplace-auto',
-                paymentHash: paymentHash || '',
-                listingId: listing.id || listing.dTag || '',
-                timestamp: nowSecs
-            });
-
-            const tags = [
-                ['d', dTag],
-                ['p', sellerPubkey],
-                ['amount', '5'],
-                ['category', 'economico'],
-                ['reason', reason],
-                ['awarded-by', 'marketplace-auto'],
-                ['source', 'marketplace'],
-                ['ref', listing.id || listing.dTag || ''],
-                ['payment_hash', paymentHash || ''],
-                ['t', 'lbw-merits'],
-                ['t', 'lbw-merit-award'],
-                ['t', 'marketplace'],
-                ['client', 'LiberBit World']
-            ];
-
-            await LBW_Nostr.publishEvent({ kind: KIND.MERIT, content, tags });
-            localStorage.setItem(dedupeKey, nowSecs.toString());
-            console.log('[Merits] Primera venta: +5 economico -> ' + sellerPubkey.substring(0, 12));
-            return { awarded: true };
+        if (localStorage.getItem(dedupeKey)) {
+            return { awarded: false, alreadyAwarded: true, deferred: true };
         }
 
-        console.log('[Merits] Primera venta ya contabilizada para ' + sellerPubkey.substring(0, 12));
-        return { awarded: false, alreadyAwarded: true };
+        const nowSecs = Math.floor(Date.now() / 1000);
+        localStorage.setItem(dedupeKey, nowSecs.toString());
+        console.warn('[Merits][SEC-A3] Auto-award marketplace deshabilitado — pendiente de rediseño. ' +
+            'Venta registrada localmente para ' + sellerPubkey.substring(0, 12) +
+            ' (listing=' + (listing && (listing.id || listing.dTag) || '?') +
+            ', paymentHash=' + (paymentHash ? paymentHash.substring(0, 12) : '∅') + ')');
+        return { awarded: false, deferred: true };
     }
 
     return {
