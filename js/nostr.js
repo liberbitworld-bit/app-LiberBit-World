@@ -871,12 +871,26 @@ const LBW_Nostr = (() => {
             const promises = pool.publish(targetRelays, signed);
             const settled = await Promise.allSettled(promises);
             settled.forEach((r, i) => {
-                const success = r.status === 'fulfilled';
-                results.push({ relay: targetRelays[i], success });
-                // Update relay status map based on actual publish result
-                if (!success && _relayStatusMap[targetRelays[i]] === 'connected') {
-                    console.warn(`[Nostr] ⚠️ Relay marcado offline tras fallo de publish: ${targetRelays[i]}`);
-                    _relayStatusMap[targetRelays[i]] = 'disconnected';
+                const url = targetRelays[i];
+                if (r.status === 'fulfilled') {
+                    // SimplePool resolves fulfilled when the relay sends `["OK", id, true, ...]`.
+                    // r.value is typically the relay URL; we record success.
+                    results.push({ relay: url, success: true, value: r.value });
+                } else {
+                    // r.reason puede ser string (mensaje OK false del relay), Error, o un
+                    // objeto opaque. Lo capturamos crudo para diagnóstico.
+                    const reasonStr = (r.reason && (r.reason.message || r.reason.toString())) || 'unknown';
+                    results.push({ relay: url, success: false, error: reasonStr });
+                    console.warn(`[Nostr] ❌ Publish rechazado por ${url}: ${reasonStr}`);
+                    if (_relayStatusMap[url] === 'connected') {
+                        // No marcamos disconnected si el rechazo es por contenido (mensaje OK false)
+                        // — el relay sigue accesible, solo rechazó este evento.
+                        const isContentReject = /blocked|invalid|forbidden|not allowed|rate.?limit|policy|pubkey|whitelist/i.test(reasonStr);
+                        if (!isContentReject) {
+                            console.warn(`[Nostr] ⚠️ Relay marcado offline tras fallo de publish: ${url}`);
+                            _relayStatusMap[url] = 'disconnected';
+                        }
+                    }
                 }
             });
         } catch (e) {
