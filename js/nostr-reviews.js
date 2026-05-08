@@ -91,6 +91,10 @@
             const positiveCount = reviews.filter(r => r.rating >= POSITIVE_THRESHOLD).length;
 
             // Milestones: 5, 10, 20 reseñas positivas
+            // [SEC-A3] Igual que el primer-venta, los bonus de milestone via
+            // kind 31002 firmado por el reviewer son rechazados por SEC-22.
+            // awardMarketplaceMerit ahora es no-op público; mantenemos la
+            // llamada y el dedupe local hasta el rediseño.
             const milestones = [5, 10, 20];
             for (const milestone of milestones) {
                 if (positiveCount === milestone) {
@@ -102,7 +106,7 @@
                             `review-bonus-${milestone}`
                         );
                         localStorage.setItem(dedupeKey, Date.now().toString());
-                        console.log(`[Reviews] 🏅 Bonus LBWM: ${milestone} reseñas positivas → ${sellerPubkey.substring(0, 12)}`);
+                        console.log(`[Reviews] 🏅 Bonus LBWM (deferred): ${milestone} reseñas positivas → ${sellerPubkey.substring(0, 12)}`);
                     }
                 }
             }

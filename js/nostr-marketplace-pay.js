@@ -287,7 +287,11 @@
             console.warn('[MarketPay] ⚠️ No se pudo guardar en Supabase:', e.message);
         }
 
-        // 3. LBWM: primera venta → +5 al vendedor (solo si no es autopago)
+        // 3. LBWM: primera venta → registrar evento local (NO publica en Nostr).
+        // [SEC-A3] El kind 31002 firmado por el comprador era rechazado por
+        // SEC-22 (no es Génesis). awardMarketplaceMerit ahora solo persiste
+        // dedup en localStorage hasta que se rediseñe el flujo. Mantenemos la
+        // llamada para preservar tracking local y deduplicación.
         if (!isSelf && typeof LBW_Merits !== 'undefined') {
             try {
                 await LBW_Merits.awardMarketplaceMerit(sellerPubkey, listing, paymentHash);
