@@ -51,17 +51,18 @@ const LBW_MeritsSync = (() => {
         );
     }
 
+    // [M-14] Delega en LBW_Merits.normalizeCategory (canónica). La copia
+    // local divergía de la del módulo Nostr — específicamente 'financial'
+    // mapeaba a 'economica' aquí pero a 'financiada' en nostr-merits.js,
+    // generando incoherencias entre lo que el cliente mostraba y lo que
+    // el backend guardaba. Source of truth: nostr-merits.js.
     function _normalizeCategory(cat) {
-        const map = {
-            economica: 'economica', productiva: 'productiva',
-            responsabilidad: 'responsabilidad', financiada: 'financiada',
-            fundacional: 'fundacional',
-            financial: 'economica', participation: 'productiva',
-            professional: 'productiva', governance: 'responsabilidad',
-            infrastructure: 'productiva', community: 'productiva',
-            economico: 'economica'
-        };
-        return map[cat] || 'productiva';
+        if (window.LBW_Merits && typeof window.LBW_Merits.normalizeCategory === 'function') {
+            return window.LBW_Merits.normalizeCategory(cat);
+        }
+        // Fallback solo si LBW_Merits no se hubiera cargado (no debería pasar:
+        // supabase-merits-sync.js se carga DESPUÉS de nostr-merits.js en index.html).
+        return cat || 'productiva';
     }
 
     // ── Sync individual merit event → Supabase ───────────────

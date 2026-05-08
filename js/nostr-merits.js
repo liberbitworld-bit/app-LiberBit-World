@@ -696,6 +696,16 @@ const LBW_Merits = (() => {
     // ── Category Normalization ────────────────────────────────
     // Maps old v1.0 category names to v2.0 for backward compatibility
     // with contributions already stored in Nostr relays.
+    // [M-14] Esta es la versión CANÓNICA. Se exporta vía la API pública
+    // (LBW_Merits.normalizeCategory) para que supabase-merits-sync.js la
+    // reuse y no diverja. Antes había dos copias inconsistentes:
+    // - nostr-merits.js: 'financial' → 'financiada' (sin mapeo de 'economico')
+    // - supabase-merits-sync.js: 'financial' → 'economica', con 'economico' → 'economica'
+    // Decisión unificada:
+    //   * 'financial' → 'financiada' (semántica original v1.0: "financiada por la
+    //     comunidad", coincide con la categoría v2.0 con peso 0.6).
+    //   * 'economico' → 'economica' (typo histórico del awardMarketplaceMerit
+    //     pre-A3; algunos eventos legacy en relays lo usan).
     function _normalizeCategory(cat) {
         const map = {
             // v2.0 names (identity)
@@ -710,7 +720,9 @@ const LBW_Merits = (() => {
             'governance': 'responsabilidad',
             'infrastructure': 'productiva',
             'community': 'productiva',
-            'financial': 'financiada'
+            'financial': 'financiada',
+            // Typo histórico (pre-A3) en awardMarketplaceMerit.
+            'economico': 'economica'
         };
         return map[cat] || 'productiva';
     }
@@ -1239,6 +1251,9 @@ const LBW_Merits = (() => {
         getStats,
         hasFoundationalMerits,
         isGovernor,
+
+        // Utilities (centralizadas, [M-14])
+        normalizeCategory: _normalizeCategory,
 
         // Lifecycle
         reset
