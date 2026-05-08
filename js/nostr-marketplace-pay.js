@@ -327,8 +327,31 @@
         document.getElementById('lbwPayModal')?.remove();
     }
 
+    // Valida que un bolt11 contiene solo caracteres bech32 (lnbc + dígitos + letras a-z).
+    // El callback LNURLP del seller es controlado por un servidor externo y podría devolver
+    // un 'pr' con caracteres que rompan los inline handlers de pago (href="lightning:...",
+    // onclick="...writeText('...')..."). Validamos antes de inyectar nada al DOM.
+    function _isValidBolt11(s) {
+        return typeof s === 'string'
+            && s.length >= 10 && s.length <= 4096
+            && /^lnbc[0-9a-z]+$/i.test(s);
+    }
+
     function _buildModal(listing, bolt11, lud16, sellerName, conversion) {
         _removeModal();
+
+        // [SEC-A5] Defensa contra bolt11 malicioso del LNURLP callback.
+        if (!_isValidBolt11(bolt11)) {
+            console.error('[MarketPay] bolt11 rechazado, formato inválido');
+            if (typeof showNotification === 'function') {
+                showNotification('Invoice del vendedor con formato inválido. Pago abortado.', 'error');
+            } else {
+                alert('Invoice del vendedor con formato inválido. Pago abortado.');
+            }
+            return;
+        }
+        // Normalizamos a lowercase (BOLT11 es bech32, lowercase canónico).
+        bolt11 = bolt11.toLowerCase();
 
         // [SEC-10] Desglose de conversión:
         //   - Línea principal grande: lo que el comprador ve en la card

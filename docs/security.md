@@ -55,10 +55,10 @@ Rechaza eventos con `created_at` fuera de rango:
 Esto previene ataques de "cursor-bricking" donde un evento con timestamp en el futuro lejano avanza el cursor de sincronización más allá de todos los eventos reales.
 
 ### 4. Rate limit por relay
-Máximo 50 eventos por segundo por relay. Protege contra relays que envían floods de eventos.
+Máximo 500 eventos por segundo por relay (`MAX_EVENTS_PER_RELAY_PER_SEC` en `js/nostr.js`). Protege contra relays que envían floods de eventos. El cap se eligió alto para no descartar eventos durante bursts iniciales de hidratación de feeds; se puede endurecer (50–100/s) cuando se confirme que la hidratación cabe debajo.
 
 ### 5. Rate limit por pubkey
-Máximo 10 eventos por segundo por autor. Protege contra spam de un solo usuario.
+Máximo 500 eventos por segundo por autor (`MAX_EVENTS_PER_PUBKEY_PER_SEC`). Mismo razonamiento que el cap por relay. Endurecible a 10–30/s para ser efectivo contra spam de un solo usuario.
 
 ### 6. Content size
 Máximo 64 KB por evento. Previene eventos gigantes que consuman memoria.
