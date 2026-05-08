@@ -40,33 +40,43 @@ La capa física del ecosistema es **LiberBit City**: una red de ciudades soberan
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | Vanilla JavaScript SPA |
-| Identidad | Nostr (NIP-01, NIP-44, NIP-07) |
-| Mensajería | NIP-44 (cifrado de extremo a extremo) |
-| Relay | Relay Nostr privado |
-| Base de datos | Supabase (caché e índices) |
-| Pagos | Lightning Network (Lightning Address) |
-| Despliegue | Vercel (vía GitHub) |
+| Frontend | Vanilla JavaScript SPA (sin build, sin bundler) |
+| Identidad | Nostr — NIP-01 (firmas), NIP-07 (extensión), NIP-19 (npub/nsec), NIP-49 (cifrado de la nsec con contraseña), NIP-65 (relay list) |
+| Mensajería | NIP-44 (XChaCha20-Poly1305) preferido, NIP-04 (AES-256-CBC) fallback |
+| Marketplace | NIP-15 (stalls/products), NIP-99 (classified listings), NIP-85 (reviews) |
+| Wallet | Lightning Address + WebLN, NIP-47 (Nostr Wallet Connect) |
+| P2P exchange | NIP-69 (agregador de órdenes Mostro/lnp2pbot/RoboSats) |
+| Relays | Privados (`wss://relay.liberbitworld.org`) para gobernanza/DMs/méritos; públicos (damus, nos.lol, etc.) para perfiles, chat comunitario y marketplace |
+| Backend | Supabase (vía proxy en serverless function — credenciales nunca llegan al navegador) para índices de búsqueda y métricas; Nostr es la fuente de verdad |
+| Pagos | Lightning Network (LNURL-pay, NWC para wallets externos) |
+| Despliegue | Vercel (vía GitHub, auto-deploy en push a `main`) |
 
 ---
 
 ## Arquitectura
 
 ```
-┌─────────────────────────────────────────┐
-│           Cliente (Vanilla JS)          │
-└────────────┬────────────────────────────┘
-             │
-     ┌───────┴────────┐
-     │                │
-┌────▼─────┐   ┌──────▼──────┐
-│  Relay   │   │  Supabase   │
-│  Nostr   │   │  (caché)    │
-│  privado │   └─────────────┘
-└──────────┘
+┌──────────────────────────────────────────────────────┐
+│              Cliente (Vanilla JS SPA)                │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────────────┐  │
+│  │  UI      │ │  LBW_*   │ │  LBW_Passlock        │  │
+│  │  scripts │ │  modules │ │  (NIP-49 nsec cifr.) │  │
+│  └────┬─────┘ └─────┬────┘ └──────────────────────┘  │
+└───────┼─────────────┼────────────────────────────────┘
+        │             │
+        │             ├─────► Relays Nostr (privados + públicos por kind)
+        │             │             ↑ identidad, gobernanza, méritos, DMs
+        │             │
+        │             └─────► Vercel /api/* (serverless)
+        │                           ├─► Supabase (índices, búsqueda)
+        │                           └─► coinos.io / Alby (LNURL proxy)
+        │
+        └────────────────► Wallets Lightning (WebLN, NWC bunker, LNURL)
 ```
 
-Los eventos de identidad, méritos y gobernanza viven en Nostr. Supabase actúa como índice para consultas complejas.
+- **Nostr es la fuente de verdad** para identidad, propuestas, votos, méritos y mensajes cifrados.
+- **Supabase** se usa solo como índice secundario para búsquedas complejas (autocomplete por nombre, filtros), accedido vía proxy para que las credenciales nunca lleguen al cliente.
+- **Las claves privadas** (nsec, NWC secret) viven cifradas con contraseña (NIP-49) en `localStorage` o en una extensión NIP-07 — nunca en plaintext.
 
 ---
 
