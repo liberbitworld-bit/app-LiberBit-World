@@ -1084,22 +1084,27 @@ const LBW_NostrBridge = (() => {
     }
 
     // ── Direct Messages ──────────────────────────────────────
+    // Procesa un DM (incoming del relay o outgoing optimistic). Centraliza
+    // la dedup + push + render + sidebar para que mi optimistic UI y el
+    // callback del sub apunten al mismo punto y la dedup por msg.id sea
+    // efectiva, sin duplicación en panel ni sidebar.
+    function _handleDMArrived(msg) {
+        if (!msg || !msg.id) return;
+        const other = msg.direction === 'incoming' ? msg.from : msg.to;
+        if (!other) return;
+        if (!_dmConversations[other]) _dmConversations[other] = [];
+        if (_dmConversations[other].some(m => m.id === msg.id)) return;   // dedup
+        _dmConversations[other].push(msg);
+        _dmConversations[other].sort((a, b) => a.created_at - b.created_at);
+        _updateDMSidebar();
+        if (_activeDMPubkey === other) _renderDMMessage(msg);
+        _updateDMBadge();
+    }
+
     async function startDirectMessages() {
         if (_dmFeedId) LBW_Sync.unsyncFeed(_dmFeedId);
 
-        _dmFeedId = await LBW_Sync.syncDirectMessages((msg) => {
-            const other = msg.direction === 'incoming' ? msg.from : msg.to;
-            if (!_dmConversations[other]) _dmConversations[other] = [];
-
-            // Dedup
-            if (_dmConversations[other].some(m => m.id === msg.id)) return;
-            _dmConversations[other].push(msg);
-            _dmConversations[other].sort((a, b) => a.created_at - b.created_at);
-
-            _updateDMSidebar();
-            if (_activeDMPubkey === other) _renderDMMessage(msg);
-            _updateDMBadge();
-        });
+        _dmFeedId = await LBW_Sync.syncDirectMessages(_handleDMArrived);
 
         console.log('[Bridge] 📬 DMs suscritos, conversaciones:', Object.keys(_dmConversations).length);
         // Update DM encryption badge
@@ -1269,17 +1274,18 @@ const LBW_NostrBridge = (() => {
                 return;   // No vaciamos el textarea: el usuario puede reintentar
             }
 
-            // Optimistic UI: renderizar el DM inmediatamente sin esperar al
-            // rebote del relay vía subOut. La dedup por msg.id en
-            // startDirectMessages evita duplicar cuando llegue del relay.
-            // Sin esto, el usuario veía "Mensaje cifrado enviado" pero el
-            // mensaje no aparecía hasta que el relay lo rebotara (a veces
-            // varios segundos, a veces nunca si el relay no rebota a su autor).
+            // Optimistic UI: procesar el DM enviado como si hubiera llegado
+            // ya por el callback del sub. _handleDMArrived hace la dedup
+            // centralizada, así que cuando el relay rebote el evento (con
+            // el mismo id) la segunda vez será no-op. Sin esto, el usuario
+            // veía "Mensaje cifrado enviado" pero el mensaje no aparecía
+            // hasta que el relay lo rebotara (a veces varios segundos,
+            // a veces nunca si el relay no rebota a su autor).
             try {
-                if (res && res.event) {
+                if (res && res.event && res.event.id) {
                     const myPk = LBW_Nostr.getPubkey();
                     const isNip44 = !!(res.event.tags && res.event.tags.some(t => t[0] === 'v' && t[1] === '2'));
-                    const localMsg = {
+                    _handleDMArrived({
                         id: res.event.id,
                         from: myPk,
                         fromNpub: typeof LBW_Nostr.pubkeyToNpub === 'function' ? LBW_Nostr.pubkeyToNpub(myPk) : '',
@@ -1290,14 +1296,7 @@ const LBW_NostrBridge = (() => {
                         encryption: isNip44 ? 'nip44' : 'nip04',
                         nip44: isNip44,
                         transport: 'kind4'
-                    };
-                    if (!_dmConversations[_activeDMPubkey]) _dmConversations[_activeDMPubkey] = [];
-                    if (!_dmConversations[_activeDMPubkey].some(m => m.id === localMsg.id)) {
-                        _dmConversations[_activeDMPubkey].push(localMsg);
-                        _dmConversations[_activeDMPubkey].sort((a, b) => a.created_at - b.created_at);
-                        _renderDMMessage(localMsg);
-                        _updateDMSidebar();
-                    }
+                    });
                 }
             } catch (renderErr) {
                 console.warn('[Bridge] sendDM: optimistic render falló (no crítico):', renderErr);
