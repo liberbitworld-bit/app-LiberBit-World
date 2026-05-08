@@ -442,14 +442,41 @@ const LBW_Merits = (() => {
             }
 
             console.log('[Merits] Auto-bootstrapping founder merits...');
-            await bootstrapFounder(
-                founderHex,
-                FOUNDER_BOOTSTRAP_AMOUNT,
-                'Meritos fundacionales — desarrollo app, infraestructura, diseno sistema LBWM, documentacion pre-lanzamiento'
-            );
-            // Mark as done permanently so it never runs again
-            localStorage.setItem(BOOTSTRAP_DONE_KEY, String(Date.now()));
-            console.log('[Merits] Founder bootstrap completado y bloqueado');
+            try {
+                await bootstrapFounder(
+                    founderHex,
+                    FOUNDER_BOOTSTRAP_AMOUNT,
+                    'Meritos fundacionales — desarrollo app, infraestructura, diseno sistema LBWM, documentacion pre-lanzamiento'
+                );
+                // Mark as done permanently so it never runs again
+                localStorage.setItem(BOOTSTRAP_DONE_KEY, String(Date.now()));
+                console.log('[Merits] Founder bootstrap completado y bloqueado');
+            } catch (publishErr) {
+                // [M-11] Publish del bootstrap falló (típicamente: relay privado caído
+                // y el fix A-7 ya no permite fallback público para PRIVATE_KINDS).
+                // Sin defensa, el fundador queda con 0 méritos y SEC-22 le bloquea
+                // emitir cualquier merit hasta que el relay vuelva, dejando todo el
+                // sistema sin Génesis. Inyectamos localmente con la misma estrategia
+                // que el path BOOTSTRAP_DONE_KEY: source 'bootstrap-offline' + dTag
+                // canónico para que NIP-33 dedup-reemplace cuando el publish real
+                // tenga éxito en un próximo login.
+                console.warn('[Merits] [M-11] Bootstrap publish falló — aplicando offline fallback:', publishErr.message);
+                const fallbackId = 'bootstrap-offline-' + founderHex.substring(0, 8);
+                const fallbackDTag = 'bootstrap-fundacional-' + founderHex.substring(0, 8);
+                _processMerit({
+                    id: fallbackId,
+                    dTag: fallbackDTag,
+                    pubkey: founderHex,
+                    amount: FOUNDER_BOOTSTRAP_AMOUNT,
+                    category: 'fundacional',
+                    created_at: Math.floor(Date.now() / 1000),
+                    source: 'bootstrap-offline'
+                });
+                _drainPendingMerits();   // SEC-22: founder is now Genesis locally
+                // NO marcamos BOOTSTRAP_DONE_KEY: queremos que el siguiente login
+                // reintente el publish real cuando el relay vuelva.
+                console.warn('[Merits] [M-11] Méritos fundacionales aplicados localmente; se publicarán al relay en el próximo login con conexión.');
+            }
         } catch (e) {
             console.warn('[Merits] Auto-bootstrap error (non-fatal):', e.message);
         }
