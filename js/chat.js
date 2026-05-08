@@ -168,22 +168,38 @@ async function updateChatBadges() {
 // conversaciones aparezcan dos veces. Serializamos las ejecuciones; si
 // llega otra llamada mientras una está en curso, la marcamos pendiente
 // y se re-ejecuta una sola vez al terminar.
+//
+// [hotfix dm-sidebar] Antes el lock era binario y si _doLoadChatSidebar
+// quedaba colgado (p.ej. porque _resolveProfileData hacía await sobre
+// fetchUserProfile sin timeout), _loadChatSidebarRunning quedaba en true
+// para siempre y la sidebar nunca volvía a refrescarse — síntoma:
+// conversaciones existen en _dmConversations pero la sidebar muestra 0.
+// Añadido timestamp para liberar el lock automáticamente tras 10s.
 let _loadChatSidebarRunning = false;
+let _loadChatSidebarStartedAt = 0;
 let _loadChatSidebarPending = false;
+const LOAD_SIDEBAR_LOCK_TIMEOUT_MS = 10000;
 
 async function loadChatSidebar() {
     if (_loadChatSidebarRunning) {
-        _loadChatSidebarPending = true;
-        return;
+        // Liberación de seguridad: si la ejecución previa lleva más del timeout,
+        // asumimos que se quedó colgada (await sin EOSE) y forzamos reset.
+        if (Date.now() - _loadChatSidebarStartedAt > LOAD_SIDEBAR_LOCK_TIMEOUT_MS) {
+            console.warn('[Chat] loadChatSidebar lock expirado tras ' + LOAD_SIDEBAR_LOCK_TIMEOUT_MS + 'ms — liberando');
+            _loadChatSidebarRunning = false;
+        } else {
+            _loadChatSidebarPending = true;
+            return;
+        }
     }
     _loadChatSidebarRunning = true;
+    _loadChatSidebarStartedAt = Date.now();
     try {
         await _doLoadChatSidebar();
     } finally {
         _loadChatSidebarRunning = false;
         if (_loadChatSidebarPending) {
             _loadChatSidebarPending = false;
-            // Re-run una vez con el estado más reciente.
             loadChatSidebar();
         }
     }
