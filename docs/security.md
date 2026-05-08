@@ -105,6 +105,25 @@ Solo perfiles (kind 0), posts comunitarios (kind 1), reacciones (kind 7), market
 
 **[SEC-A7] Sin fallback silencioso a públicos**: si el relay privado está caído, los kinds privados (DMs, governance, merits, etc.) **NO** caen automáticamente a relays públicos. `publishEvent` los intenta sólo en `SYSTEM_PRIVATE_RELAYS` y reporta error si todos fallan. La auditoría del 2026-05-07 detectó que un fallback anterior los enviaba a públicos cuando el privado parpadeaba — auditado y eliminado. El comentario `"data is encrypted/signed anyway"` de ese fallback era engañoso: solo los DMs (NIP-04/44) están cifrados; governance y merits viajaban en claro y filtraban metadatos.
 
+### Comportamiento del relay privado con destinatarios externos (2026-05-08)
+
+Diagnóstico empírico: `relay.liberbitworld.org` responde `["OK", id, true, ...]` al publicar un DM (kind 4), incluso cuando el destinatario (`#p` tag) **no está en la whitelist del relay**. Pero al consultar el evento después con `kinds:[4], authors:[mi pubkey]`, **el relay no lo devuelve**. Es decir: acepta-pero-no-persiste/sirve los DMs a destinatarios externos.
+
+**Consecuencia operativa**:
+1. El emisor ve la notificación verde *"Mensaje cifrado enviado"* (porque el OK fue true).
+2. El emisor ve el mensaje en su panel privado por el optimistic UI (PR #11).
+3. Tras recargar la app, el mensaje **desaparece** de su sidebar y panel — la subscripción no encuentra el evento en el relay.
+4. **El destinatario nunca recibe el mensaje**.
+
+**Mitigación cliente (PR #24)**: antes de enviar un DM, consultamos el NIP-65 del destinatario. Si sus relays read son SOLO privados de LiberBit y el destinatario probablemente no está autorizado, mostramos un `confirm()` advirtiendo del riesgo de entrega.
+
+**Acción pendiente del lado del relay (D)**: configurar `relay.liberbitworld.org` para que acepte y sirva DMs (kind 4) a CUALQUIER destinatario, no solo whitelist. Opciones:
+- Quitar el filtro de destinatario para kind 4 (los DMs son cifrados, no son spam-vector relevante).
+- O al menos coherencia: si OK true, el evento debe persistirse y servirse en queries futuras. Acepta-y-descarta es el peor de los dos mundos (engaña al cliente).
+- Considerar si la whitelist debe aplicar solo a *autores* (anti-spam de quien publica) y no a *destinatarios* (DMs salientes a terceros son legítimos).
+
+Mientras esto no se ajuste en el relay, el aviso del cliente es la única defensa contra entregas falsas.
+
 ---
 
 ## Anti-Doble-Voto
