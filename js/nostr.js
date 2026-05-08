@@ -153,12 +153,20 @@ const LBW_Nostr = (() => {
             return connectedPrivate.length > 0 ? connectedPrivate : [...SYSTEM_PRIVATE_RELAYS];
         }
 
-        // Private kinds → only private relay(s)
+        // Private kinds → ONLY private relay(s).
+        // [SEC-A7] Antes hacía fallback a relays públicos cuando el relay
+        // privado estaba caído, contradiciendo docs/security.md (que jura
+        // que estos kinds nunca tocan público). El comentario decía "data
+        // is encrypted/signed anyway", pero eso solo aplica a DMs (kind 4
+        // cifrado por NIP-04/44); governance (31000-31001), merits
+        // (31002-31003) y resto viajan en claro. Filtraban metadatos.
+        // Ahora devolvemos el catálogo de privados aunque no esté
+        // conectado, dejando que pool.publish intente al vuelo. Si todos
+        // fallan, publishEvent reporta error sin caer a públicos.
         if (PRIVATE_KINDS.has(kind)) {
             if (connectedPrivate.length > 0) return connectedPrivate;
-            // Fallback: if private relay is down, use all connected (data is encrypted/signed anyway)
-            console.warn(`[Nostr] ⚠️ Relay privado no disponible para kind=${kind}, usando fallback`);
-            return connectedAll.length > 0 ? connectedAll : [...SYSTEM_ALL_RELAYS];
+            console.warn(`[Nostr] [SEC-A7] Sin relay privado conectado para kind=${kind}; reintentando en privados, sin fallback público.`);
+            return [...SYSTEM_PRIVATE_RELAYS];
         }
 
         // Public kinds → private + public relays (maximum reach)
@@ -855,10 +863,15 @@ const LBW_Nostr = (() => {
 
         let successCount = results.filter(r => r.success).length;
 
-        // FALLBACK: Si todos los relays del intento inicial fallaron y no hay override explícito,
-        // intentar con los relays públicos como último recurso.
-        // Aplica especialmente a PRIVATE_KINDS cuando el relay privado está caído.
-        if (successCount === 0 && !relayUrlsOverride) {
+        // [SEC-A7] Fallback público SOLO para kinds NO sensibles. PRIVATE_KINDS
+        // (DMs, governance, merits, etc) y privacy strict NUNCA caen a públicos
+        // — la auditoría detectó que el fallback anterior contradecía la
+        // promesa de privacy en docs/security.md filtrando metadatos a relays
+        // públicos cuando el privado parpadeaba.
+        const isPrivateKind = PRIVATE_KINDS.has(event.kind);
+        const allowPublicFallback = !isPrivateKind && !_privacyStrict;
+
+        if (successCount === 0 && !relayUrlsOverride && allowPublicFallback) {
             const alreadyTried = new Set(targetRelays);
             const fallbackRelays = SYSTEM_PUBLIC_RELAYS.filter(url => !alreadyTried.has(url));
 
@@ -876,6 +889,11 @@ const LBW_Nostr = (() => {
                     fallbackRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
                 }
             }
+        } else if (successCount === 0 && isPrivateKind) {
+            // Privacy preserved: no public fallback. Loud error so el caller
+            // pueda informar al usuario y guardar el evento para reintentar
+            // cuando vuelva el relay privado.
+            console.error(`[Nostr] [SEC-A7] kind=${event.kind} (PRIVATE) no se publicó: 0/${targetRelays.length} relays privados aceptaron. Sin fallback a relays públicos por política de privacidad.`);
         }
 
         console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${results.length} relays OK`);

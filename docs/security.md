@@ -103,6 +103,8 @@ Los eventos sensibles NUNCA se envían a relays públicos:
 
 Solo perfiles (kind 0), posts comunitarios (kind 1), reacciones (kind 7), marketplace (kind 30402) y relay lists (kind 10002) se publican en relays públicos para discoverability.
 
+**[SEC-A7] Sin fallback silencioso a públicos**: si el relay privado está caído, los kinds privados (DMs, governance, merits, etc.) **NO** caen automáticamente a relays públicos. `publishEvent` los intenta sólo en `SYSTEM_PRIVATE_RELAYS` y reporta error si todos fallan. La auditoría del 2026-05-07 detectó que un fallback anterior los enviaba a públicos cuando el privado parpadeaba — auditado y eliminado. El comentario `"data is encrypted/signed anyway"` de ese fallback era engañoso: solo los DMs (NIP-04/44) están cifrados; governance y merits viajaban en claro y filtraban metadatos.
+
 ---
 
 ## Anti-Doble-Voto
