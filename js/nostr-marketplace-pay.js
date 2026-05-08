@@ -432,13 +432,21 @@
                             this.textContent='✅ Copiado';
                             setTimeout(()=>this.textContent='📋 Copiar invoice',2000);
                         ">📋 Copiar invoice</button>
-                        <!-- Confirmar pago manual -->
+                        <!-- Marcar como pagado (manual, honor-based) -->
+                        <!-- [M-9] El texto era "Confirmar pago realizado" / verde →
+                             implicaba que LiberBit verificaba el pago. No es así:
+                             si no pagas con Alby (WebLN), la app no puede
+                             verificar nada. Texto y color ahora reflejan que
+                             es manual + honor-based. -->
                         <div style="border-top:1px solid var(--color-border);padding-top:0.75rem;margin-top:0.25rem;">
-                            <p style="font-size:0.75rem;color:var(--color-text-secondary);text-align:center;margin-bottom:0.5rem;">¿Ya has pagado desde tu wallet?</p>
-                            <button class="btn btn-primary" style="width:100%;background:rgba(76,175,80,0.2);border-color:#4CAF50;color:#4CAF50;" 
+                            <p style="font-size:0.75rem;color:var(--color-text-secondary);text-align:center;margin-bottom:0.5rem;">¿Ya has pagado desde tu wallet externo?</p>
+                            <button class="btn" style="width:100%;background:rgba(255,193,7,0.15);border:1px solid #FFC107;color:#FFC107;"
                                 onclick="LBW_MarketPay._manualConfirm()">
-                                ✅ Confirmar pago realizado
+                                ✋ Marcar como pagado (no verificado)
                             </button>
+                            <p style="font-size:0.65rem;color:var(--color-text-secondary);text-align:center;margin-top:0.4rem;line-height:1.3;">
+                                LiberBit no puede verificar pagos manuales. Solo márcalo si realmente has pagado.
+                            </p>
                         </div>
                     </div>
 
@@ -487,11 +495,38 @@
     }
 
     // ── Confirmación manual ───────────────────────────────────
+    // [M-9] Esta ruta es honor-based: no podemos verificar on-chain que la
+    // factura se pagó porque el usuario pagó con un wallet externo (móvil,
+    // escaneando QR) que no es accesible desde el navegador. El listing se
+    // marca como "sold" en Nostr basándonos en la confirmación del comprador.
+    //
+    // Si quien implemente esto en el futuro quiere verificación real, las
+    // opciones son:
+    //  - Pedir al vendedor que tenga NWC y verificar via lookupInvoice del
+    //    payment_hash extraído del bolt11.
+    //  - O pasar a un escrow/3rd party que confirme el pago y publique el
+    //    evento sold-listing firmado por una identidad neutral.
+    //
+    // Mientras tanto, el flujo WebLN (ver _payWithWebln) sí da el paymentHash
+    // real cuando el usuario paga con Alby, y ese caso registra payment_hash
+    // verdadero en Supabase. La ruta manual registra payment_hash="".
     async function _manualConfirm() {
         if (!_activeListing) return;
-        if (!confirm('¿Confirmas que has enviado el pago?\n\nSolo confirma si realmente has pagado. Las acciones post-pago (estado del listing y méritos) se registrarán ahora.')) return;
+        const ok = confirm(
+            '⚠️ MARCAR COMO PAGADO (no verificado)\n\n' +
+            'LiberBit no puede verificar automáticamente que esta factura ' +
+            'Lightning se haya pagado — solo tú puedes saberlo.\n\n' +
+            '· Marca solo si REALMENTE has enviado el pago desde tu wallet.\n' +
+            '· El listing se marcará como vendido en Nostr a tu nombre.\n' +
+            '· Si marcas sin pagar, estarás engañando al vendedor — y tu ' +
+            'reputación en LBWM lo reflejará.\n\n' +
+            '¿Continuar?'
+        );
+        if (!ok) return;
         _removeModal();
-        showNotification('✅ Pago confirmado', 'success');
+        // Notificación honesta: "marcado", no "confirmado".
+        showNotification('✋ Pago marcado como realizado (no verificado)', 'info');
+        console.warn('[MarketPay] [M-9] Manual confirm sin payment_hash — registro honor-based');
         await confirmPayment(_activeListing, _activeBolt11, '', _activeConversion);
     }
 
