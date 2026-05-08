@@ -108,10 +108,8 @@ const LBW_P2P = (() => {
 
     // ── Helpers ──────────────────────────────────────────────
     // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
-    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (s) {
-        if (s === null || s === undefined) return '';
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    };
+    // [M-10] LBW.escapeHtml siempre disponible (escape-utils.js carga primero).
+    const _esc = LBW.escapeHtml;
 
     function _getTagValue(tags, key) {
         const tag = (tags || []).find(t => t[0] === key);

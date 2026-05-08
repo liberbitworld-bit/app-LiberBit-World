@@ -52,18 +52,29 @@ const LBW_Nostr = (() => {
     let _privacyStrict = false; // No public relays ever
 
     // ── Relay URL Validation ─────────────────────────────────
+    // [M-7] Solo wss:// excepto para localhost/loopback/.local (desarrollo).
+    // Antes se permitía ws:// arbitrario, lo que filtraba metadatos al ISP/MITM
+    // si un usuario añadía un relay ws://attacker.com vía NIP-65.
     function _validateRelayUrl(url) {
         if (!url || typeof url !== 'string') return false;
         if (url.length > 256) return false;
-        if (!url.startsWith('wss://') && !url.startsWith('ws://')) return false;
-        // Block dangerous schemes embedded in URL
+        // Block dangerous schemes embedded in URL (paranoia anti-XSS).
         if (/javascript:|data:|blob:/i.test(url)) return false;
-        try {
-            new URL(url);
-            return true;
-        } catch (e) {
+        let parsed;
+        try { parsed = new URL(url); }
+        catch (e) { return false; }
+        const proto = parsed.protocol;
+        if (proto === 'wss:') return true;
+        if (proto === 'ws:') {
+            // Solo permitir ws:// en hosts de desarrollo.
+            const h = parsed.hostname;
+            if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.local')) {
+                return true;
+            }
+            console.warn('[Nostr] [M-7] Relay ws:// rechazado en host no-localhost:', url);
             return false;
         }
+        return false;
     }
 
     // For external backward compatibility
@@ -729,7 +740,10 @@ const LBW_Nostr = (() => {
         input = input.trim();
 
         if (input.startsWith('nsec1')) {
-            const d = nt.nip19.decode(input);
+            let d;
+            try { d = nt.nip19.decode(input); }
+            catch (e) { throw new Error('nsec inválida: ' + (e.message || 'no decodificable')); }
+            if (!d || d.type !== 'nsec') throw new Error('Se esperaba una nsec1..., recibido tipo ' + (d && d.type));
             skBytes = d.data;
             skHex = _bytesToHex(skBytes);
         } else if (/^[0-9a-fA-F]{64}$/.test(input)) {
@@ -739,7 +753,19 @@ const LBW_Nostr = (() => {
             throw new Error('Formato inválido. Usa nsec1... o hex 64 chars.');
         }
 
-        const pk = nt.getPublicKey(skBytes);
+        // [M-8] Validar que la clave deriva una pubkey Schnorr válida. Sin esto,
+        // un hex aleatorio (p.ej. una pubkey pegada por error pensando que era
+        // nsec, o ruido de un fichero de log) se aceptaba y daba una sesión
+        // "fantasma" con una pubkey distinta de la que el usuario creía.
+        let pk;
+        try {
+            pk = nt.getPublicKey(skBytes);
+        } catch (e) {
+            throw new Error('Clave privada inválida: no genera una pubkey secp256k1 válida (' + (e.message || 'error desconocido') + ')');
+        }
+        if (typeof pk !== 'string' || !/^[0-9a-f]{64}$/.test(pk)) {
+            throw new Error('Clave privada inválida: pubkey derivada con formato inesperado');
+        }
         return {
             privkeyHex: skHex, privkeyBytes: skBytes,
             pubkeyHex: pk,

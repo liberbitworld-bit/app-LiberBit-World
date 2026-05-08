@@ -38,13 +38,12 @@ const LBW_ChatAttach = (() => {
         return IMG_EXT_RE.test(url) || IMG_HOST_RE.test(url);
     }
 
-    // ── Escape HTML básico ────────────────────────────────────
-    function esc(s) {
-        if (s == null) return '';
-        const d = document.createElement('div');
-        d.textContent = String(s);
-        return d.innerHTML;
-    }
+    // ── Escape HTML ──────────────────────────────────────────
+    // [M-6] La versión anterior usaba textContent + innerHTML que NO escapa
+    // `"`. Como `esc(url)` se interpola en `href="..."` e `img src="..."`,
+    // un URL con comillas (raro pero posible si URL_RE relaja) rompía el
+    // atributo. Delegamos en LBW.escapeHtml (canonical, escapa todo).
+    const esc = LBW.escapeHtml;
 
     // ── Render: convierte texto plano a HTML con <img> inline ─
     // Devuelve un string HTML seguro listo para innerHTML.

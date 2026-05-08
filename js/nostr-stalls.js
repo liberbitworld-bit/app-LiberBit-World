@@ -22,9 +22,8 @@
     // ── Helpers ───────────────────────────────────────────────
     // SEC-27: Unified with LBW.escapeHtml (canonical in escape-utils.js)
     // Previous version was missing `'` escape — now fully covered.
-    const _esc = (typeof LBW !== 'undefined' && LBW.escapeHtml) ? LBW.escapeHtml : function (str) {
-        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    };
+    // [M-10] LBW.escapeHtml siempre disponible (escape-utils.js carga primero en index.html).
+    const _esc = LBW.escapeHtml;
 
     function _stallKey(pubkey, dTag) {
         return `30017:${pubkey}:${dTag}`;
