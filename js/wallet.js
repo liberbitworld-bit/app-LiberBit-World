@@ -525,7 +525,7 @@ function _walletEscapeHtml(s) {
 // INITIALIZATION
 // --------------------------------------------
 
-function initializeWallet() {
+async function initializeWallet() {
     const saved = localStorage.getItem('liberbit_wallet');
     if (!saved) return;
 
@@ -533,12 +533,14 @@ function initializeWallet() {
         const parsed = JSON.parse(saved);
         walletData = Object.assign(walletData, parsed);
 
-        // Si quedó marcado como NWC, intenta restaurar la conexión NWC real
+        // Si quedó marcado como NWC, intenta restaurar la conexión NWC real.
+        // [SEC-A1] tryRestore es async (puede pedir contraseña al usuario para
+        // descifrar el secret NIP-49); por eso ahora hacemos await.
         if (walletData.type === 'nwc') {
             if (!window.LBW_NWC) {
                 console.warn('[Wallet] NWC module no disponible al restaurar');
             } else {
-                const restored = window.LBW_NWC.tryRestore();
+                const restored = await window.LBW_NWC.tryRestore();
                 if (!restored) {
                     console.warn('[Wallet] No se pudo restaurar NWC — desconectando');
                     walletData.connected = false;

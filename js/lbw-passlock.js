@@ -30,6 +30,11 @@ const LBW_Passlock = (() => {
 
     let _nip49Promise = null;
 
+    // Contraseña en memoria tras un unlock/setup exitoso. Permite reutilizar
+    // la misma para cifrar otros secretos (p.ej. URI NWC) sin volver a
+    // pedirla. Se limpia con clearEncrypted() y handleLogout del bridge.
+    let _cachedPassword = null;
+
     async function _loadNip49() {
         if (!_nip49Promise) {
             _nip49Promise = import(NIP49_ESM_URL).catch(err => {
@@ -95,6 +100,43 @@ const LBW_Passlock = (() => {
         return _bytesToNsec(bytes);
     }
 
+    // Cifra cualquier 32 bytes (hex de 64 chars) usando NIP-49. Usado para
+    // el secret de NWC y otros secretos del mismo tamaño que la nsec.
+    async function encryptHexSecret(hex32, password) {
+        if (typeof hex32 !== 'string' || !/^[0-9a-f]{64}$/i.test(hex32)) {
+            throw new Error('Se esperaba un hex de 64 caracteres');
+        }
+        if (!password || typeof password !== 'string') throw new Error('Contraseña vacía');
+        const bytes = new Uint8Array(32);
+        for (let i = 0; i < 32; i++) bytes[i] = parseInt(hex32.substr(i * 2, 2), 16);
+        const nip49 = await _loadNip49();
+        return nip49.encrypt(bytes, password);
+    }
+
+    // Descifra un ncryptsec1... y devuelve hex de 64 chars.
+    async function decryptToHexSecret(ncryptsec, password) {
+        if (!ncryptsec || typeof ncryptsec !== 'string' || !ncryptsec.startsWith('ncryptsec1')) {
+            throw new Error('Se esperaba un ncryptsec1...');
+        }
+        const nip49 = await _loadNip49();
+        let bytes;
+        try {
+            bytes = nip49.decrypt(ncryptsec, password);
+        } catch (e) {
+            throw new Error('Contraseña incorrecta');
+        }
+        if (!(bytes instanceof Uint8Array) || bytes.length !== 32) {
+            throw new Error('Resultado inesperado al descifrar');
+        }
+        let hex = '';
+        for (let i = 0; i < 32; i++) hex += bytes[i].toString(16).padStart(2, '0');
+        return hex;
+    }
+
+    // Acceso a la contraseña cacheada en memoria (puede ser null).
+    function getCachedPassword() { return _cachedPassword; }
+    function clearCachedPassword() { _cachedPassword = null; }
+
     // ── Persistencia ─────────────────────────────────────────
     function saveEncrypted(ncryptsec) {
         try {
@@ -115,6 +157,7 @@ const LBW_Passlock = (() => {
             localStorage.removeItem(STORAGE_NCRYPTSEC);
             localStorage.removeItem(STORAGE_VERSION);
         } catch (e) {}
+        _cachedPassword = null;
     }
 
     function hasEncrypted() {
@@ -372,6 +415,7 @@ const LBW_Passlock = (() => {
         try {
             const ncryptsec = await encryptNsec(nsec, res.password);
             saveEncrypted(ncryptsec);
+            _cachedPassword = res.password;   // disponible para cifrar otros secretos en esta sesión
             hideModal();
             return ncryptsec;
         } catch (e) {
@@ -391,6 +435,7 @@ const LBW_Passlock = (() => {
             if (res.logout) { hideModal(); return { logout: true }; }
             try {
                 const nsec = await decryptToNsec(ncryptsec, res.password);
+                _cachedPassword = res.password;   // sesión desbloqueada
                 hideModal();
                 return { nsec };
             } catch (e) {
@@ -398,6 +443,19 @@ const LBW_Passlock = (() => {
                 // bucle: showModal se vuelve a abrir
             }
         }
+    }
+
+    // Pide una contraseña genérica al usuario sin tocar el ncryptsec principal.
+    // Útil cuando el usuario inició sesión con NIP-07 (sin contraseña cacheada)
+    // y necesitamos cifrar algún otro secreto (p.ej. URI NWC). El llamador
+    // decide si quiere reutilizar la cacheada o forzar prompt nuevo.
+    //   mode: 'set' → pide y confirma (8+ chars); 'unlock' → solo pide.
+    async function promptForPassword(mode, opts) {
+        const m = (mode === 'set') ? 'set' : 'unlock';
+        const res = await showModal(m, opts || {});
+        hideModal();
+        if (!res || !res.password) return null;
+        return res.password;
     }
 
     // Migración en dos pasos: 1) backup obligatorio de la nsec en claro
@@ -422,6 +480,7 @@ const LBW_Passlock = (() => {
                 const ncryptsec = await encryptNsec(legacyNsec, res.password);
                 saveEncrypted(ncryptsec);
                 clearLegacyPlaintext();
+                _cachedPassword = res.password;   // sesión activa con contraseña conocida
                 hideModal();
                 return { nsec: legacyNsec };
             } catch (e) {
@@ -444,9 +503,11 @@ const LBW_Passlock = (() => {
 
     return {
         encryptNsec, decryptToNsec,
+        encryptHexSecret, decryptToHexSecret,
+        getCachedPassword, clearCachedPassword,
         saveEncrypted, loadEncrypted, clearEncrypted, hasEncrypted,
         hasLegacyPlaintext, readLegacyNsec, clearLegacyPlaintext,
-        showModal, showError, hideModal,
+        showModal, showError, hideModal, promptForPassword,
         setupPasswordAndStore, unlockWithPasswordPrompt, migrateLegacyToEncrypted,
         persistKeys
     };
