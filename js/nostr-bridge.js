@@ -1253,6 +1253,46 @@ const LBW_NostrBridge = (() => {
         if (!ta) return;
         const content = ta.value.trim();
         if (!content) return;
+
+        // [routing-warning] Pre-validar al destinatario: si su NIP-65 apunta SOLO
+        // a relays privados de LiberBit, advertir antes de enviar. El relay
+        // privado responde OK true al publish pero no persiste DMs cuyos
+        // destinatarios no están en su whitelist; resultado: el usuario ve la
+        // notificación verde + render local, pero el destinatario nunca
+        // recibe el mensaje. Diagnosticado el 2026-05-08.
+        try {
+            const theirRelays = LBW_Nostr.fetchOtherRelayList
+                ? await LBW_Nostr.fetchOtherRelayList(_activeDMPubkey)
+                : null;
+            if (theirRelays && theirRelays.length > 0) {
+                const theirRead = theirRelays
+                    .filter(r => r.mode === 'read' || r.mode === 'both')
+                    .map(r => r.url);
+                const privates = LBW_Nostr.SYSTEM_PRIVATE_RELAYS || [];
+                const onlyLiberbit = theirRead.length > 0 &&
+                    theirRead.every(u => privates.includes(u));
+                if (onlyLiberbit) {
+                    const ok = confirm(
+                        '⚠️ AVISO DE ENTREGA\n\n' +
+                        'Este destinatario solo escucha en relays privados de LiberBit. ' +
+                        'Si NO es miembro autorizado del relay privado, el mensaje no le ' +
+                        'llegará — aunque tú lo verás en tu panel.\n\n' +
+                        'Pídele que añada un relay público a su NIP-65 (relay.damus.io, ' +
+                        'nos.lol, etc.) para garantizar la entrega.\n\n' +
+                        '¿Enviar de todos modos?'
+                    );
+                    if (!ok) {
+                        console.warn('[Bridge] sendDM cancelado por aviso de routing');
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            // Si el fetch de NIP-65 falla, seguimos con el envío normal —
+            // mejor mandar y arriesgar que bloquear por un fallo de lookup.
+            console.warn('[Bridge] No se pudo verificar NIP-65 del destinatario:', e.message);
+        }
+
         try {
             console.log('[Bridge] sendDM →', _activeDMPubkey.substring(0, 12), content.substring(0, 20));
             const res = await LBW_DM.send(_activeDMPubkey, content);
