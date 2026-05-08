@@ -162,10 +162,37 @@ async function updateChatBadges() {
     }
 }
 
+// Lock contra race condition: si llegan varios DMs/sidebars seguidos,
+// las llamadas async simultáneas a appendPrivateConversationsToSidebar
+// (que await _resolveProfileData entre += al innerHTML) provocan que las
+// conversaciones aparezcan dos veces. Serializamos las ejecuciones; si
+// llega otra llamada mientras una está en curso, la marcamos pendiente
+// y se re-ejecuta una sola vez al terminar.
+let _loadChatSidebarRunning = false;
+let _loadChatSidebarPending = false;
+
 async function loadChatSidebar() {
+    if (_loadChatSidebarRunning) {
+        _loadChatSidebarPending = true;
+        return;
+    }
+    _loadChatSidebarRunning = true;
+    try {
+        await _doLoadChatSidebar();
+    } finally {
+        _loadChatSidebarRunning = false;
+        if (_loadChatSidebarPending) {
+            _loadChatSidebarPending = false;
+            // Re-run una vez con el estado más reciente.
+            loadChatSidebar();
+        }
+    }
+}
+
+async function _doLoadChatSidebar() {
     const container = document.getElementById('chatSidebarList');
     if (!container) return;
-    
+
     if (currentChatTab === 'community') {
         // Show online users / community info
         container.innerHTML = `
