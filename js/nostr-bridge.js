@@ -1250,11 +1250,36 @@ const LBW_NostrBridge = (() => {
         if (!content) return;
         try {
             console.log('[Bridge] sendDM →', _activeDMPubkey.substring(0, 12), content.substring(0, 20));
-            await LBW_DM.send(_activeDMPubkey, content);
+            const res = await LBW_DM.send(_activeDMPubkey, content);
+
+            // Diagnóstico: cuántos relays aceptaron el evento. Antes de este log
+            // un envío a 0/N relays "completaba" sin error y sin notificación,
+            // dando ilusión de que el DM se había enviado.
+            const okCount = (res && res.results) ? res.results.filter(r => r.success).length : 0;
+            const totalCount = (res && res.results) ? res.results.length : 0;
+            console.warn('[Bridge] sendDM resultado: ' + okCount + '/' + totalCount + ' relays OK');
+
+            if (okCount === 0) {
+                console.error('[Bridge] sendDM: ningún relay aceptó el DM. NO se ha enviado.');
+                if (typeof showNotification === 'function') {
+                    showNotification('❌ No se pudo enviar — ningún relay aceptó el mensaje. Intenta de nuevo en unos segundos.', 'error');
+                } else {
+                    alert('❌ No se pudo enviar — ningún relay aceptó el mensaje.');
+                }
+                return;   // No vaciamos el textarea: el usuario puede reintentar
+            }
+
             ta.value = '';
+            if (typeof showNotification === 'function') {
+                showNotification('✅ Mensaje cifrado enviado (' + okCount + ' relay' + (okCount > 1 ? 's' : '') + ')', 'success');
+            }
         } catch (e) {
             console.error('[Bridge] sendDM error:', e);
-            alert('❌ ' + e.message);
+            if (typeof showNotification === 'function') {
+                showNotification('❌ ' + (e.message || 'Error al enviar mensaje'), 'error');
+            } else {
+                alert('❌ ' + e.message);
+            }
         }
     }
 

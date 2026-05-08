@@ -889,11 +889,14 @@ const LBW_Nostr = (() => {
                     fallbackRelays.forEach(url => results.push({ relay: url, success: false, error: e.message }));
                 }
             }
-        } else if (successCount === 0 && isPrivateKind) {
+        } else if (successCount === 0 && isPrivateKind && !relayUrlsOverride) {
             // Privacy preserved: no public fallback. Loud error so el caller
             // pueda informar al usuario y guardar el evento para reintentar
             // cuando vuelva el relay privado.
-            console.error(`[Nostr] [SEC-A7] kind=${event.kind} (PRIVATE) no se publicó: 0/${targetRelays.length} relays privados aceptaron. Sin fallback a relays públicos por política de privacidad.`);
+            // Nota: cuando hay relayUrlsOverride (ej. DMs con mezcla pública+privada
+            // calculada por _getDMRelaysForRecipient), el caller ya eligió la lista
+            // a la que quiere publicar, así que no aplicamos la política aquí.
+            console.error(`[Nostr] [SEC-A7] kind=${event.kind} (PRIVATE) no se publicó: 0/${targetRelays.length} relays aceptaron. Sin fallback a relays públicos por política de privacidad.`);
         }
 
         console.log(`[Nostr] 📤 kind=${event.kind} → ${successCount}/${results.length} relays OK`);
