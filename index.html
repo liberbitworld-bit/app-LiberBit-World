@@ -11,11 +11,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
     
-    <!-- Supabase Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Nostr Tools (NIP-01, NIP-04, NIP-07, NIP-19, NIP-44, NIP-65, NIP-99) -->
-    <script src="https://unpkg.com/nostr-tools@2.7.2/lib/nostr.bundle.js"></script>
+    <!-- Supabase Client (SRI: pinneamos a versión exacta para que el hash sea estable) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3"
+            integrity="sha384-iWpUQPQzWsFiosLgsS8o+e6E8y3Gm+EW2m/vAAo7A2H3fuc4KOKEx+5CAord2H2z"
+            crossorigin="anonymous"></script>
+
+    <!-- Nostr Tools (NIP-01, NIP-04, NIP-07, NIP-19, NIP-44, NIP-65, NIP-99) — SRI obligatorio: maneja claves -->
+    <script src="https://unpkg.com/nostr-tools@2.7.2/lib/nostr.bundle.js"
+            integrity="sha384-YUdjSvJQpzJUf1TiIR0LmkbTEGWdiZTiXN67W157lg3vEmBHg+LEkaJ5J0AI9BG7"
+            crossorigin="anonymous"></script>
     
     <!-- Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -2978,7 +2982,9 @@
     <script src="js/p2p-exchange.js?v=quickwins-1"></script>
     <script src="js/notifications.js?v=sec11"></script>
     <script src="js/chat.js?v=secC1-1"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+            integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"
+            crossorigin="anonymous"></script>
     <script src="js/lightning.js?v=secC1-1"></script>
     <script src="js/governance.js?v=sec11"></script>
     <script src="js/profile.js?v=nip49-2"></script>
