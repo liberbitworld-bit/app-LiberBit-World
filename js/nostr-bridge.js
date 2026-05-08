@@ -1264,6 +1264,18 @@ const LBW_NostrBridge = (() => {
             const totalCount = (res && res.results) ? res.results.length : 0;
             console.warn('[Bridge] sendDM resultado: ' + okCount + '/' + totalCount + ' relays OK');
 
+            // [hotfix dm-trace] Detalle por relay para diagnóstico — antes el log
+            // solo decía "X/Y" sin distinguir cuáles aceptaron y cuáles rechazaron.
+            if (res && res.results) {
+                res.results.forEach(r => {
+                    if (r.success) {
+                        console.warn('  ✓ ' + r.relay);
+                    } else {
+                        console.warn('  ✗ ' + r.relay + ' — ' + (r.error || 'unknown'));
+                    }
+                });
+            }
+
             if (okCount === 0) {
                 console.error('[Bridge] sendDM: ningún relay aceptó el DM. NO se ha enviado.');
                 if (typeof showNotification === 'function') {
