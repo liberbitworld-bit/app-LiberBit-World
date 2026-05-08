@@ -510,6 +510,43 @@ const LBW_Nostr = (() => {
         return _pool;
     }
 
+    // [NIP-42] Auto-autenticación con relays que envíen AUTH challenge.
+    //
+    // Algunos relays (p.ej. relay.liberbitworld.org con nip42_dms=true) solo
+    // sirven kind 4 a clientes autenticados. nostr-tools maneja el handshake
+    // si configuramos relay._onauth tras pool.ensureRelay(url): cuando llega
+    // ["AUTH", challenge] el relay lo guarda en this.challenge y dispara
+    // este callback. Respondemos con relay.auth(signEvent) que firma kind
+    // 22242 y lo manda al relay.
+    //
+    // Si el usuario no está logueado o el firmado falla (ej. NIP-07 sin
+    // permiso), simplemente loguamos. El relay seguirá filtrando DMs hasta
+    // que el cliente autentique correctamente — ese es el contrato de
+    // NIP-42, no es un bug.
+    async function _setupAuthForRelay(url) {
+        if (!_pool) return;
+        let relay;
+        try { relay = await _pool.ensureRelay(url); }
+        catch (e) { return; }   // relay caído, no es crítico
+        if (!relay || relay._lbwAuthHooked) return;
+        relay._lbwAuthHooked = true;
+        relay._onauth = async (challenge) => {
+            try {
+                if (!isLoggedIn()) {
+                    console.log('[Nostr] [NIP-42] AUTH challenge desde ' + url + ' — no hay sesión, ignorado');
+                    return;
+                }
+                console.log('[Nostr] [NIP-42] 🔐 AUTH challenge desde ' + url);
+                await relay.auth(async (template) => {
+                    return await _signEvent(template);
+                });
+                console.log('[Nostr] [NIP-42] ✅ Autenticado con ' + url);
+            } catch (e) {
+                console.warn('[Nostr] [NIP-42] ❌ AUTH falló con ' + url + ':', e.message);
+            }
+        };
+    }
+
     function connectToRelays(relayUrls = null) {
         const pool = _getPool();
 
@@ -543,6 +580,11 @@ const LBW_Nostr = (() => {
         const probeFilter = { kinds: [0], limit: 1, authors: [dummyAuthor] };
 
         targets.forEach(url => {
+            // [NIP-42] Configurar handler de AUTH antes de cualquier query.
+            // ensureRelay devuelve cached si ya existe, por lo que el handler
+            // sobrevive a reconnects. La promesa NO se await porque no
+            // queremos bloquear el resto de los probes.
+            _setupAuthForRelay(url);
             try {
                 const sub = pool.subscribeMany(
                     [url],
