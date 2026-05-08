@@ -541,6 +541,14 @@ const LBW_Nostr = (() => {
                     return await _signEvent(template);
                 });
                 console.log('[Nostr] [NIP-42] ✅ Autenticado con ' + url);
+                // Tras autenticar, re-emitir las subs de PRIVATE_KINDS porque
+                // las que ya estaban abiertas murieron con CLOSED "auth-required"
+                // antes de que llegara el OK del AUTH. Lo dispatcheamos como
+                // CustomEvent y los módulos (bridge, governance, merits)
+                // re-enrollan sus feeds.
+                window.dispatchEvent(new CustomEvent('nostr-auth-success', {
+                    detail: { relay: url }
+                }));
             } catch (e) {
                 console.warn('[Nostr] [NIP-42] ❌ AUTH falló con ' + url + ':', e.message);
             }
