@@ -21,18 +21,22 @@ function startDirectMessage(recipientId, recipientName) {
 
 function openChatWith(userId, userName) {
     currentChatWith = { id: userId, name: userName };
-    
+
     const convList = document.getElementById('conversationsList');
     const activeChat = document.getElementById('activeChat');
     const chatWithName = document.getElementById('chatWithName');
     const chatWithId = document.getElementById('chatWithId');
-    
+
     if (convList) convList.style.display = 'none';
     if (activeChat) activeChat.style.display = 'block';
     if (chatWithName) chatWithName.textContent = userName;
     if (chatWithId) chatWithId.textContent = userId.substring(0, 16) + '...';
-    
-    loadDirectMessages(userId);
+
+    // [SEC-C1] Antes llamábamos a loadDirectMessages() (Supabase plaintext).
+    // El flujo Nostr E2E lo gestiona LBW_NostrBridge.openDMConversation.
+    if (window.LBW_NostrBridge && typeof LBW_NostrBridge.openDMConversation === 'function') {
+        try { LBW_NostrBridge.openDMConversation(userId); } catch (e) { console.warn('[chat] openDMConversation:', e); }
+    }
 }
 
 function closeActiveChat() {
@@ -40,11 +44,13 @@ function closeActiveChat() {
     const convList = document.getElementById('conversationsList');
     const activeChat = document.getElementById('activeChat');
     const dmContent = document.getElementById('dmContent');
-    
+
     if (convList) convList.style.display = 'block';
     if (activeChat) activeChat.style.display = 'none';
     if (dmContent) dmContent.value = '';
-    loadConversationsList();
+    // [SEC-C1] Antes llamábamos a loadConversationsList() (Supabase plaintext).
+    // La lista de conversaciones Nostr la mantiene LBW_NostrBridge vía
+    // _updateDMSidebar / loadChatSidebar — no necesita refresh manual aquí.
 }
 
 // Chat tab state
