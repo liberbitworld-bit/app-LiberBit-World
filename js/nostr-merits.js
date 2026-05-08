@@ -904,8 +904,15 @@ const LBW_Merits = (() => {
         return entries.sort((a, b) => b.total - a.total);
     }
 
+    // [M-13] _leaderboard se cachea y solo se rebuilda cuando se invalida
+    // en _processMerit (cuando llega un nuevo merit). Para llamadas con
+    // limit >= length devolvemos el array directamente (sin slice copy)
+    // — _calculateWeightedResult de governance llama a getLeaderboard(9999)
+    // por cada propuesta cerrada y eso disparaba O(N) en cada llamada
+    // aunque el resultado fuera idéntico al cacheado.
     function getLeaderboard(limit = 50) {
         if (_leaderboard.length === 0) _leaderboard = _buildLeaderboard();
+        if (limit >= _leaderboard.length) return _leaderboard;
         return _leaderboard.slice(0, limit);
     }
 
