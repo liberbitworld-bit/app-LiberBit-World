@@ -1773,8 +1773,15 @@ const LBW_NostrBridge = (() => {
                 } catch(e) {}
             }
             if (!name) {
+                // [hotfix dm-sidebar] Timeout obligatorio: fetchUserProfile sin
+                // EOSE puede colgar indefinidamente y dejaba el lock de
+                // loadChatSidebar atorado, haciendo que la sidebar nunca se
+                // refresque tras llegar nuevos DMs.
                 try {
-                    const profile = await LBW_Nostr.fetchUserProfile(pubkey);
+                    const profile = await Promise.race([
+                        LBW_Nostr.fetchUserProfile(pubkey),
+                        new Promise(resolve => setTimeout(() => resolve(null), 4000))
+                    ]);
                     if (profile) {
                         name = profile.name || profile.display_name || null;
                         picture = profile.picture || profile.image || null;
