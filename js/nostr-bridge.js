@@ -50,7 +50,29 @@ const LBW_NostrBridge = (() => {
         _setupRelayStatusUI();
         _setupNIP07Detection();
         _setupPrivacyModeUI();
+        _setupNip42AuthListener();
         console.log('[Bridge] ✅ v4.0 inicializado (NIP-65 + NIP-44 + cache + sync + media)');
+    }
+
+    // [NIP-42] Cuando un relay confirma que nos autenticamos, re-emitir las
+    // subs de PRIVATE_KINDS. La razón: nostr-rs-relay con nip42_dms=true
+    // cierra la primera sub de DMs con CLOSED "auth-required" antes de que
+    // pueda enviar el OK del AUTH. Sin re-suscribirnos los DMs no llegan.
+    let _reauthDebounce = null;
+    function _setupNip42AuthListener() {
+        window.addEventListener('nostr-auth-success', (e) => {
+            if (_reauthDebounce) clearTimeout(_reauthDebounce);
+            _reauthDebounce = setTimeout(() => {
+                console.log('[Bridge] [NIP-42] re-suscribiendo feeds privados tras AUTH OK con', e.detail?.relay);
+                try {
+                    if (_dmFeedId && LBW_Sync && LBW_Sync.unsyncFeed) LBW_Sync.unsyncFeed(_dmFeedId);
+                    _dmFeedId = null;
+                    if (LBW_Nostr.isLoggedIn()) startDirectMessages();
+                } catch (err) {
+                    console.warn('[Bridge] re-sub DMs tras AUTH falló:', err.message);
+                }
+            }, 500);   // debounce: si llegan AUTH de varios relays en burst, una sola re-sub
+        });
     }
 
     // ── Relay Status UI ──────────────────────────────────────
