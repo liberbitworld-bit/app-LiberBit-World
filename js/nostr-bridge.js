@@ -1269,6 +1269,40 @@ const LBW_NostrBridge = (() => {
                 return;   // No vaciamos el textarea: el usuario puede reintentar
             }
 
+            // Optimistic UI: renderizar el DM inmediatamente sin esperar al
+            // rebote del relay vía subOut. La dedup por msg.id en
+            // startDirectMessages evita duplicar cuando llegue del relay.
+            // Sin esto, el usuario veía "Mensaje cifrado enviado" pero el
+            // mensaje no aparecía hasta que el relay lo rebotara (a veces
+            // varios segundos, a veces nunca si el relay no rebota a su autor).
+            try {
+                if (res && res.event) {
+                    const myPk = LBW_Nostr.getPubkey();
+                    const isNip44 = !!(res.event.tags && res.event.tags.some(t => t[0] === 'v' && t[1] === '2'));
+                    const localMsg = {
+                        id: res.event.id,
+                        from: myPk,
+                        fromNpub: typeof LBW_Nostr.pubkeyToNpub === 'function' ? LBW_Nostr.pubkeyToNpub(myPk) : '',
+                        to: _activeDMPubkey,
+                        content: content,                  // texto plano original
+                        created_at: res.event.created_at,
+                        direction: 'outgoing',
+                        encryption: isNip44 ? 'nip44' : 'nip04',
+                        nip44: isNip44,
+                        transport: 'kind4'
+                    };
+                    if (!_dmConversations[_activeDMPubkey]) _dmConversations[_activeDMPubkey] = [];
+                    if (!_dmConversations[_activeDMPubkey].some(m => m.id === localMsg.id)) {
+                        _dmConversations[_activeDMPubkey].push(localMsg);
+                        _dmConversations[_activeDMPubkey].sort((a, b) => a.created_at - b.created_at);
+                        _renderDMMessage(localMsg);
+                        _updateDMSidebar();
+                    }
+                }
+            } catch (renderErr) {
+                console.warn('[Bridge] sendDM: optimistic render falló (no crítico):', renderErr);
+            }
+
             ta.value = '';
             if (typeof showNotification === 'function') {
                 showNotification('✅ Mensaje cifrado enviado (' + okCount + ' relay' + (okCount > 1 ? 's' : '') + ')', 'success');
