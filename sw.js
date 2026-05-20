@@ -1,16 +1,15 @@
-// LiberBit World — Service Worker v1.11
+// LiberBit World — Service Worker v1.12
 // Estrategia: network-first para HTML (siempre versión fresca),
 // cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
 // Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
 // se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
-// CACHE_NAME bumpeado a lbw-v11: cierra los dos pendientes finales del
-// admission gate. Ventana de admisión expira a los 30 días (constante
-// ADMISSION.EXPIRES_SECS), nuevo status 'expired' computado por cliente
-// + countdown en la UI. Estado "community archivada" también
-// computado por cliente para propuestas en estado terminal, banner
-// "🗃️ Debate archivado" en el header del canal.
+// CACHE_NAME bumpeado a lbw-v12: hardening del community paraguas LBW
+// (SEC-NIP72-1). Allowlist UMBRELLA.AUTHORIZED_CREATORS para impedir
+// squatting de la paraguas; UX del botón "Actualizar moderadores"
+// disabled si no soy el creator original (evita crear paraguas
+// paralelas por accidente).
 
-const CACHE_NAME = 'lbw-v11';
+const CACHE_NAME = 'lbw-v12';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

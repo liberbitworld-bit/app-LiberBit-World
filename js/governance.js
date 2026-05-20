@@ -200,18 +200,46 @@ function _refreshUmbrellaPanel() {
     }
 
     const um = LBW_Governance.getUmbrellaCommunity();
+    const iAmCreator = um && um.creator === myPubkey;
+
     const statusHtml = um
         ? `<div style="color:#90CAF9;">🌐 Comunidad paraguas <code style="background:rgba(64,196,255,0.1);padding:0.05rem 0.3rem;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${escapeHtml(LBW_Governance.UMBRELLA.D_TAG)}</code> activa<br>
               <span style="font-size:0.75rem;color:var(--color-text-secondary);">creator <code style="font-family:monospace;font-size:0.72rem;opacity:0.8;">${escapeHtml(um.creator.substring(0, 16))}…</code> · ${um.moderators.length} moderador${um.moderators.length === 1 ? '' : 'es'} · ${new Date(um.created_at * 1000).toLocaleDateString('es-ES')}</span></div>`
         : `<div style="color:#FFA726;">⚠️ Comunidad paraguas <strong>aún no publicada</strong>. Pulsa el botón para emitir <code style="background:rgba(255,167,38,0.12);padding:0.05rem 0.3rem;border-radius:3px;font-family:monospace;font-size:0.75rem;">kind:34550</code> con <code style="font-family:monospace;font-size:0.75rem;">d=${escapeHtml(LBW_Governance.UMBRELLA.D_TAG)}</code>.</div>`;
 
+    // 3 estados del botón:
+    //   a) No hay paraguas → "🏛️ Publicar paraguas" (cualquier Génesis,
+    //      el primer-emite gana — fija el creator para siempre vía NIP-33).
+    //   b) Hay paraguas y soy el creator → "🔄 Actualizar moderadores"
+    //      (re-emite desde mi pubkey, NIP-33 replaceable funciona como
+    //      esperado y sobrescribe el evento previo).
+    //   c) Hay paraguas y NO soy el creator → botón disabled con tooltip,
+    //      porque emitir desde otra pubkey crearía paraguas paralela —
+    //      el cliente LBW la ignoraría por allowlist (SEC-NIP72-1), pero
+    //      es UX hostil dejar el botón habilitado para luego rechazarlo.
+    let buttonHtml;
+    if (!um) {
+        buttonHtml = `<button data-lbw-action="publishUmbrellaCommunity"
+            style="padding:0.45rem 0.85rem;border-radius:6px;border:0;background:linear-gradient(135deg,#40C4FF,#0288D1);color:#0D171E;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
+            🏛️ Publicar paraguas
+        </button>`;
+    } else if (iAmCreator) {
+        buttonHtml = `<button data-lbw-action="publishUmbrellaCommunity"
+            style="padding:0.45rem 0.85rem;border-radius:6px;border:0;background:linear-gradient(135deg,#40C4FF,#0288D1);color:#0D171E;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
+            🔄 Actualizar moderadores
+        </button>`;
+    } else {
+        const tooltip = `Solo el creator original (${um.creator.substring(0, 12)}…) puede actualizar esta paraguas. Si publicas desde tu cuenta, crearás una paraguas paralela que el cliente LBW ignorará.`;
+        buttonHtml = `<button disabled title="${escapeHtml(tooltip)}"
+            style="padding:0.45rem 0.85rem;border-radius:6px;border:1px solid #455A64;background:transparent;color:var(--color-text-secondary);opacity:0.55;cursor:not-allowed;font-size:0.8rem;white-space:nowrap;">
+            🔒 Solo creator puede actualizar
+        </button>`;
+    }
+
     panel.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
             <div style="flex:1;min-width:0;">${statusHtml}</div>
-            <button data-lbw-action="publishUmbrellaCommunity"
-                style="padding:0.45rem 0.85rem;border-radius:6px;border:0;background:linear-gradient(135deg,#40C4FF,#0288D1);color:#0D171E;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
-                ${um ? '🔄 Actualizar moderadores' : '🏛️ Publicar paraguas'}
-            </button>
+            ${buttonHtml}
         </div>
     `;
 }

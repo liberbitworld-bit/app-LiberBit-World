@@ -248,6 +248,13 @@ relays: privados + públicos
 
 **Política de emisión manual.** Solo el fundador (o un Génesis autorizado) emite este evento desde su cuenta. Re-emisiones desde el MISMO pubkey sobreescriben el anterior (NIP-33 replaceable por kind+pubkey+d); re-emisiones desde otros pubkeys crearían communities paralelos. Clientes externos seguirán al primero que descubran. UI: botón "🏛️ Publicar / Actualizar paraguas" en la sección de gobernanza, visible solo a Génesis. Sin actualización automática — el operador decide cuándo refrescar la lista de moderadores (p.ej. tras un cambio de censo Génesis).
 
+**[SEC-NIP72-1] Allowlist anti-squatting.** Cualquiera puede publicar un `kind:34550` con `d=lbw-community` desde cualquier pubkey y, si su `created_at` es posterior al de la paraguas oficial, los clientes Nostr externos (Coracle, Habla) lo verán como community legítima sin posibilidad de distinguirla. El cliente LBW se defiende con un array hardcoded `UMBRELLA.AUTHORIZED_CREATORS` en `nostr-governance.js`: solo se acepta como paraguas un evento firmado por un pubkey de esa lista. Cualquier otro se ignora silenciosamente (con `console.warn`). El array vacío es modo bootstrap: warning grande en consola, fail-open. Una vez poblado, el filtro es estricto. Cambios al array requieren commit + deploy — intencionado, esta es la raíz de confianza de la paraguas y no debe ser editable desde UI.
+
+**UX del botón "Actualizar moderadores".** Tres estados en `_refreshUmbrellaPanel`:
+- No hay paraguas cacheada → botón habilitado "🏛️ Publicar paraguas" para cualquier Génesis (el primer-emite gana — fija el `creator` para siempre vía NIP-33).
+- Hay paraguas y `myPubkey === umbrella.creator` → "🔄 Actualizar moderadores" habilitado (re-emisión desde mismo pubkey sobrescribe limpio).
+- Hay paraguas y `myPubkey !== umbrella.creator` → botón **deshabilitado** con tooltip explicando que emitir desde otra pubkey crearía paraguas paralela. Combina con la allowlist para evitar disparos en el pie en la UI antes de que `publishUmbrellaCommunity()` rechace por SEC-NIP72-1.
+
 **Vínculo per-PRP → paraguas.** Cuando se admite una propuesta y se emite su `kind:34550` per-PRP, se incluye un tag `['a', '34550:<umbrella-creator>:lbw-community', '', 'parent']`. NIP-72 no formaliza sub-communities, pero el `a`-tag con marker `parent` es suficiente para que clientes externos entiendan que esa propuesta pertenece a LBW. Si la paraguas aún no se ha descubierto en relays cuando se emite la per-PRP, simplemente se omite el `a` tag — sin error.
 
 ### Expiración de la ventana de admisión (desde `nip72-4`)

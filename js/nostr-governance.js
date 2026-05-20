@@ -57,7 +57,23 @@ const LBW_Governance = (() => {
         D_TAG:       'lbw-community',
         NAME:        'LiberBit World',
         DESCRIPTION: 'Polis paralela sobre Nostr y Bitcoin Lightning. Soberanía individual, gobernanza directa por méritos, comunidades voluntarias. Propone, nunca impone. Las propuestas (PRP-XXX) aparecen como hilos hijos. liberbitworld.org',
-        IMAGE:       'https://www.liberbitworld.org/icons/icon-512.png'
+        IMAGE:       'https://www.liberbitworld.org/icons/icon-512.png',
+        // [SEC-NIP72-1] Anti-squatting: solo aceptamos como paraguas
+        // legítima eventos firmados por pubkeys en esta lista. Cualquier
+        // otro `kind:34550` con `d=lbw-community` es ignorado por el
+        // cliente LBW (clientes externos verán los dos eventos; eso es
+        // problema de su discovery layer, no nuestro).
+        //
+        // Por defecto vacío → fail-open con warning, así el sistema
+        // arranca sin romperse mientras se rellena. Una vez rellenado,
+        // el filtro pasa a ser estricto.
+        //
+        // ⚠️ El fundador debe añadir su pubkey hex (64 chars) aquí
+        // ANTES del anuncio público. Cambios futuros (rotación de
+        // claves, fundadores adicionales) requieren un commit nuevo
+        // y deploy — intencionado, esta lista es la raíz de confianza
+        // de la paraguas y no debe ser editable desde la UI.
+        AUTHORIZED_CREATORS: []
     };
 
     let _umbrellaCache = null;   // { eventId, creator, name, description, image, moderators[], created_at }
@@ -69,13 +85,27 @@ const LBW_Governance = (() => {
     // con el último publicado por created_at.
     function _subscribeUmbrellaCommunity() {
         if (_umbrellaSub) return;
+        if (!Array.isArray(UMBRELLA.AUTHORIZED_CREATORS) || UMBRELLA.AUTHORIZED_CREATORS.length === 0) {
+            console.warn('[Governance] [SEC-NIP72-1] UMBRELLA.AUTHORIZED_CREATORS está vacío — aceptando cualquier pubkey como paraguas. Esto es vulnerable a squatting: cualquiera puede publicar un kind:34550 con d=lbw-community. Edita js/nostr-governance.js y añade el pubkey hex del fundador antes del anuncio público.');
+        }
         _umbrellaSub = LBW_Nostr.subscribe(
-            { kinds: [KIND.COMMUNITY], '#d': [UMBRELLA.D_TAG], limit: 5 },
+            { kinds: [KIND.COMMUNITY], '#d': [UMBRELLA.D_TAG], limit: 10 },
             (event) => {
                 try {
                     const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
                     const dTag = g('d');
                     if (dTag !== UMBRELLA.D_TAG) return;
+
+                    // [SEC-NIP72-1] Allowlist estricta si está configurada.
+                    // Si la lista está vacía, fail-open (warning ya emitido
+                    // arriba). Si tiene entradas, solo aceptamos eventos
+                    // firmados por pubkeys autorizados.
+                    if (UMBRELLA.AUTHORIZED_CREATORS.length > 0 &&
+                        !UMBRELLA.AUTHORIZED_CREATORS.includes(event.pubkey)) {
+                        console.warn(`[Governance] [SEC-NIP72-1] Paraguas con creator no autorizado ignorada: ${event.pubkey.substring(0,12)}…`);
+                        return;
+                    }
+
                     if (_umbrellaCache && _umbrellaCache.created_at >= event.created_at) return;
                     const moderators = event.tags
                         .filter(t => t[0] === 'p' && t[3] === 'moderator')
@@ -119,9 +149,19 @@ const LBW_Governance = (() => {
     async function publishUmbrellaCommunity(opts = {}) {
         if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
 
+        const myPubkey = LBW_Nostr.getPubkey();
+        // [SEC-NIP72-1] Si la allowlist está configurada y mi pubkey no
+        // está en ella, refuso emitir para no crear una paraguas
+        // paralela. Cuando la lista está vacía (fase de bootstrap),
+        // dejamos pasar — el primer publish poblará el cache local
+        // y debería coincidir con la pubkey que se añadirá al array.
+        if (UMBRELLA.AUTHORIZED_CREATORS.length > 0 &&
+            !UMBRELLA.AUTHORIZED_CREATORS.includes(myPubkey)) {
+            throw new Error('Tu pubkey no está en UMBRELLA.AUTHORIZED_CREATORS. Si publicas, crearás una paraguas paralela que el cliente LBW ignorará. Habla con el fundador para añadir tu pubkey al array si tiene sentido.');
+        }
+
         // Recoger moderadores actuales: todos los Génesis del ledger
         const moderators = new Set();
-        const myPubkey = LBW_Nostr.getPubkey();
         if (myPubkey) moderators.add(myPubkey);     // me incluyo siempre
 
         if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getLeaderboard) {
