@@ -24,6 +24,7 @@ const LBW_Passlock = (() => {
 
     const NIP49_ESM_URL = 'https://esm.sh/nostr-tools@2.7.2/nip49';
     const STORAGE_NCRYPTSEC = 'lbw_ncryptsec';
+    const STORAGE_NCRYPTSEC_NPUB = 'lbw_ncryptsec_npub';
     const STORAGE_VERSION = 'lbw_keys_version';
     const LEGACY_NSEC_LS = 'lbw_nsec_persist';
     const LEGACY_NSEC_SS = 'lbw_nsec_session';
@@ -138,10 +139,16 @@ const LBW_Passlock = (() => {
     function clearCachedPassword() { _cachedPassword = null; }
 
     // ── Persistencia ─────────────────────────────────────────
-    function saveEncrypted(ncryptsec) {
+    // Guardamos también el npub junto al ncryptsec para que, al volver a
+    // hacer login con nsec, podamos detectar si la identidad coincide y
+    // ofrecer el flujo de "desbloquear" en vez de "crear nueva contraseña".
+    function saveEncrypted(ncryptsec, npub) {
         try {
             localStorage.setItem(STORAGE_NCRYPTSEC, ncryptsec);
             localStorage.setItem(STORAGE_VERSION, '2');
+            if (npub && typeof npub === 'string' && npub.startsWith('npub1')) {
+                localStorage.setItem(STORAGE_NCRYPTSEC_NPUB, npub);
+            }
         } catch (e) {
             console.error('[Passlock] No se pudo guardar ncryptsec:', e);
             throw e;
@@ -152,9 +159,21 @@ const LBW_Passlock = (() => {
         try { return localStorage.getItem(STORAGE_NCRYPTSEC); } catch (e) { return null; }
     }
 
+    function loadEncryptedNpub() {
+        try { return localStorage.getItem(STORAGE_NCRYPTSEC_NPUB); } catch (e) { return null; }
+    }
+
+    // Anota un npub sobre un ncryptsec ya guardado, sin re-cifrar.
+    // Útil para migrar ncryptsec antiguos (creados antes de guardar npub).
+    function annotateNpub(npub) {
+        if (!npub || typeof npub !== 'string' || !npub.startsWith('npub1')) return;
+        try { localStorage.setItem(STORAGE_NCRYPTSEC_NPUB, npub); } catch (e) {}
+    }
+
     function clearEncrypted() {
         try {
             localStorage.removeItem(STORAGE_NCRYPTSEC);
+            localStorage.removeItem(STORAGE_NCRYPTSEC_NPUB);
             localStorage.removeItem(STORAGE_VERSION);
         } catch (e) {}
         _cachedPassword = null;
@@ -162,6 +181,25 @@ const LBW_Passlock = (() => {
 
     function hasEncrypted() {
         return !!loadEncrypted();
+    }
+
+    // Deriva el npub a partir de una nsec. Devuelve null si nostr-tools no
+    // está cargado o el formato es inválido. Útil para que setupPasswordAndStore
+    // pueda guardar el npub sin que el caller tenga que pasarlo siempre.
+    function _deriveNpub(nsec) {
+        try {
+            if (!window.NostrTools || !window.NostrTools.nip19) return null;
+            const decoded = window.NostrTools.nip19.decode(nsec);
+            if (decoded.type !== 'nsec') return null;
+            let sk = decoded.data;
+            if (typeof sk === 'string') {
+                const out = new Uint8Array(sk.length / 2);
+                for (let i = 0; i < out.length; i++) out[i] = parseInt(sk.substr(i * 2, 2), 16);
+                sk = out;
+            }
+            const pkHex = window.NostrTools.getPublicKey(sk);
+            return window.NostrTools.nip19.npubEncode(pkHex);
+        } catch (e) { return null; }
     }
 
     // Detecta si quedan rastros de la nsec en claro en localStorage/sessionStorage
@@ -409,12 +447,14 @@ const LBW_Passlock = (() => {
 
     // ── Helpers de alto nivel para los flujos del bridge ─────
     // Pide contraseña nueva, cifra la nsec y la guarda. Lanza si el usuario cancela.
+    // Si opts.npub viene, lo persiste junto al ncryptsec; si no, lo deriva.
     async function setupPasswordAndStore(nsec, opts) {
         const res = await showModal('set', opts || {});
         if (!res || !res.password) { hideModal(); throw new Error('Configuración de contraseña cancelada'); }
         try {
             const ncryptsec = await encryptNsec(nsec, res.password);
-            saveEncrypted(ncryptsec);
+            const npub = (opts && opts.npub) || _deriveNpub(nsec);
+            saveEncrypted(ncryptsec, npub);
             _cachedPassword = res.password;   // disponible para cifrar otros secretos en esta sesión
             hideModal();
             return ncryptsec;
@@ -478,7 +518,7 @@ const LBW_Passlock = (() => {
             if (res.switchToExtension) { hideModal(); return { logout: true }; }
             try {
                 const ncryptsec = await encryptNsec(legacyNsec, res.password);
-                saveEncrypted(ncryptsec);
+                saveEncrypted(ncryptsec, _deriveNpub(legacyNsec));
                 clearLegacyPlaintext();
                 _cachedPassword = res.password;   // sesión activa con contraseña conocida
                 hideModal();
@@ -505,7 +545,7 @@ const LBW_Passlock = (() => {
         encryptNsec, decryptToNsec,
         encryptHexSecret, decryptToHexSecret,
         getCachedPassword, clearCachedPassword,
-        saveEncrypted, loadEncrypted, clearEncrypted, hasEncrypted,
+        saveEncrypted, loadEncrypted, loadEncryptedNpub, annotateNpub, clearEncrypted, hasEncrypted,
         hasLegacyPlaintext, readLegacyNsec, clearLegacyPlaintext,
         showModal, showError, hideModal, promptForPassword,
         setupPasswordAndStore, unlockWithPasswordPrompt, migrateLegacyToEncrypted,

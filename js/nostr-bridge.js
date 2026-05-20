@@ -284,18 +284,82 @@ const LBW_NostrBridge = (() => {
             name: '', picture: '', method: 'nsec', loginTime: Date.now()
         };
 
-        // ══ NIP-49: pedir contraseña y cifrar la nsec antes de persistir ══
-        // El usuario debe configurar una contraseña obligatoriamente. Si cancela,
-        // abortamos el login porque la sesión no se podría restaurar tras recargar.
+        // ══ NIP-49 — flujo inteligente ══
+        // Si ya hay un ncryptsec guardado en este navegador:
+        //   a) mismo npub (identidad conocida) → modo "unlock" con la contraseña
+        //      existente. No se crea ninguna contraseña nueva.
+        //   b) npub distinto → confirmar reemplazo y crear contraseña nueva.
+        //   c) ncryptsec antiguo SIN npub guardado (ncryptsec creado antes de
+        //      esta versión) → intentar unlock y comparar. Si la nsec
+        //      desbloqueada coincide con la que el usuario acaba de pegar,
+        //      anotamos el npub para futuras sesiones y seguimos. Si no
+        //      coincide o el usuario cancela, pedimos confirmación para
+        //      reemplazar y creamos contraseña nueva.
+        let needsPasswordSetup = true;
         try {
-            await LBW_Passlock.setupPasswordAndStore(result.nsec, {
-                title: '🔒 Crea una contraseña',
-                desc: 'Cifrará tu clave privada (nsec) en este navegador con NIP-49. La pedirás cada vez que vuelvas a entrar.'
-            });
+            if (LBW_Passlock.hasEncrypted()) {
+                const storedNpub = LBW_Passlock.loadEncryptedNpub && LBW_Passlock.loadEncryptedNpub();
+                const knownIdentity = !!storedNpub;
+                const sameIdentity = knownIdentity && storedNpub === result.npub;
+
+                if (knownIdentity && !sameIdentity) {
+                    // Identidad distinta confirmada → confirmar reemplazo
+                    const replace = confirm('Hay otra identidad cifrada en este navegador. ¿Reemplazarla por la que acabas de pegar?');
+                    if (!replace) {
+                        try { LBW_Nostr.logout(); } catch (_) {}
+                        throw new Error('Login cancelado: la identidad guardada es distinta');
+                    }
+                    LBW_Passlock.clearEncrypted();
+                } else {
+                    // Misma identidad O ncryptsec antiguo sin npub → unlock
+                    try {
+                        const unlockRes = await LBW_Passlock.unlockWithPasswordPrompt({
+                            title: sameIdentity ? '🔓 Desbloquea tu cuenta' : '🔓 Identidad cifrada detectada',
+                            desc: sameIdentity
+                                ? 'Ya tienes esta cuenta cifrada aquí. Introduce tu contraseña existente. (Pulsa "Cerrar sesión" para crear una contraseña nueva.)'
+                                : 'Si esta es tu cuenta, introduce tu contraseña existente. Si no, pulsa "Cerrar sesión" para reemplazarla.'
+                        });
+                        if (unlockRes && unlockRes.logout) {
+                            // El usuario quiere empezar de cero
+                            LBW_Passlock.clearEncrypted();
+                        } else if (unlockRes && unlockRes.nsec === result.nsec) {
+                            // Match — reusar ncryptsec existente, password ya cacheada
+                            if (!storedNpub && LBW_Passlock.annotateNpub) {
+                                try { LBW_Passlock.annotateNpub(result.npub); } catch (_) {}
+                            }
+                            needsPasswordSetup = false;
+                            console.log('[Bridge] ✅ Identidad existente desbloqueada (no se pide nueva contraseña)');
+                        } else if (unlockRes && unlockRes.nsec) {
+                            // Desbloqueó otra identidad distinta de la pegada
+                            const replace = confirm('La cuenta cifrada aquí es distinta de la que has pegado. ¿Reemplazarla?');
+                            if (!replace) {
+                                try { LBW_Nostr.logout(); } catch (_) {}
+                                throw new Error('Login cancelado');
+                            }
+                            LBW_Passlock.clearEncrypted();
+                        }
+                    } catch (e) {
+                        if (e && e.message === 'Cancelado') {
+                            // Usuario cerró el modal de unlock → reemplazar
+                            LBW_Passlock.clearEncrypted();
+                        } else {
+                            throw e;
+                        }
+                    }
+                }
+            }
+
+            if (needsPasswordSetup) {
+                await LBW_Passlock.setupPasswordAndStore(result.nsec, {
+                    title: '🔒 Crea una contraseña',
+                    desc: 'Cifrará tu clave privada (nsec) en este navegador con NIP-49. La pedirás cada vez que vuelvas a entrar.',
+                    npub: result.npub
+                });
+            }
         } catch (e) {
             // Cancelación o error → revertir login
             try { LBW_Nostr.logout(); } catch (_) {}
-            throw new Error('Login cancelado: necesitas crear una contraseña');
+            throw new Error(e && e.message ? e.message : 'Login cancelado: necesitas crear o desbloquear una contraseña');
         }
 
         // Aseguramos que NO queda nsec en claro en ningún almacén
@@ -526,14 +590,29 @@ const LBW_NostrBridge = (() => {
         };
 
         // ══ NIP-49: pedir contraseña y cifrar la nsec recién creada ══
+        // Una identidad NUEVA siempre sobrescribe cualquier ncryptsec previo
+        // (sería de otra cuenta — no hay forma de que coincida).
         try {
+            if (LBW_Passlock.hasEncrypted()) {
+                const storedNpub = LBW_Passlock.loadEncryptedNpub && LBW_Passlock.loadEncryptedNpub();
+                if (storedNpub && storedNpub !== result.npub) {
+                    // Hay otra identidad cifrada — confirmar reemplazo
+                    const replace = confirm('Hay otra identidad cifrada en este navegador. ¿Reemplazarla por la que vas a crear?');
+                    if (!replace) {
+                        try { LBW_Nostr.logout(); } catch (_) {}
+                        throw new Error('Creación cancelada: hay otra identidad guardada');
+                    }
+                }
+                LBW_Passlock.clearEncrypted();
+            }
             await LBW_Passlock.setupPasswordAndStore(result.nsec, {
                 title: '🔒 Protege tu nueva identidad',
-                desc: 'Cifraremos tu clave privada (nsec) en este navegador con una contraseña (NIP-49). Apunta también la nsec en un sitio seguro: es tu único respaldo si olvidas la contraseña.'
+                desc: 'Cifraremos tu clave privada (nsec) en este navegador con una contraseña (NIP-49). Apunta también la nsec en un sitio seguro: es tu único respaldo si olvidas la contraseña.',
+                npub: result.npub
             });
         } catch (e) {
             try { LBW_Nostr.logout(); } catch (_) {}
-            throw new Error('Creación cancelada: necesitas crear una contraseña');
+            throw new Error(e && e.message ? e.message : 'Creación cancelada: necesitas crear una contraseña');
         }
 
         try { localStorage.removeItem('lbw_nsec_persist'); } catch (e) {}
@@ -618,14 +697,22 @@ const LBW_NostrBridge = (() => {
         if (typeof LBW_Delegations !== 'undefined') LBW_Delegations.reset();
         _updateLoginModeUI(null);
         
-        // ══ Clear ALL session data to prevent data bleeding ══
+        // ══ Clear session/state but preserve encrypted backup ══
+        // El ncryptsec (clave cifrada con contraseña del usuario) NO se
+        // borra al cerrar sesión: la próxima vez que el usuario vuelva con
+        // su nsec, el flujo de handlePrivateKeyLogin detectará que ya hay
+        // una identidad cifrada para ese npub y le pedirá la contraseña
+        // existente en lugar de obligarle a crear una nueva.
+        // El usuario que quiera reset completo puede ir a Perfil → "Olvidar
+        // identidad en este dispositivo" (o limpiar datos del navegador).
         localStorage.removeItem('lbw_nostr_session');
         localStorage.removeItem('lbw_nsec_persist');
         localStorage.removeItem('liberbit_keys');
         try { sessionStorage.removeItem('lbw_nsec_session'); } catch (e) {}
-        // NIP-49: borrar también la nsec cifrada
+        // NIP-49: solo limpiar la contraseña cacheada en memoria y los
+        // restos de nsec en claro (legacy). El ncryptsec se queda.
         if (window.LBW_Passlock) {
-            try { LBW_Passlock.clearEncrypted(); } catch (e) {}
+            try { LBW_Passlock.clearCachedPassword(); } catch (e) {}
             try { LBW_Passlock.clearLegacyPlaintext(); } catch (e) {}
         }
         

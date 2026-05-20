@@ -1,14 +1,15 @@
-// LiberBit World — Service Worker v1.5
+// LiberBit World — Service Worker v1.6
 // Estrategia: network-first para HTML (siempre versión fresca),
 // cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
 // Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
 // se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
-// CACHE_NAME bumpeado a lbw-v5: nueva versión añade nostr-nip46.js
-// (firmador remoto opcional) y reescribe el orden de carga de nostr.js
-// y nostr-bridge.js. El handler 'activate' borra todas las caches
-// anteriores para que ningún cliente se quede con la versión vieja.
+// CACHE_NAME bumpeado a lbw-v6: el fix de re-login (NIP-49 unlock al
+// re-introducir nsec, sin pedir contraseña nueva) cambia el contrato de
+// handleLogout (ya no borra ncryptsec) y la API de lbw-passlock
+// (npub guardado junto al ncryptsec). El handler 'activate' borra todas
+// las caches anteriores para que ningún cliente se quede con la versión vieja.
 
-const CACHE_NAME = 'lbw-v5';
+const CACHE_NAME = 'lbw-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
