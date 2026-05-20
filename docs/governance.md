@@ -228,11 +228,32 @@ Las propuestas creadas antes de `nip72-1` no tienen el tag `admission_required` 
 
 **(5) Sin timeout de admisión.** Una propuesta puede quedarse `pending_admission` indefinidamente si los Génesis no votan o si hay empate. No hay caducidad automática (todavía). TODO: `admission_expires` configurable (¿7d? ¿30d?).
 
+### Community paraguas `lbw-community` (desde `nip72-3`)
+
+Adicional al kind:34550 per-PRP, existe un **community paraguas** único que agrupa todo el ecosistema. Su `d`-tag es `lbw-community`, no se asocia a ninguna PRP concreta, y sirve como punto de entrada en clientes Nostr externos (Coracle, Habla, satellite.earth) para descubrir LiberBit World como una unidad federada.
+
+```
+kind: 34550
+tags:
+  ['d', 'lbw-community']
+  ['name', 'LiberBit World']
+  ['description', 'Polis paralela sobre Nostr y Bitcoin Lightning...']
+  ['image', 'https://www.liberbitworld.org/icons/icon-512.png']
+  ['p', '<genesis_1>', '', 'moderator']
+  ['p', '<genesis_2>', '', 'moderator']
+  ['t', 'lbw-governance']
+  ['t', 'lbw-community']
+relays: privados + públicos
+```
+
+**Política de emisión manual.** Solo el fundador (o un Génesis autorizado) emite este evento desde su cuenta. Re-emisiones desde el MISMO pubkey sobreescriben el anterior (NIP-33 replaceable por kind+pubkey+d); re-emisiones desde otros pubkeys crearían communities paralelos. Clientes externos seguirán al primero que descubran. UI: botón "🏛️ Publicar / Actualizar paraguas" en la sección de gobernanza, visible solo a Génesis. Sin actualización automática — el operador decide cuándo refrescar la lista de moderadores (p.ej. tras un cambio de censo Génesis).
+
+**Vínculo per-PRP → paraguas.** Cuando se admite una propuesta y se emite su `kind:34550` per-PRP, se incluye un tag `['a', '34550:<umbrella-creator>:lbw-community', '', 'parent']`. NIP-72 no formaliza sub-communities, pero el `a`-tag con marker `parent` es suficiente para que clientes externos entiendan que esa propuesta pertenece a LBW. Si la paraguas aún no se ha descubierto en relays cuando se emite la per-PRP, simplemente se omite el `a` tag — sin error.
+
 ### Pendientes
 
 - **Estado "community archivada"** post-ejecución: cuando una propuesta llega a `executed`, el `kind:34550` sigue activo. Falta marcador `status: archived` o equivalente.
-- **Community paraguas `lbw-community`**: un único `kind:34550` con `d=lbw-community` que agrupe el ecosistema, para que clientes externos descubran LBW como community en sí. Pendiente de decidir naming + metadata.
-- **`admission_expires`**: timeout para cerrar propuestas pendientes sin admitir.
+- **`admission_expires`**: timeout para cerrar propuestas pendientes sin admitir (alta prioridad cuando crezca el censo Génesis).
 
 ---
 

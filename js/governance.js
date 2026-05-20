@@ -171,6 +171,74 @@ function updateGovStats() {
     if (el('executedProposalsCount')) el('executedProposalsCount').textContent = stats.executed || 0;
 }
 
+// Inyecta o actualiza el panel de admin de la comunidad paraguas LBW.
+// Visible solo a Génesis. Muestra estado actual (creator, nº moderadores,
+// fecha) y un botón para publicar/re-publicar. Se llama desde
+// displayProposals para refrescar tras cualquier cambio.
+function _refreshUmbrellaPanel() {
+    if (typeof LBW_Governance === 'undefined') return;
+    const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) ? LBW_Nostr.getPubkey() : null;
+    const iAmGenesis = myPubkey ? LBW_Governance.isGenesis(myPubkey) : false;
+    if (!iAmGenesis) {
+        const old = document.getElementById('umbrellaAdminPanel');
+        if (old) old.remove();
+        return;
+    }
+
+    const list = document.getElementById('proposalsList');
+    if (!list || !list.parentNode) return;
+
+    let panel = document.getElementById('umbrellaAdminPanel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'umbrellaAdminPanel';
+        panel.style.cssText = 'background:rgba(64,196,255,0.06);border:1px solid rgba(64,196,255,0.25);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;font-size:0.85rem;';
+        list.parentNode.insertBefore(panel, list);
+    }
+
+    const um = LBW_Governance.getUmbrellaCommunity();
+    const statusHtml = um
+        ? `<div style="color:#90CAF9;">🌐 Comunidad paraguas <code style="background:rgba(64,196,255,0.1);padding:0.05rem 0.3rem;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${escapeHtml(LBW_Governance.UMBRELLA.D_TAG)}</code> activa<br>
+              <span style="font-size:0.75rem;color:var(--color-text-secondary);">creator <code style="font-family:monospace;font-size:0.72rem;opacity:0.8;">${escapeHtml(um.creator.substring(0, 16))}…</code> · ${um.moderators.length} moderador${um.moderators.length === 1 ? '' : 'es'} · ${new Date(um.created_at * 1000).toLocaleDateString('es-ES')}</span></div>`
+        : `<div style="color:#FFA726;">⚠️ Comunidad paraguas <strong>aún no publicada</strong>. Pulsa el botón para emitir <code style="background:rgba(255,167,38,0.12);padding:0.05rem 0.3rem;border-radius:3px;font-family:monospace;font-size:0.75rem;">kind:34550</code> con <code style="font-family:monospace;font-size:0.75rem;">d=${escapeHtml(LBW_Governance.UMBRELLA.D_TAG)}</code>.</div>`;
+
+    panel.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">${statusHtml}</div>
+            <button data-lbw-action="publishUmbrellaCommunity"
+                style="padding:0.45rem 0.85rem;border-radius:6px;border:0;background:linear-gradient(135deg,#40C4FF,#0288D1);color:#0D171E;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
+                ${um ? '🔄 Actualizar moderadores' : '🏛️ Publicar paraguas'}
+            </button>
+        </div>
+    `;
+}
+
+async function publishUmbrellaCommunity() {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Nostr.isLoggedIn()) {
+        showNotification('Necesitas estar conectado con Nostr', 'error');
+        return;
+    }
+    const myPubkey = LBW_Nostr.getPubkey();
+    if (!LBW_Governance.isGenesis(myPubkey)) {
+        showNotification('Solo Génesis pueden emitir la comunidad paraguas', 'error');
+        return;
+    }
+    const um = LBW_Governance.getUmbrellaCommunity();
+    const isUpdate = !!um;
+    const msg = isUpdate
+        ? '¿Actualizar la comunidad paraguas LBW con los Génesis actuales como moderadores? (re-emite kind:34550 desde tu cuenta)'
+        : '¿Publicar la comunidad paraguas LiberBit World en relays públicos como kind:34550 desde tu cuenta? (Coracle/Habla descubrirán LBW como community federada)';
+    if (!confirm(msg)) return;
+    try {
+        const result = await LBW_Governance.publishUmbrellaCommunity({});
+        showNotification(`✅ Paraguas ${isUpdate ? 'actualizada' : 'publicada'} con ${result.moderators.length} moderador${result.moderators.length === 1 ? '' : 'es'}`, 'success');
+        setTimeout(() => { _refreshUmbrellaPanel(); }, 600);
+    } catch (err) {
+        showNotification('Error: ' + err.message, 'error');
+        console.error('[Governance] publishUmbrellaCommunity error:', err);
+    }
+}
+
 function displayProposals() {
     const container = document.getElementById('proposalsList');
     if (!container) return;
@@ -178,6 +246,8 @@ function displayProposals() {
     if (typeof LBW_Governance !== 'undefined') {
         allProposals = LBW_Governance.getAllProposals().map(_nostrProposalToLegacy);
     }
+
+    _refreshUmbrellaPanel();
 
     // Aplicar status de admisión a todas (sobreescribe el status base si
     // la propuesta requiere admisión y aún no la tiene).
@@ -953,6 +1023,10 @@ function updateVoteResultsInModal(proposalDTag) {
                 case 'admitProposal':
                     e.stopPropagation();   // No abrir detail al clicar
                     admitProposal(el.dataset.dtag, el.dataset.eid, el.dataset.decision);
+                    break;
+                case 'publishUmbrellaCommunity':
+                    e.stopPropagation();
+                    publishUmbrellaCommunity();
                     break;
                 // Other actions handled by other modules.
             }

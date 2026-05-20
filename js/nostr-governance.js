@@ -41,6 +41,143 @@ const LBW_Governance = (() => {
         COMMUNITY:   34550    // NIP-72 community (debate channel per PRP)
     };
 
+    // ── NIP-72 Umbrella Community ────────────────────────────
+    // Comunidad paraguas que agrupa todo el ecosistema LBW. Cada PRP
+    // emite su propio kind:34550 hijo (con `a` tag apuntando aquí), y
+    // clientes Nostr externos descubren LiberBit World como una sola
+    // comunidad federada en lugar de propuestas huérfanas.
+    //
+    // Política de emisión: manual, una sola entidad (el fundador
+    // típicamente). El creator del evento queda fijado al primer
+    // pubkey que lo emita — re-emisiones desde el MISMO pubkey
+    // sobreescriben el evento (NIP-33 replaceable por kind+pubkey+d).
+    // Re-emisiones desde OTROS pubkeys crean un community distinto;
+    // los clientes externos seguirán al primero que descubran.
+    const UMBRELLA = {
+        D_TAG:       'lbw-community',
+        NAME:        'LiberBit World',
+        DESCRIPTION: 'Polis paralela sobre Nostr y Bitcoin Lightning. Soberanía individual, gobernanza directa por méritos, comunidades voluntarias. Propone, nunca impone. Las propuestas (PRP-XXX) aparecen como hilos hijos. liberbitworld.org',
+        IMAGE:       'https://www.liberbitworld.org/icons/icon-512.png'
+    };
+
+    let _umbrellaCache = null;   // { eventId, creator, name, description, image, moderators[], created_at }
+    let _umbrellaSub   = null;
+
+    // Suscribe a kind:34550 con d=lbw-community. Cualquier evento que
+    // matchee actualiza _umbrellaCache. Si llegan varios con distintos
+    // creators (no debería pasar bajo política manual), nos quedamos
+    // con el último publicado por created_at.
+    function _subscribeUmbrellaCommunity() {
+        if (_umbrellaSub) return;
+        _umbrellaSub = LBW_Nostr.subscribe(
+            { kinds: [KIND.COMMUNITY], '#d': [UMBRELLA.D_TAG], limit: 5 },
+            (event) => {
+                try {
+                    const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
+                    const dTag = g('d');
+                    if (dTag !== UMBRELLA.D_TAG) return;
+                    if (_umbrellaCache && _umbrellaCache.created_at >= event.created_at) return;
+                    const moderators = event.tags
+                        .filter(t => t[0] === 'p' && t[3] === 'moderator')
+                        .map(t => t[1]);
+                    _umbrellaCache = {
+                        eventId: event.id,
+                        creator: event.pubkey,
+                        name: g('name'),
+                        description: g('description'),
+                        image: g('image'),
+                        moderators,
+                        created_at: event.created_at
+                    };
+                    console.log(`[Governance] 🌐 Paraguas LBW recibida (creator ${event.pubkey.substring(0,8)}…, ${moderators.length} mods)`);
+                } catch (e) {}
+            }
+        );
+    }
+
+    function getUmbrellaCommunity() {
+        return _umbrellaCache ? { ..._umbrellaCache } : null;
+    }
+
+    // Construye el `a`-tag (NIP-33) que apunta a la paraguas. null si
+    // todavía no la hemos descubierto en relays.
+    function getUmbrellaATag() {
+        if (!_umbrellaCache || !_umbrellaCache.creator) return null;
+        return `${KIND.COMMUNITY}:${_umbrellaCache.creator}:${UMBRELLA.D_TAG}`;
+    }
+
+    // Emite (o re-emite) el kind:34550 paraguas. Solo Génesis tiene
+    // sentido funcional (porque el rol declarado es "moderator") pero
+    // técnicamente cualquiera con sesión puede llamarlo — la UI debe
+    // gateársolo a Génesis vía isGenesis().
+    //
+    // opts:
+    //   - extraModerators: pubkeys adicionales además de los Génesis
+    //                       actuales (p.ej. Custodios). Default: solo
+    //                       Génesis del leaderboard de méritos.
+    //   - name, description, image: overrides puntuales.
+    async function publishUmbrellaCommunity(opts = {}) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+
+        // Recoger moderadores actuales: todos los Génesis del ledger
+        const moderators = new Set();
+        const myPubkey = LBW_Nostr.getPubkey();
+        if (myPubkey) moderators.add(myPubkey);     // me incluyo siempre
+
+        if (typeof LBW_Merits !== 'undefined' && LBW_Merits.getLeaderboard) {
+            try {
+                const lb = LBW_Merits.getLeaderboard(9999);
+                for (const entry of lb) {
+                    if (entry.total >= 3000 && entry.pubkey) {
+                        moderators.add(entry.pubkey);
+                    }
+                }
+            } catch (e) {
+                console.warn('[Governance] No se pudo recoger Génesis del leaderboard:', e.message);
+            }
+        }
+        if (Array.isArray(opts.extraModerators)) {
+            for (const p of opts.extraModerators) {
+                if (/^[0-9a-f]{64}$/.test(p)) moderators.add(p);
+            }
+        }
+
+        const name = opts.name || UMBRELLA.NAME;
+        const description = opts.description || UMBRELLA.DESCRIPTION;
+        const image = opts.image || UMBRELLA.IMAGE;
+
+        const tags = [
+            ['d', UMBRELLA.D_TAG],
+            ['name', name],
+            ['description', description],
+            ['image', image],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-community'],
+            ['client', 'LiberBit World']
+        ];
+        for (const p of moderators) {
+            tags.push(['p', p, '', 'moderator']);
+        }
+
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.COMMUNITY, content: '', tags });
+        if (!result.event?.id) throw new Error('Sin ID de evento paraguas.');
+        const okRelays = (result.results || []).filter(r => r.success === true);
+        if (okRelays.length === 0) throw new Error('No se pudo publicar la paraguas en ningún relay.');
+
+        // Actualizar cache local
+        _umbrellaCache = {
+            eventId: result.event.id,
+            creator: myPubkey,
+            name, description, image,
+            moderators: Array.from(moderators),
+            created_at: Math.floor(Date.now() / 1000)
+        };
+        console.log(`[Governance] 🌐 Paraguas LBW publicada: ${moderators.size} moderadores · ${okRelays.length} relays OK`);
+
+        _onProposalCallbacks.forEach(cb => { try { cb(null, 'umbrella-updated'); } catch (e) {} });
+        return { ...result, relaysUsed: okRelays.length, moderators: Array.from(moderators) };
+    }
+
     // ── Admission Gate (NIP-72) ──────────────────────────────
     // Cualquiera puede crear propuestas, pero antes de "salir a la luz"
     // (visibilidad pública, votación temática, debate abierto) tienen
@@ -663,6 +800,14 @@ const LBW_Governance = (() => {
             ['a', proposalATag, '', 'root'],
             ['client', 'LiberBit World']
         ];
+        // Si tenemos la paraguas LBW cacheada, enlazamos esta community
+        // como hija mediante un segundo `a`-tag con marker 'parent'. NIP-72
+        // no formaliza sub-communities, pero el `a` tag genérico es
+        // suficiente para que clientes externos entiendan la jerarquía.
+        const umbrellaATag = getUmbrellaATag();
+        if (umbrellaATag) {
+            tags.push(['a', umbrellaATag, '', 'parent']);
+        }
         const content = '';
         const result = await LBW_Nostr.publishEvent({ kind: KIND.COMMUNITY, content, tags });
         if (!result.event?.id) throw new Error('Sin ID de evento community.');
@@ -735,6 +880,7 @@ const LBW_Governance = (() => {
         if (!_resultSub) _subscribeResultEvents();
         if (!_execSub) _subscribeExecutionEvents();
         if (!_communitySub) _subscribeCommunities();
+        if (!_umbrellaSub) _subscribeUmbrellaCommunity();
 
         if (_sub) return _sub;
 
@@ -1767,6 +1913,8 @@ const LBW_Governance = (() => {
     function reset() {
         unsubscribeAll();
         if (_communitySub) { LBW_Nostr.unsubscribe(_communitySub); _communitySub = null; }
+        if (_umbrellaSub) { LBW_Nostr.unsubscribe(_umbrellaSub); _umbrellaSub = null; }
+        _umbrellaCache = null;
         _proposals.clear();
         _votes.clear();
         _admissionVotes.clear();
@@ -1795,6 +1943,8 @@ const LBW_Governance = (() => {
         // Admission gate (NIP-72)
         requiresAdmission, getAdmissionStatus, isAdmitted, getMyAdmissionVote,
         publishAdmissionVote, getCommunity, getCommunityATag,
+        // NIP-72 umbrella community (lbw-community)
+        UMBRELLA, getUmbrellaCommunity, getUmbrellaATag, publishUmbrellaCommunity,
         isGenesis: _isGenesis
     };
 })();

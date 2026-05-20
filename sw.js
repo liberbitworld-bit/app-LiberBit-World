@@ -1,15 +1,15 @@
-// LiberBit World — Service Worker v1.9
+// LiberBit World — Service Worker v1.10
 // Estrategia: network-first para HTML (siempre versión fresca),
 // cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
 // Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
 // se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
-// CACHE_NAME bumpeado a lbw-v9: cierra observaciones de la auditoría del
-// admission gate — kind:34550 ahora explícitamente en PUBLIC_KINDS (la
-// promesa de federación NIP-72 ahora se sostiene), anti-fragmentación
-// del creator si el community ya está cacheado, y _publishCommunity
-// usa tags 'e' + 'a' estándar Nostr en lugar del tag 'proposal' custom.
+// CACHE_NAME bumpeado a lbw-v10: añade comunidad paraguas LBW
+// (kind:34550 con d=lbw-community) como punto de entrada en clientes
+// Nostr externos. Cada propuesta admitida se vincula a la paraguas vía
+// tag ['a', '34550:<creator>:lbw-community', '', 'parent'], de forma que
+// Coracle/Habla pueden navegar de las PRPs sueltas a la community madre.
 
-const CACHE_NAME = 'lbw-v9';
+const CACHE_NAME = 'lbw-v10';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
