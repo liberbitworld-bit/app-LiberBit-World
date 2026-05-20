@@ -250,10 +250,42 @@ relays: privados + públicos
 
 **Vínculo per-PRP → paraguas.** Cuando se admite una propuesta y se emite su `kind:34550` per-PRP, se incluye un tag `['a', '34550:<umbrella-creator>:lbw-community', '', 'parent']`. NIP-72 no formaliza sub-communities, pero el `a`-tag con marker `parent` es suficiente para que clientes externos entiendan que esa propuesta pertenece a LBW. Si la paraguas aún no se ha descubierto en relays cuando se emite la per-PRP, simplemente se omite el `a` tag — sin error.
 
+### Expiración de la ventana de admisión (desde `nip72-4`)
+
+Para evitar propuestas zombi (empate 1-1 sin tercer Génesis que desempate, o simple olvido), la ventana de admisión expira automáticamente a los **30 días** desde la creación de la propuesta si no se ha alcanzado mayoría Génesis.
+
+```
+ADMISSION.EXPIRES_SECS = 30 * 86400   // 30 días
+```
+
+Es **client-computed**: no se emite ningún evento nuevo. La función `getAdmissionStatus(dTag)` añade un branch al final que comprueba `now > proposal.created_at + EXPIRES_SECS`; si la propuesta sigue `pending` cuando esto se cumple, su status pasa a `expired`. Este estado es terminal:
+
+- `publishAdmissionVote()` lanza error claro (`La ventana de admisión expiró (30 días). La propuesta tiene que volver a crearse.`).
+- La UI muestra pill `⌛ Admisión expirada` y oculta los botones Admitir/Rechazar.
+- La propuesta sigue visible en la lista bajo el filtro "cerradas" (junto con rechazadas y ejecutadas).
+
+Si un Génesis quiere "revivir" una propuesta expirada, la única vía es crear una nueva propuesta (con nuevo `proposal_number` y `created_at`).
+
+UI auxiliar: mientras la propuesta esté `pending`, el bloque azul de admisión muestra un countdown discreto (`cierra en Xd Yh`). Diseño: presión amable, no agresiva.
+
+### Estado "community archivada" (desde `nip72-4`)
+
+Cuando una propuesta llega a un estado terminal (`executed`, `in_execution`, `closed`, `rejected`, `quorum_failed`), su community NIP-72 sigue técnicamente "viva" en relays — el `kind:34550` original no se re-emite (esto requeriría el mismo creator y añadiría fricción). En su lugar, **el archivado se computa por cliente**:
+
+```js
+LBW_Governance.isCommunityArchived(dTag)   // true si el ciclo cerró
+```
+
+Efectos visibles:
+
+- En el chat de debate (`debate.js` + `chat.js`), al abrir un canal cuya propuesta esté archivada, el meta del header pasa a `🗃️ Debate archivado · la propuesta ya cerró su ciclo`.
+- Lectura y escritura siguen abiertas. No se prohíbe postear porque el contexto de "ya cerró" es informativo, no normativo — alguien puede querer dejar un comentario post-mortem o referenciar la decisión.
+
+Si en el futuro se quiere un archivado "duro" (cerrar también la suscripción de mensajes, o marcar el evento `kind:34550` con un tag `status: archived`), habría que coordinar la re-emisión del community desde el creator original — fuera de alcance de esta versión.
+
 ### Pendientes
 
-- **Estado "community archivada"** post-ejecución: cuando una propuesta llega a `executed`, el `kind:34550` sigue activo. Falta marcador `status: archived` o equivalente.
-- **`admission_expires`**: timeout para cerrar propuestas pendientes sin admitir (alta prioridad cuando crezca el censo Génesis).
+(Cerrados todos los identificados en la auditoría 2026-05.)
 
 ---
 

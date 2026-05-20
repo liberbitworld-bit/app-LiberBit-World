@@ -628,6 +628,18 @@ function openDebateChannel(proposalDTag, proposalTitle) {
     // Actualizar sidebar para marcar activo
     loadDebatesSidebar();
 
+    // Banner de "debate archivado" si la propuesta llegó a estado terminal
+    // (executed, in_execution, closed, rejected, quorum_failed). Los mensajes
+    // siguen leyéndose y posteándose, pero el contexto es que el ciclo de
+    // la propuesta ya cerró.
+    try {
+        if (typeof window.LBW_Governance !== 'undefined' && window.LBW_Governance.isCommunityArchived
+            && window.LBW_Governance.isCommunityArchived(proposalDTag)) {
+            const meta = document.getElementById('debateChannelMeta');
+            if (meta) meta.innerHTML = `🗃️ Debate archivado · <span style="opacity:0.85;">la propuesta ya cerró su ciclo</span>`;
+        }
+    } catch (e) {}
+
     // Suscribirse al debate vía Nostr
     if (window.LBW_Debate) {
         window.LBW_Debate.subscribeDebate(proposalDTag, function(msg, type) {

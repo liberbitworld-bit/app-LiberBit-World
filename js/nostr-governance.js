@@ -195,8 +195,9 @@ const LBW_Governance = (() => {
     // Backward compat: propuestas legacy (sin tag admission_required)
     // se tratan como admitidas sin gate. Solo las nuevas llevan el tag.
     const ADMISSION = {
-        MIN_GENESIS_VOTES: 2,   // quórum mínimo: ≥2 Génesis
-        MAJORITY_FRACTION: 0.5  // >50% yes para admitir
+        MIN_GENESIS_VOTES: 2,           // quórum mínimo: ≥2 Génesis
+        MAJORITY_FRACTION: 0.5,         // >50% yes para admitir
+        EXPIRES_SECS:      30 * 86400   // 30 días sin admitir → 'expired'
     };
 
     function _isGenesis(pubkey) {
@@ -654,11 +655,50 @@ const LBW_Governance = (() => {
         if (quorumMet && majorityReached) status = 'admitted';
         else if (quorumMet && !majorityReached && no > yes) status = 'rejected';
 
+        // Expiración: si han pasado más de EXPIRES_SECS desde la creación
+        // y la propuesta sigue pending, se considera expirada (los Génesis
+        // no se decidieron a tiempo). Status terminal: ni admisible ni
+        // rechazable, hay que crear una propuesta nueva si se quiere
+        // reintentar. No afecta a propuestas ya admitted/rejected — esos
+        // estados son terminales también.
+        if (status === 'pending') {
+            const createdAt = p.createdAt || p.created_at || 0;
+            const nowSecs = Math.floor(Date.now() / 1000);
+            if (createdAt > 0 && nowSecs > createdAt + ADMISSION.EXPIRES_SECS) {
+                status = 'expired';
+            }
+        }
+
         return {
             status, yes, no, totalVotes,
             genesisVoters: seenGenesis.size,
             threshold: ADMISSION.MIN_GENESIS_VOTES,
             majorityReached, quorumMet
+        };
+    }
+
+    // Devuelve el tiempo restante para que la admisión expire, o null si
+    // la propuesta no requiere admisión / ya no está pending.
+    // { totalSecs, days, hours, minutes, expired }
+    function getAdmissionTimeLeft(dTag) {
+        const p = _proposals.get(dTag);
+        if (!p || !p.requireAdmission) return null;
+        const s = getAdmissionStatus(dTag);
+        if (s.status !== 'pending' && s.status !== 'expired') return null;
+        const createdAt = p.createdAt || p.created_at || 0;
+        if (!createdAt) return null;
+        const deadline = createdAt + ADMISSION.EXPIRES_SECS;
+        const nowSecs = Math.floor(Date.now() / 1000);
+        const remaining = deadline - nowSecs;
+        if (remaining <= 0) {
+            return { totalSecs: 0, days: 0, hours: 0, minutes: 0, expired: true };
+        }
+        return {
+            totalSecs: remaining,
+            days: Math.floor(remaining / 86400),
+            hours: Math.floor((remaining % 86400) / 3600),
+            minutes: Math.floor((remaining % 3600) / 60),
+            expired: false
         };
     }
 
@@ -691,6 +731,7 @@ const LBW_Governance = (() => {
         const status = getAdmissionStatus(proposalDTag).status;
         if (status === 'admitted') throw new Error('La propuesta ya ha sido admitida.');
         if (status === 'rejected') throw new Error('La propuesta ya ha sido rechazada.');
+        if (status === 'expired')  throw new Error('La ventana de admisión expiró (30 días). La propuesta tiene que volver a crearse.');
 
         const tags = [
             ['e', proposalEventId],
@@ -827,6 +868,17 @@ const LBW_Governance = (() => {
 
     function getCommunity(dTag) {
         return _communities.get(dTag) || null;
+    }
+
+    // Devuelve true si la propuesta asociada está en un estado terminal
+    // que justifica considerar su community como "archivada" — los
+    // mensajes de debate siguen leyéndose, pero el contexto es que la
+    // propuesta ya cerró su ciclo. No se re-emite el kind:34550 (eso
+    // requeriría el mismo creator); el archivo es computado por cliente.
+    function isCommunityArchived(dTag) {
+        const p = _proposals.get(dTag);
+        if (!p) return false;
+        return ['executed', 'in_execution', 'closed', 'rejected', 'quorum_failed'].includes(p.status);
     }
 
     // Suscripción a kind:34550 — escucha qué communities existen para
@@ -1941,7 +1993,8 @@ const LBW_Governance = (() => {
         reset, reloadMyVotes, fetchMyVotes,
         recalculateResult, formatProposalNumber,
         // Admission gate (NIP-72)
-        requiresAdmission, getAdmissionStatus, isAdmitted, getMyAdmissionVote,
+        requiresAdmission, getAdmissionStatus, getAdmissionTimeLeft,
+        isAdmitted, isCommunityArchived, getMyAdmissionVote,
         publishAdmissionVote, getCommunity, getCommunityATag,
         // NIP-72 umbrella community (lbw-community)
         UMBRELLA, getUmbrellaCommunity, getUmbrellaATag, publishUmbrellaCommunity,

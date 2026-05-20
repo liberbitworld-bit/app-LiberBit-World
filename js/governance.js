@@ -13,6 +13,7 @@ const STATUS_CONFIG = {
     active:            { label: '✅ Activa',                 class: 'active',          badge: '🟢' },
     pending_admission: { label: '📋 Pendiente admisión',     class: 'pending-admission', badge: '📋' },
     admission_rejected:{ label: '🚫 Admisión rechazada',     class: 'rejected',        badge: '🚫' },
+    admission_expired: { label: '⌛ Admisión expirada',       class: 'expired',         badge: '⌛' },
     expired:           { label: '⏰ Calculando...',           class: 'expired',         badge: '⏳' },
     approved:          { label: '✅ Aprobada',                class: 'approved',        badge: '✅' },
     rejected:          { label: '❌ Rechazada',               class: 'rejected',        badge: '❌' },
@@ -33,7 +34,9 @@ function _applyAdmissionStatus(p) {
     if (!orig.requireAdmission) return p;
     if (!LBW_Governance.isAdmitted(orig.dTag)) {
         const adm = LBW_Governance.getAdmissionStatus(orig.dTag);
-        p.status = adm.status === 'rejected' ? 'admission_rejected' : 'pending_admission';
+        if (adm.status === 'rejected') p.status = 'admission_rejected';
+        else if (adm.status === 'expired') p.status = 'admission_expired';
+        else p.status = 'pending_admission';
     }
     return p;
 }
@@ -356,8 +359,20 @@ function _renderAdmissionBlock(nostrP) {
         statusHtml = `<div style="color:#ff4d4f;font-weight:600;">🚫 Admisión rechazada por mayoría Génesis</div>`;
     } else if (adm.status === 'admitted') {
         statusHtml = `<div style="color:#52c41a;font-weight:600;">✅ Admitida — abriendo debate público</div>`;
+    } else if (adm.status === 'expired') {
+        statusHtml = `<div style="color:#FFA726;font-weight:600;">⌛ Admisión expirada (30 días sin mayoría Génesis)</div>`;
     } else {
-        statusHtml = `<div style="color:#90CAF9;font-weight:600;">📋 Pendiente de admisión Génesis</div>`;
+        // pending: añadir countdown si tenemos tiempo restante
+        let countdown = '';
+        try {
+            const tl = LBW_Governance.getAdmissionTimeLeft(nostrP.dTag);
+            if (tl && !tl.expired) {
+                if (tl.days > 0) countdown = ` · cierra en <strong>${tl.days}d ${tl.hours}h</strong>`;
+                else if (tl.hours > 0) countdown = ` · cierra en <strong>${tl.hours}h ${tl.minutes}m</strong>`;
+                else countdown = ` · cierra en <strong>${tl.minutes}m</strong>`;
+            }
+        } catch (e) {}
+        statusHtml = `<div style="color:#90CAF9;font-weight:600;">📋 Pendiente de admisión Génesis${countdown}</div>`;
     }
 
     const counter = `
@@ -389,6 +404,8 @@ function _renderAdmissionBlock(nostrP) {
         actions = `<div style="margin-top:0.4rem;color:var(--color-accent-green);font-size:0.78rem;">✓ Tu voto admisión: <strong>${myVote.option}</strong></div>`;
     } else if (adm.status === 'pending' && !iAmGenesis) {
         actions = `<div style="margin-top:0.4rem;color:var(--color-text-secondary);font-size:0.72rem;opacity:0.75;font-style:italic;">Solo Génesis pueden votar admisión</div>`;
+    } else if (adm.status === 'expired') {
+        actions = `<div style="margin-top:0.4rem;color:#FFA726;font-size:0.78rem;">⌛ La ventana de admisión cerró. Tendrá que volver a proponerse.</div>`;
     }
 
     return `
