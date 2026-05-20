@@ -1,16 +1,15 @@
-// LiberBit World — Service Worker v1.8
+// LiberBit World — Service Worker v1.9
 // Estrategia: network-first para HTML (siempre versión fresca),
 // cache-first para el resto de assets (CSS, JS, imágenes, fuentes).
 // Los JS llevan ?v=... en index.html, así que cualquier cambio de versión
 // se traduce en una URL nueva que el SW no tiene cacheada y va a la red.
-// CACHE_NAME bumpeado a lbw-v8: añade gate de admisión Génesis para
-// propuestas (NIP-72 community emitida al admitirse). El contrato de
-// LBW_Governance crece (publishAdmissionVote, getAdmissionStatus,
-// isAdmitted, getCommunityATag) y debate.js se gate por isAdmitted.
-// El handler 'activate' borra todas las caches anteriores para que
-// ningún cliente se quede con la versión vieja.
+// CACHE_NAME bumpeado a lbw-v9: cierra observaciones de la auditoría del
+// admission gate — kind:34550 ahora explícitamente en PUBLIC_KINDS (la
+// promesa de federación NIP-72 ahora se sostiene), anti-fragmentación
+// del creator si el community ya está cacheado, y _publishCommunity
+// usa tags 'e' + 'a' estándar Nostr en lugar del tag 'proposal' custom.
 
-const CACHE_NAME = 'lbw-v8';
+const CACHE_NAME = 'lbw-v9';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

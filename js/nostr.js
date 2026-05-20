@@ -108,7 +108,8 @@ const LBW_Nostr = (() => {
         LBW_EXECUTION:  31011,   // Author execution report
         LBW_EXEC_VERIFY: 31012,  // Génesis execution verification
         APP_STATE:      30078,
-        REVIEW:         1985     // NIP-85: Reviews
+        REVIEW:         1985,    // NIP-85: Reviews
+        COMMUNITY:      34550    // NIP-72: Moderated communities (debate per PRP)
     };
 
     // ── NIP-65 Relay Routing (dynamic) ───────────────────────
@@ -151,7 +152,13 @@ const LBW_Nostr = (() => {
         EVENT_KINDS.MARKETPLACE,        // 30402 — Marketplace (visibilidad)
         EVENT_KINDS.STALL,              // 30017 — NIP-15 Tiendas
         EVENT_KINDS.PRODUCT,            // 30018 — NIP-15 Productos
-        EVENT_KINDS.REVIEW             // 1985  — NIP-85 Reviews (públicas)
+        EVENT_KINDS.REVIEW,             // 1985  — NIP-85 Reviews (públicas)
+        // NIP-72 communities: público explícito. Una propuesta admitida
+        // se "expone" como community en relays públicos para que clientes
+        // externos (Coracle, Habla, satellite) puedan descubrir el debate.
+        // Si el autor activa Privacy Strict, el kind:34550 se queda en
+        // privados — decisión consciente del usuario, no del sistema.
+        EVENT_KINDS.COMMUNITY          // 34550 — NIP-72 community per PRP
     ]);
 
     function _getRelaysForKind(kind) {

@@ -604,6 +604,14 @@ const LBW_Governance = (() => {
         const s = getAdmissionStatus(dTag);
         if (s.status !== 'admitted') return;
         if (_communityEmitted.has(dTag)) return;
+
+        // Anti-fragmentación del creator: si ya tenemos un kind:34550
+        // cacheado (otro cliente Génesis lo emitió antes), NO re-emitir
+        // ni siquiera siendo autor de la propuesta. Si lo hiciéramos, dos
+        // eventos coexistirían en relays con d-tag igual pero creator
+        // distinto, y los mensajes de debate apuntarían a uno u otro
+        // dependiendo de qué evento haya cacheado cada cliente — eso
+        // fragmenta la lectura externa.
         if (_communities.has(dTag)) {
             _communityEmitted.add(dTag);
             return;
@@ -629,11 +637,20 @@ const LBW_Governance = (() => {
     // d-tag de la community: lbw-prp-NNN  (NNN = proposal_number).
     // Moderadores: el autor de la propuesta. Los Génesis pueden moderar
     // a futuro vía actualización del community event.
+    //
+    // Tags estándar Nostr para que clientes externos (Coracle, Habla,
+    // satellite) puedan navegar del community al evento de propuesta:
+    //   ['e', <proposalEventId>, '', 'root']       — puntero al evento exacto
+    //   ['a', '31000:<pubkey>:<dTag>', '', 'root'] — puntero NIP-33 al
+    //                                                 replaceable (sigue al
+    //                                                 evento si el autor lo
+    //                                                 republica con misma d).
     async function _publishCommunity(proposal) {
         if (!proposal) throw new Error('Propuesta vacía');
         const number = proposal.proposalNumber || 0;
         if (!number) throw new Error('Propuesta sin proposal_number');
         const communityDTag = 'lbw-prp-' + String(number).padStart(3, '0');
+        const proposalATag = `${KIND.PROPOSAL}:${proposal.pubkey}:${proposal.dTag}`;
         const tags = [
             ['d', communityDTag],
             ['name', formatProposalNumber(number) + ' — ' + (proposal.title || '').substring(0, 120)],
@@ -641,8 +658,9 @@ const LBW_Governance = (() => {
             ['p', proposal.pubkey, '', 'moderator'],
             ['t', 'lbw-debate'],
             ['t', 'lbw-governance'],
-            ['t', 'lbw-prp-' + String(number).padStart(3, '0')],
-            ['proposal', proposal.id || '', '', 'root'],
+            ['t', communityDTag],
+            ['e', proposal.id || '', '', 'root'],
+            ['a', proposalATag, '', 'root'],
             ['client', 'LiberBit World']
         ];
         const content = '';

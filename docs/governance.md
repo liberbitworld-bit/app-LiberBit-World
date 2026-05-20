@@ -166,3 +166,139 @@ Todos los eventos de gobernanza se publican **exclusivamente** en relays privado
 - Manipulación de propuestas por actores maliciosos
 
 Los votos son pseudónimos (vinculados a npub, no a identidad real) pero verificables criptográficamente.
+
+**Excepción:** desde `nip72-1` el evento `kind:34550` (community NIP-72 que se emite al admitirse una propuesta) sí se publica también en relays públicos. Es la única excepción de toda la gobernanza, y es deliberada: el sentido del community es que clientes Nostr externos descubran nuestras propuestas como hilo de debate federable. Las propuestas (`kind:31000`), votos (`kind:31001`), resultados (`kind:31010`) y ejecuciones (`kind:31011/31012`) siguen exclusivamente en privados. Privacy Strict mode mantiene también el `kind:34550` en privados.
+
+---
+
+## Admission Gate Génesis + NIP-72 communities (desde `nip72-1`)
+
+Introducido para que cualquier ciudadano pueda **proponer** sin convertir el chat público en ruido descontrolado y manteniendo control de qué llega al canal abierto.
+
+### Modelo de dos fases
+
+```
+┌──────────────────┐         ┌──────────────────┐         ┌────────────────────┐
+│  CREACIÓN libre  │  ───>   │  PENDING gate    │  ───>   │  ACTIVA + debate   │
+│  (cualquiera)    │ admission│  Génesis votan  │ ≥2 + >50%│  pública (NIP-72)  │
+└──────────────────┘         └──────────────────┘  sí     └────────────────────┘
+                                                              │
+                                                              ↓
+                                                     ┌────────────────────┐
+                                                     │  Resultado, exec…  │
+                                                     │  (flujo existente) │
+                                                     └────────────────────┘
+```
+
+**Fase 1 — Admisión Génesis (cerrada):**
+
+1. Cualquiera publica un `kind:31000` con `status: pending_admission` y tag `['admission_required', 'true']`.
+2. Solo Génesis (≥3000 méritos LBWM, bloque Gobernanza) pueden votar admisión vía `kind:31001` con tag `['vote_type', 'admission']` y content `yes`/`no`.
+3. Umbrales: **≥2 Génesis** votantes (quórum) y **>50% sí** (mayoría simple).
+4. Voto temático y debate público están **bloqueados** mientras esté pendiente.
+
+**Fase 2 — Debate público + voto temático:**
+
+1. Cuando se cruza el umbral, la propuesta cambia a `status: active`.
+2. Se emite automáticamente un `kind:34550` (NIP-72 community) con `d=lbw-prp-NNN` apuntando al evento de propuesta vía tags estándar `['e', proposal.id, '', 'root']` y `['a', '31000:<pubkey>:<dTag>', '', 'root']`.
+3. Mensajes de debate (`kind:1`) incluyen `['a', '34550:<creator>:<community-d>', '', 'root']` para que clientes NIP-72 externos los enlacen al hilo.
+4. A partir de aquí, flujo de votación temática y resultado idéntico al pre-`nip72-1`.
+
+### Estados nuevos
+
+| Estado | Significado |
+|--------|-------------|
+| `pending_admission` | Propuesta esperando votos Génesis para ser admitida |
+| `admission_rejected` | Mayoría Génesis votó no — propuesta no entra al canal público |
+| `active` | Admitida (o legacy sin gate) — votación temática y debate abiertos |
+
+### Backward compatibility
+
+Las propuestas creadas antes de `nip72-1` no tienen el tag `admission_required` y se tratan como ya admitidas. Cero migración, cero rotura.
+
+### Trade-offs documentados
+
+**(1) Reutilización de `kind:31001` para votos de admisión.** Distinguimos vía tag `['vote_type', 'admission']` en lugar de un kind nuevo. Pro: no inflar el espacio de kinds. Contra: un cliente externo que filtre `kind:31001` por proposalEventId sin leer `vote_type` mezclará el conteo (verá votos extra que en realidad son de admisión). Quien quiera contar votos LBW desde fuera tiene que respetar el tag.
+
+**(2) `kind:1` como mensaje de debate, no `kind:1111`.** NIP-72 original aceptaba `kind:1` con `a`-tag, y propaga mejor a todos los clientes. NIP-72 más moderno usa `kind:1111` (top-level community post) para distinguir hilos top-level de replies. Hemos elegido `kind:1` por compatibilidad amplia; perdemos la distinción top-level/reply en algunos clientes nuevos.
+
+**(3) Sin moderación NIP-72 real.** Usamos `kind:34550` como **primitiva de descubrimiento y agrupación**, no como mecanismo de moderación de contenido. **No emitimos `kind:4550` (approvals)** ni filtramos posts del debate. Política LBW: una vez admitida una propuesta, libre expresión en su debate.
+
+**(4) Quorum=2 Génesis con headcount actual pequeño.** El umbral mínimo es ajustado dado el censo Génesis actual; ambos Génesis deben votar igual para admitir. Funciona como bootstrap, pero asume crecimiento del censo. Si no crece, el gate se vuelve sello del fundador.
+
+**(5) Sin timeout de admisión.** Una propuesta puede quedarse `pending_admission` indefinidamente si los Génesis no votan o si hay empate. No hay caducidad automática (todavía). TODO: `admission_expires` configurable (¿7d? ¿30d?).
+
+### Pendientes
+
+- **Estado "community archivada"** post-ejecución: cuando una propuesta llega a `executed`, el `kind:34550` sigue activo. Falta marcador `status: archived` o equivalente.
+- **Community paraguas `lbw-community`**: un único `kind:34550` con `d=lbw-community` que agrupe el ecosistema, para que clientes externos descubran LBW como community en sí. Pendiente de decidir naming + metadata.
+- **`admission_expires`**: timeout para cerrar propuestas pendientes sin admitir.
+
+---
+
+## Eventos Nostr (referencia rápida tras `nip72-1`)
+
+### Kind 31000 — Propuesta (replaceable)
+
+```
+kind: 31000
+tags:
+  ['d', 'proposal-{author8}-{timestamp}']
+  ['title', 'Título']
+  ['category', 'referendum']
+  ['status', 'pending_admission' | 'active' | 'expired' | ...]
+  ['expires', '...']
+  ['created', '...']
+  ['proposal_number', '5']
+  ['admission_required', 'true']      ← nuevo en nip72-1
+  ['t', 'lbw-governance'],
+  ['t', 'lbw-proposal'],
+  ['t', 'lbw-{category}'],
+content: JSON {description, options, ...}
+relays: SOLO privados
+```
+
+### Kind 31001 — Voto (admisión Génesis o voto temático)
+
+Admisión:
+```
+kind: 31001
+tags:
+  ['e', '{proposal_id}']
+  ['d', '{proposal_d_tag}']
+  ['vote_type', 'admission']          ← clave
+  ['t', 'lbw-governance']
+  ['t', 'lbw-admission']
+content: 'yes' | 'no'
+relays: SOLO privados
+```
+
+Voto temático (sin cambios):
+```
+kind: 31001
+tags:
+  ['e', '{proposal_id}']
+  ['d', '{proposal_d_tag}']
+  ['t', 'lbw-governance']
+  ['t', 'lbw-vote']
+content: 'A favor' | ...
+relays: SOLO privados
+```
+
+### Kind 34550 — Community NIP-72 (nuevo en `nip72-1`)
+
+```
+kind: 34550
+tags:
+  ['d', 'lbw-prp-NNN']
+  ['name', 'PRP-NNN — <título>']
+  ['description', '...']
+  ['p', '<author_pubkey>', '', 'moderator']
+  ['e', '<proposal_event_id>', '', 'root']
+  ['a', '31000:<author_pubkey>:<proposal_d>', '', 'root']
+  ['t', 'lbw-governance']
+  ['t', 'lbw-debate']
+  ['t', 'lbw-prp-NNN']
+content: ''
+relays: privados + públicos (salvo Privacy Strict)
+```
