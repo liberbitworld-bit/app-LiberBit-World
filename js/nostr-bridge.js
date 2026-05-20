@@ -225,27 +225,32 @@ const LBW_NostrBridge = (() => {
         }
     }
 
-    // ── NIP-46 Bunker login ─────────────────────────────────
-    // Abre el modal del módulo LBW_NIP46, espera el bunker URI y conecta.
-    // Session-only: nada se persiste; la sesión guardada es solo el método
-    // para que la UI sepa qué badge mostrar mientras la pestaña vive, pero
-    // restoreSession() para bunker no reusa el clientSk — el usuario debe
-    // reconectar al recargar.
+    // ── NIP-46 login (bunker:// o nostrconnect:// con QR) ───
+    // El modal de LBW_NIP46 expone dos pestañas: pegar URL del signer
+    // o generar QR para que el signer escanee. connectInteractive() se
+    // encarga del flujo completo y, si conecta, deja LBW_NIP46 en estado
+    // conectado. Aquí solo sincronizamos con LBW_Nostr y la UI.
+    //
+    // Session-only en ambos modos: nada se persiste; la sesión guardada
+    // es solo el método para que la UI sepa qué badge mostrar mientras
+    // la pestaña vive, pero restoreSession() limpia y exige reconectar
+    // al recargar.
     async function handleBunkerLogin() {
         if (!window.LBW_NIP46) {
             alert('❌ Módulo NIP-46 no cargado. Recarga la página.');
             return;
         }
-        const uri = await LBW_NIP46.showModal();
-        if (!uri) return; // cancelado
+        let connectResult;
         try {
-            LBW_NIP46.setModalStatus('⏳ Conectando al bunker… aprueba la solicitud en tu signer si te la pide.');
-            const result = await LBW_Nostr.loginWithBunker(uri, {
-                onauth: (url) => {
-                    LBW_NIP46.setModalStatus('🔓 Tu bunker pide autorización. Si no se abrió la ventana, abre manualmente: ' + url);
-                }
-            });
-            LBW_NIP46.hideModal();
+            connectResult = await LBW_NIP46.connectInteractive({});
+        } catch (e) {
+            console.error('[Bridge] NIP-46 modal error:', e);
+            return;
+        }
+        if (!connectResult) return; // usuario canceló
+
+        try {
+            const result = await LBW_Nostr.loginWithConnectedSigner();
             const session = {
                 pubkey: result.pubkeyHex, npub: result.npub,
                 name: result.profile?.name || result.profile?.display_name || 'Nostr User',
@@ -267,11 +272,11 @@ const LBW_NostrBridge = (() => {
             _applyLoginToUI(session);
             _updateLoginModeUI('bunker');
             await _startAllFeeds();
-            console.log('[Bridge] ✅ Login NIP-46:', result.npub);
+            console.log('[Bridge] ✅ Login NIP-46 (' + connectResult.mode + '):', result.npub);
             return result;
         } catch (e) {
-            console.error('[Bridge] NIP-46 error:', e);
-            LBW_NIP46.setModalError('❌ ' + (e.message || 'No se pudo conectar al bunker'));
+            console.error('[Bridge] NIP-46 post-connect error:', e);
+            alert('❌ NIP-46: ' + (e.message || 'Error tras conectar'));
             try { LBW_Nostr.logout(); } catch (_) {}
             throw e;
         }

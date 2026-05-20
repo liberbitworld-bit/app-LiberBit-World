@@ -1047,7 +1047,21 @@ const LBW_Nostr = (() => {
     // Session-only: nada se persiste; al recargar, el usuario reconecta.
     async function loginWithBunker(bunkerUri, opts) {
         if (!window.LBW_NIP46) throw new Error('Módulo NIP-46 no cargado');
-        const { userPubkeyHex, bunkerPubkey, relays } = await window.LBW_NIP46.connect(bunkerUri, opts || {});
+        await window.LBW_NIP46.connect(bunkerUri, opts || {});
+        return await loginWithConnectedSigner();
+    }
+
+    // Variante para cuando LBW_NIP46 ya está conectado (p.ej. tras flujo
+    // QR nostrconnect:// o connectInteractive). Sincroniza el estado de
+    // nostr.js (pubkey, perfil, relays) leyendo de LBW_NIP46.getUserPubkey().
+    async function loginWithConnectedSigner() {
+        if (!window.LBW_NIP46 || !window.LBW_NIP46.isConnected()) {
+            throw new Error('NIP-46: no hay signer remoto conectado');
+        }
+        const userPubkeyHex = window.LBW_NIP46.getUserPubkey();
+        if (!userPubkeyHex || !/^[0-9a-f]{64}$/.test(userPubkeyHex)) {
+            throw new Error('NIP-46: pubkey del usuario inválida');
+        }
         _pubkey = userPubkeyHex;
         _npub = pubkeyToNpub(userPubkeyHex);
         _useRemoteSigner = true;
@@ -1072,8 +1086,9 @@ const LBW_Nostr = (() => {
             npub: _npub,
             profile: _profile,
             method: 'bunker',
-            bunkerPubkey,
-            bunkerRelays: relays
+            bunkerPubkey: window.LBW_NIP46.getBunkerPubkey(),
+            bunkerRelays: window.LBW_NIP46.getBunkerRelays(),
+            mode: window.LBW_NIP46.getMode ? window.LBW_NIP46.getMode() : 'bunker'
         };
     }
 
@@ -1655,7 +1670,7 @@ const LBW_Nostr = (() => {
         connectToRelays, disconnectAll, getConnectedRelays, getRelayStatus, onRelayStatusChange, waitForPrivateRelay,
 
         // Auth
-        loginWithExtension, loginWithPrivateKey, loginWithBunker, createIdentity, logout,
+        loginWithExtension, loginWithPrivateKey, loginWithBunker, loginWithConnectedSigner, createIdentity, logout,
         hasNostrExtension, waitForExtension,
 
         // Profile
