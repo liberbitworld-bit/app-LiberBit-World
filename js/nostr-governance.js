@@ -73,7 +73,10 @@ const LBW_Governance = (() => {
         // claves, fundadores adicionales) requieren un commit nuevo
         // y deploy — intencionado, esta lista es la raíz de confianza
         // de la paraguas y no debe ser editable desde la UI.
-        AUTHORIZED_CREATORS: []
+        AUTHORIZED_CREATORS: [
+            // Fundador (npub172vh56w30sgev82c09lfujswr4u2djcd5w9vcj79qrmyk9jd459swvrkf5)
+            'f2997a69d17c11961d58797e9e4a0e1d78a6cb0da38acc4bc500f64b164dad0b'
+        ]
     };
 
     let _umbrellaCache = null;   // { eventId, creator, name, description, image, moderators[], created_at }
