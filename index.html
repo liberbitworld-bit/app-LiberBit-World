@@ -207,6 +207,12 @@
                             <div class="alert py-1 px-3 text-xs mb-2" style="background:rgba(44,95,111,0.08);">💡 Instala <a href="https://getalby.com" target="_blank" class="link link-warning">Alby</a> o <a href="https://github.com/nicolgit/nos2x" target="_blank" class="link link-warning">nos2x</a> para login con extensión</div>
                         </div>
 
+                        <!-- NIP-46 Remote Signer (Bunker) -->
+                        <button type="button" class="btn btn-large" id="nip46LoginBtn" onclick="LBW_NostrBridge.handleBunkerLogin().then(() => { if(typeof continueAfterLogin === 'function') continueAfterLogin(); }).catch(()=>{})" style="width: 100%; background: linear-gradient(135deg, #0288D1 0%, #01579B 100%); border: 2px solid #40C4FF; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <span style="font-size: 1.2rem;">🛰️</span> Firmador remoto (NIP-46)
+                        </button>
+                        <div class="alert py-1 px-3 text-xs mb-2" style="background:rgba(64,196,255,0.08);">💡 Compatible con <a href="https://nsec.app" target="_blank" rel="noopener" class="link" style="color:#40C4FF;">nsec.app</a>, <a href="https://github.com/greenart7c3/Amber" target="_blank" rel="noopener" class="link" style="color:#40C4FF;">Amber</a> — tu clave nunca toca este navegador.</div>
+
                         <p class="auth-switch">
                             ¿Ya tienes una cuenta? <a href="#" onclick="showLoginForm(); return false;">Accede aquí</a>
                         </p>
@@ -218,8 +224,13 @@
                         <p class="auth-desc">Conecta con tu identidad Nostr existente</p>
                         
                         <!-- NIP-07 Extension Login (shown first if available) -->
-                        <button type="button" class="btn btn-large hidden" id="nip07LoginBtn2" onclick="LBW_NostrBridge.handleNIP07Login().then(() => { if(typeof continueAfterLogin === 'function') continueAfterLogin(); }).catch(()=>{})" style="width: 100%; background: linear-gradient(135deg, #8E24AA 0%, #6A1B9A 100%); border: 2px solid #CE93D8; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-large hidden" id="nip07LoginBtn2" onclick="LBW_NostrBridge.handleNIP07Login().then(() => { if(typeof continueAfterLogin === 'function') continueAfterLogin(); }).catch(()=>{})" style="width: 100%; background: linear-gradient(135deg, #8E24AA 0%, #6A1B9A 100%); border: 2px solid #CE93D8; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                             <span style="font-size: 1.2rem;">🔌</span> Conectar Extensión Nostr
+                        </button>
+
+                        <!-- NIP-46 Remote Signer (Bunker) -->
+                        <button type="button" class="btn btn-large" id="nip46LoginBtn2" onclick="LBW_NostrBridge.handleBunkerLogin().then(() => { if(typeof continueAfterLogin === 'function') continueAfterLogin(); }).catch(()=>{})" style="width: 100%; background: linear-gradient(135deg, #0288D1 0%, #01579B 100%); border: 2px solid #40C4FF; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <span style="font-size: 1.2rem;">🛰️</span> Firmador remoto (NIP-46)
                         </button>
 
                         <div class="divider text-xs opacity-60">o con clave privada</div>
@@ -2995,7 +3006,8 @@
     <script src="js/nostr-store.js?v=phase1"></script>
     <script src="js/nostr-media.js?v=phase1"></script>
     <script src="js/chat-attachments.js?v=hardening-1"></script>
-    <script src="js/nostr.js?v=nip42-2"></script>
+    <script src="js/nostr.js?v=nip46-1"></script>
+    <script src="js/nostr-nip46.js?v=nip46-1"></script>
     <script src="js/nostr-dm.js?v=phase1"></script>
     <script src="js/nostr-sync.js?v=phase1"></script>
     <script src="js/nostr-governance.js?v=m15-1"></script>
@@ -3011,7 +3023,7 @@
     <script src="js/nostr-reviews.js?v=hardening-1"></script>
     <script src="js/nostr-marketplace-pay.js?v=m9-1"></script>
     <script src="js/nostr-stalls.js?v=hardening-1"></script>
-    <script src="js/nostr-bridge.js?v=nip42-2"></script>
+    <script src="js/nostr-bridge.js?v=nip46-1"></script>
     <script src="js/debate.js?v=quickwins-1"></script>
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->

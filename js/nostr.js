@@ -482,11 +482,12 @@ const LBW_Nostr = (() => {
 
     // ── State ────────────────────────────────────────────────
     let _pool = null;              // nostr-tools SimplePool
-    let _privkey = null;           // hex private key (null if NIP-07)
+    let _privkey = null;           // hex private key (null if NIP-07/NIP-46)
     let _pubkey = null;            // hex public key
     let _npub = null;              // bech32 npub
     let _nsec = null;              // bech32 nsec
     let _useExtension = false;     // NIP-07 mode
+    let _useRemoteSigner = false;  // NIP-46 mode (bunker remoto)
     let _profile = {};             // kind 0 metadata
     let _seenEvents = new Set();   // dedup
     let _activeSubs = [];          // track for cleanup
@@ -995,6 +996,11 @@ const LBW_Nostr = (() => {
 
     async function _signEvent(eventTemplate) {
         const nt = _getNostrTools();
+        // NIP-46: cada firma va al bunker remoto. Sin pubkey local, no
+        // podemos fallback a nada — si el bunker está caído, error explícito.
+        if (_useRemoteSigner && window.LBW_NIP46 && window.LBW_NIP46.isConnected()) {
+            return await window.LBW_NIP46.signEvent(eventTemplate);
+        }
         if (_useExtension && window.nostr) {
             return await window.nostr.signEvent(eventTemplate);
         } else if (_privkey) {
@@ -1013,6 +1019,7 @@ const LBW_Nostr = (() => {
         _pubkey = pubkey;
         _npub = pubkeyToNpub(pubkey);
         _useExtension = true;
+        _useRemoteSigner = false;
         _privkey = null;
         _nsec = null;
 
@@ -1034,6 +1041,42 @@ const LBW_Nostr = (() => {
         return { pubkeyHex: pubkey, npub: _npub, profile: _profile, method: 'extension' };
     }
 
+    // ── NIP-46 (Remote signer / bunker) ──────────────────────
+    // Conecta con un bunker remoto pegando su bunker://<pubkey>?relay=...&secret=...
+    // La nsec del usuario nunca llega al navegador: cada firma viaja al bunker.
+    // Session-only: nada se persiste; al recargar, el usuario reconecta.
+    async function loginWithBunker(bunkerUri, opts) {
+        if (!window.LBW_NIP46) throw new Error('Módulo NIP-46 no cargado');
+        const { userPubkeyHex, bunkerPubkey, relays } = await window.LBW_NIP46.connect(bunkerUri, opts || {});
+        _pubkey = userPubkeyHex;
+        _npub = pubkeyToNpub(userPubkeyHex);
+        _useRemoteSigner = true;
+        _useExtension = false;
+        _privkey = null;
+        _nsec = null;
+
+        // 1. Load cached relay list (instant)
+        await loadCachedRelayList(userPubkeyHex);
+        // 2. Connect to relays (using cached or system defaults)
+        connectToRelays();
+        _startRelayHealthCheck();
+        // 3. Fetch profile
+        await _fetchProfile(userPubkeyHex);
+        // 4. Fetch network relay list (may trigger reconnect)
+        fetchRelayList(userPubkeyHex).then(rl => {
+            if (rl && rl.length > 0) connectToRelays();
+        }).catch(() => {});
+
+        return {
+            pubkeyHex: userPubkeyHex,
+            npub: _npub,
+            profile: _profile,
+            method: 'bunker',
+            bunkerPubkey,
+            bunkerRelays: relays
+        };
+    }
+
     function loginWithPrivateKey(input) {
         const keys = importPrivateKey(input);
         _privkey = keys.privkeyHex;
@@ -1041,6 +1084,7 @@ const LBW_Nostr = (() => {
         _npub = keys.npub;
         _nsec = keys.nsec;
         _useExtension = false;
+        _useRemoteSigner = false;
 
         // Load cached relay list synchronously-ish
         loadCachedRelayList(keys.pubkeyHex).then(() => {
@@ -1066,6 +1110,7 @@ const LBW_Nostr = (() => {
         _npub = keys.npub;
         _nsec = keys.nsec;
         _useExtension = false;
+        _useRemoteSigner = false;
 
         connectToRelays();
         _startRelayHealthCheck();
@@ -1108,9 +1153,13 @@ const LBW_Nostr = (() => {
     }
 
     function logout() {
+        // NIP-46: cerrar conexión con el bunker antes de tirar relays.
+        if (_useRemoteSigner && window.LBW_NIP46) {
+            try { window.LBW_NIP46.disconnect(); } catch (_) {}
+        }
         disconnectAll();
         _privkey = null; _pubkey = null; _npub = null; _nsec = null;
-        _useExtension = false; _profile = {};
+        _useExtension = false; _useRemoteSigner = false; _profile = {};
         _seenEvents.clear(); _eventCallbacks = {};
         // NIP-65 state
         _userReadRelays = []; _userWriteRelays = [];
@@ -1191,6 +1240,10 @@ const LBW_Nostr = (() => {
     // Tags: includes ["v","2"] when using NIP-44 for forward compat
 
     function _supportsNIP44() {
+        // NIP-46: depende de lo que el bunker anuncie
+        if (_useRemoteSigner && window.LBW_NIP46 && window.LBW_NIP46.isConnected()) {
+            return window.LBW_NIP46.hasNip44();
+        }
         // Check if extension supports NIP-44
         if (_useExtension && window.nostr?.nip44) return true;
         // Check if nostr-tools has nip44 module
@@ -1272,6 +1325,20 @@ const LBW_Nostr = (() => {
     async function _encryptDM(recipientPubkey, plaintext) {
         const nt = _getNostrTools();
 
+        // NIP-46: delegar al bunker (preferir NIP-44 si lo soporta)
+        if (_useRemoteSigner && window.LBW_NIP46 && window.LBW_NIP46.isConnected()) {
+            if (window.LBW_NIP46.hasNip44()) {
+                try {
+                    const ct = await window.LBW_NIP46.nip44Encrypt(recipientPubkey, plaintext);
+                    return { ciphertext: ct, _nip44: true };
+                } catch (e) {
+                    console.warn('[Nostr] NIP-44 remoto falló, fallback a NIP-04:', e.message);
+                }
+            }
+            const ct = await window.LBW_NIP46.nip04Encrypt(recipientPubkey, plaintext);
+            return { ciphertext: ct, _nip44: false };
+        }
+
         // Try NIP-44 first
         if (_useExtension && window.nostr?.nip44) {
             try {
@@ -1315,6 +1382,31 @@ const LBW_Nostr = (() => {
         const rTag = event.tags.find(t => t[0] === 'p');
         const other = event.pubkey === _pubkey ? (rTag ? rTag[1] : null) : event.pubkey;
         if (!other) return null;
+
+        // NIP-46: delegar al bunker. Cada mensaje pide aprobación al
+        // signer remoto — el usuario debe marcar "siempre permitir" para
+        // descifrado, o el chat de DMs será inutilizable.
+        if (_useRemoteSigner && window.LBW_NIP46 && window.LBW_NIP46.isConnected()) {
+            const hasV2 = _isNIP44Event(event);
+            if (hasV2 && window.LBW_NIP46.hasNip44()) {
+                try {
+                    return await window.LBW_NIP46.nip44Decrypt(other, event.content);
+                } catch (e44) {
+                    console.warn('[Nostr] NIP-44 remoto decrypt falló, intento NIP-04:', e44.message);
+                }
+            }
+            try {
+                return await window.LBW_NIP46.nip04Decrypt(other, event.content);
+            } catch (e04) {
+                if (window.LBW_NIP46.hasNip44() && !hasV2) {
+                    // Sin tag v=2 podría ser nip44 sin etiquetar — un último intento
+                    try { return await window.LBW_NIP46.nip44Decrypt(other, event.content); }
+                    catch (_) {}
+                }
+                console.warn('[Nostr] NIP-46 decrypt falló:', e04.message);
+                return '[Mensaje cifrado — el bunker rechazó descifrarlo]';
+            }
+        }
 
         const hasV2Tag = _isNIP44Event(event);
         const hasNip44Support = (_useExtension && window.nostr?.nip44) || (!_useExtension && _privkey && nt.nip44);
@@ -1537,11 +1629,12 @@ const LBW_Nostr = (() => {
     function getPubkey()        { return _pubkey; }
     function getNpub()          { return _npub; }
     function getNsec()          { return _nsec; }
-    function getPrivkey()       { return _privkey; }
-    function getProfile()       { return { ..._profile }; }
-    function isUsingExtension() { return _useExtension; }
-    function isLoggedIn()       { return !!_pubkey; }
-    function getEventKinds()    { return { ...EVENT_KINDS }; }
+    function getPrivkey()           { return _privkey; }
+    function getProfile()           { return { ..._profile }; }
+    function isUsingExtension()     { return _useExtension; }
+    function isUsingRemoteSigner()  { return _useRemoteSigner; }
+    function isLoggedIn()           { return !!_pubkey; }
+    function getEventKinds()        { return { ...EVENT_KINDS }; }
 
     // ── Public API ───────────────────────────────────────────
     return {
@@ -1562,7 +1655,7 @@ const LBW_Nostr = (() => {
         connectToRelays, disconnectAll, getConnectedRelays, getRelayStatus, onRelayStatusChange, waitForPrivateRelay,
 
         // Auth
-        loginWithExtension, loginWithPrivateKey, createIdentity, logout,
+        loginWithExtension, loginWithPrivateKey, loginWithBunker, createIdentity, logout,
         hasNostrExtension, waitForExtension,
 
         // Profile
@@ -1587,7 +1680,7 @@ const LBW_Nostr = (() => {
 
         // Getters
         getPubkey, getNpub, getNsec, getPrivkey, getProfile,
-        isUsingExtension, isLoggedIn, getEventKinds,
+        isUsingExtension, isUsingRemoteSigner, isLoggedIn, getEventKinds,
         // Pool / relay access for NIP-15 stalls module
         getPool: () => _getPool(),
         getReadRelays: () => [..._getUserReadRelays()],

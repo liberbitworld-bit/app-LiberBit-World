@@ -130,7 +130,8 @@ const LBW_NostrBridge = (() => {
             extension:  { text: '🔌 NIP-07',   bg: 'rgba(142,36,170,0.2)', border: '#CE93D8', color: '#CE93D8' },
             privatekey: { text: '🔑 nsec',      bg: 'rgba(229,185,92,0.15)', border: 'var(--color-gold)', color: 'var(--color-gold)' },
             nsec:       { text: '🔑 nsec',      bg: 'rgba(229,185,92,0.15)', border: 'var(--color-gold)', color: 'var(--color-gold)' },
-            created:    { text: '✨ Nueva ID',  bg: 'rgba(76,175,80,0.15)',  border: '#4CAF50', color: '#81C784' }
+            created:    { text: '✨ Nueva ID',  bg: 'rgba(76,175,80,0.15)',  border: '#4CAF50', color: '#81C784' },
+            bunker:     { text: '🛰️ NIP-46',    bg: 'rgba(64,196,255,0.15)', border: '#40C4FF', color: '#40C4FF' }
         };
 
         const cfg = configs[method];
@@ -220,6 +221,58 @@ const LBW_NostrBridge = (() => {
         } catch (e) {
             alert('❌ ' + e.message);
             if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+            throw e;
+        }
+    }
+
+    // ── NIP-46 Bunker login ─────────────────────────────────
+    // Abre el modal del módulo LBW_NIP46, espera el bunker URI y conecta.
+    // Session-only: nada se persiste; la sesión guardada es solo el método
+    // para que la UI sepa qué badge mostrar mientras la pestaña vive, pero
+    // restoreSession() para bunker no reusa el clientSk — el usuario debe
+    // reconectar al recargar.
+    async function handleBunkerLogin() {
+        if (!window.LBW_NIP46) {
+            alert('❌ Módulo NIP-46 no cargado. Recarga la página.');
+            return;
+        }
+        const uri = await LBW_NIP46.showModal();
+        if (!uri) return; // cancelado
+        try {
+            LBW_NIP46.setModalStatus('⏳ Conectando al bunker… aprueba la solicitud en tu signer si te la pide.');
+            const result = await LBW_Nostr.loginWithBunker(uri, {
+                onauth: (url) => {
+                    LBW_NIP46.setModalStatus('🔓 Tu bunker pide autorización. Si no se abrió la ventana, abre manualmente: ' + url);
+                }
+            });
+            LBW_NIP46.hideModal();
+            const session = {
+                pubkey: result.pubkeyHex, npub: result.npub,
+                name: result.profile?.name || result.profile?.display_name || 'Nostr User',
+                picture: result.profile?.picture || '',
+                method: 'bunker', loginTime: Date.now()
+            };
+            localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
+
+            if (typeof currentUser !== 'undefined') {
+                currentUser = {
+                    pubkey: result.npub,
+                    publicKey: result.npub,
+                    name: session.name,
+                    id: null
+                };
+                window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
+            }
+
+            _applyLoginToUI(session);
+            _updateLoginModeUI('bunker');
+            await _startAllFeeds();
+            console.log('[Bridge] ✅ Login NIP-46:', result.npub);
+            return result;
+        } catch (e) {
+            console.error('[Bridge] NIP-46 error:', e);
+            LBW_NIP46.setModalError('❌ ' + (e.message || 'No se pudo conectar al bunker'));
+            try { LBW_Nostr.logout(); } catch (_) {}
             throw e;
         }
     }
@@ -597,6 +650,14 @@ const LBW_NostrBridge = (() => {
                     await _startAllFeeds();
                     sessionRestored = true;
                 }
+            } else if (s.method === 'bunker') {
+                // NIP-46 session-only: la clave efímera del cliente vivía
+                // solo en memoria, así que no podemos reusar la conexión.
+                // Limpiamos la sesión guardada y pedimos al usuario que
+                // reconecte manualmente desde el modal de login.
+                console.log('[Bridge] Sesión NIP-46 detectada (session-only) — reconectar manualmente');
+                localStorage.removeItem('lbw_nostr_session');
+                return false;
             } else if (s.method === 'nsec' || s.method === 'created') {
                 // ── NIP-49: pedir contraseña y descifrar la nsec ──
                 // Tres situaciones posibles, en este orden:
@@ -2088,7 +2149,7 @@ const LBW_NostrBridge = (() => {
     // ── Public API ───────────────────────────────────────────
     return {
         init,
-        handleNIP07Login, handlePrivateKeyLogin, handleCreateIdentity, handleLogout, restoreSession,
+        handleNIP07Login, handlePrivateKeyLogin, handleBunkerLogin, handleCreateIdentity, handleLogout, restoreSession,
         publishCommunityPost, replyToMessage, cancelReply, zapMessage, startCommunityChat, stopCommunityChat,
         sendDM, startDMWith, openDMConversation, startDirectMessages, stopDirectMessages,
         publishOffer, deleteListing, filterMarketplace, buyListing, startMarketplace, stopMarketplace, refreshMarketplace,
@@ -2112,14 +2173,14 @@ document.addEventListener('DOMContentLoaded', () => {
         'LBW_Store', 'LBW_Media', 'LBW_ChatAttach', 'LBW_Nostr', 'LBW_DM',
         'LBW_Sync', 'LBW_Governance', 'LBW_Merits', 'LBW_MeritsSync',
         'LBW_Reviews', 'LBW_MarketPay', 'LBW_Stalls', 'LBW_NostrBridge',
-        'LBW_Debate', 'LBW_Missions', 'LBW_Delegations'
+        'LBW_Debate', 'LBW_Missions', 'LBW_Delegations', 'LBW_NIP46'
     ];
     const missing = expected.filter(name => typeof window[name] === 'undefined');
     if (missing.length) {
         console.error('[Bridge] ❌ Módulos LBW faltantes en window:', missing);
         console.error('[Bridge] Esto suele indicar un orden de carga incorrecto en index.html o un error de parse en el módulo.');
     } else {
-        console.log('[Bridge] ✅ Audit OK — los 16 módulos LBW están cargados');
+        console.log('[Bridge] ✅ Audit OK — los 17 módulos LBW están cargados');
     }
 
     LBW_NostrBridge.init();

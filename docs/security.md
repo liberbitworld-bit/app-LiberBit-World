@@ -209,6 +209,44 @@ En cualquier paso el usuario puede elegir *"Cerrar sesión y usar NIP-07"* en su
 | nsec en claro (legacy, ya retirado) | `localStorage` en plano | Sin fricción | nsec es el respaldo |
 | **NIP-49 (actual)** | `localStorage` cifrado con contraseña | Una contraseña por sesión | nsec es el respaldo (no la contraseña) |
 | NIP-07 (Alby/nos2x) | Extensión del navegador | Pulsas "firmar" | nsec es el respaldo (la gestiona la extensión) |
-| NIP-46 (bunker remoto, no implementado aún) | Otro dispositivo / servicio | Aprueba cada firma en el bunker | nsec vive solo en el bunker |
+| **NIP-46 (bunker remoto, opt-in session-only)** | Otro dispositivo / servicio | Aprueba cada firma en el bunker | nsec vive solo en el bunker |
 
 El **respaldo soberano siempre es la nsec original**. La contraseña de NIP-49 protege el almacenamiento en disco, no es otro factor recuperable.
+
+### NIP-46 — Firmador remoto opcional (opt-in)
+
+Desde la versión `nip46-1` la app soporta NIP-46 (Nostr Connect / Remote Signer) como tercera opción de login. La nsec del usuario vive en un bunker externo (nsec.app, Amber, nsecBunker, etc.) y este navegador solo le manda templates de eventos para firmar.
+
+**Flujo:**
+
+1. El usuario pulsa *"🛰️ Firmador remoto (NIP-46)"* en el modal de login.
+2. Pega su `bunker://<pubkey>?relay=wss://...&secret=...` (copiado desde su signer).
+3. `LBW_NIP46.connect()` genera una **clave efímera del cliente en memoria**, conecta al relay del bunker y manda el request `connect`.
+4. Si el bunker pide aprobación (`auth_url`), se abre una pestaña con la URL. El usuario la aprueba en su signer.
+5. Cada operación posterior (`sign_event`, `nip04_*`, `nip44_*`) se enruta al bunker; la respuesta vuelve por el mismo relay.
+
+**Session-only por diseño:**
+
+La clave efímera del cliente **no se persiste**. Al recargar la página el usuario debe pegar el `bunker://` otra vez. Pros:
+
+- Cero secretos del NIP-46 en disco — ni cifrados.
+- Si alguien roba el `localStorage`, no recupera la sesión NIP-46.
+- Coherente con el modelo "tu clave vive en otro sitio": la app es un cliente desechable.
+
+Contra: peor UX que extension/passlock. Aceptable porque NIP-46 ya implica más fricción (aprobar firmas en el bunker).
+
+**NIP-42 + bunker:** los relays privados de LiberBit usan NIP-42 (AUTH challenge). En modo bunker, cada reconexión a un relay con AUTH dispara una firma de kind 22242 hacia el signer remoto. El usuario debería marcar *"siempre permitir kind 22242"* en su bunker (si su signer lo soporta) para evitar prompts continuos.
+
+**Ámbito de las operaciones delegadas:**
+
+| Operación | Delegada al bunker | Notas |
+|-----------|---------------------|-------|
+| `sign_event` (toda firma) | ✅ | Posts, votos, propuestas, ofertas, kind 22242 AUTH |
+| `nip04_encrypt` / `nip04_decrypt` | ✅ | DMs legacy + descifrado |
+| `nip44_encrypt` / `nip44_decrypt` | ✅ si el bunker lo anuncia | Fallback automático a NIP-04 si no |
+| Lectura de relays | ❌ | El navegador hace `subscribe` directamente; no hay datos privados |
+
+**Limitaciones conocidas:**
+
+- Solo dirección **bunker → app** (paste de URL). El flujo inverso (`nostrconnect://` con QR generado por la app) queda pendiente.
+- El descifrado masivo de DMs históricos puede ser lento porque cada mensaje cifrado pide un round-trip al bunker. La SyncEngine cachea los descifrados en IndexedDB, así que solo el primer load paga el coste.

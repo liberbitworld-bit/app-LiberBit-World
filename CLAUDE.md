@@ -39,6 +39,7 @@ nostr-store.js      → IndexedDB cache (no deps)
 nostr-media.js      → Multi-provider image upload (no deps)
 chat-attachments.js → image attach helpers
 nostr.js            → Core: SimplePool, crypto, relay routing, NIPs (depends on nostr-tools CDN)
+nostr-nip46.js      → Remote signer client (bunker://). Carga nip46 ESM bajo demanda.
 nostr-dm.js         → DM abstraction NIP-04/44
 nostr-sync.js       → SyncEngine: cache-first + incremental sync
 nostr-governance.js → Proposals + votes
@@ -80,7 +81,7 @@ debate.js, avatar-fix.js, missions.js, map.js, city-prompt.js
 - **NIP-07 (extension)**: most secure, nsec stays in Alby/nos2x.
 - **NIP-49 (passlock)**: nsec cifrada en `localStorage.lbw_ncryptsec` con scrypt+XChaCha20-Poly1305 bajo una contraseña del usuario. La nsec descifrada solo vive en memoria. `LBW_Passlock.unlockWithPasswordPrompt` la abre al cargar la app. La contraseña queda cacheada en `_cachedPassword` (closure) durante la sesión para reusar con NWC.
 - **Migración legacy**: si la app detecta una nsec en claro guardada por una versión anterior, dispara modal obligatorio `migrate-backup` (muestra la nsec con copy + obliga a confirmar haberla guardado) antes de cifrarla. Ver `js/lbw-passlock.js`.
-- **NIP-46 (bunker remoto)**: pendiente de implementación, ver memoria del proyecto.
+- **NIP-46 (bunker remoto, opt-in)**: tercera opción de login. La nsec vive en el bunker externo (nsec.app, Amber, nsecBunker); el navegador delega cada `sign_event`, `nip04_*` y `nip44_*` por kind 24133. Implementado en `js/nostr-nip46.js` (`LBW_NIP46`). **Session-only**: la clave efímera del cliente solo vive en memoria — al recargar el usuario reconecta pegando el `bunker://` otra vez. `LBW_Nostr.loginWithBunker(uri)` orquesta el flujo; `_signEvent`, `_encryptDM`, `_decryptDM` y `_supportsNIP44` añaden la rama del remote signer (estado `_useRemoteSigner`). Bridge: `LBW_NostrBridge.handleBunkerLogin()` con badge `🛰️ NIP-46`. Ver `docs/security.md`.
 
 ### Relay Routing
 
