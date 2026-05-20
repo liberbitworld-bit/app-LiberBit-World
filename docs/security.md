@@ -217,17 +217,34 @@ El **respaldo soberano siempre es la nsec original**. La contraseña de NIP-49 p
 
 Desde la versión `nip46-1` la app soporta NIP-46 (Nostr Connect / Remote Signer) como tercera opción de login. La nsec del usuario vive en un bunker externo (nsec.app, Amber, nsecBunker, etc.) y este navegador solo le manda templates de eventos para firmar.
 
-**Flujo:**
+El modal de conexión expone **dos modos**, en pestañas: pegar la URL del signer (modo *bunker*) o que la app muestre un QR para que el signer la escanee (modo *nostrconnect*). En ambos casos el resultado es el mismo: una sesión NIP-46 viva durante esta pestaña, con la nsec del usuario fuera del navegador.
+
+**Modo 1 — `bunker://` (signer → app):**
 
 1. El usuario pulsa *"🛰️ Firmador remoto (NIP-46)"* en el modal de login.
-2. Pega su `bunker://<pubkey>?relay=wss://...&secret=...` (copiado desde su signer).
-3. `LBW_NIP46.connect()` genera una **clave efímera del cliente en memoria**, conecta al relay del bunker y manda el request `connect`.
+2. En la pestaña *"📋 Pegar URL del signer"* pega su `bunker://<pubkey>?relay=wss://...&secret=...` (copiado desde su signer).
+3. `LBW_NIP46.connect()` genera una **clave efímera del cliente en memoria**, conecta al relay del bunker y manda el request `connect` con el secreto.
 4. Si el bunker pide aprobación (`auth_url`), se abre una pestaña con la URL. El usuario la aprueba en su signer.
 5. Cada operación posterior (`sign_event`, `nip04_*`, `nip44_*`) se enruta al bunker; la respuesta vuelve por el mismo relay.
 
-**Session-only por diseño:**
+Implementación: `BunkerSigner` de `nostr-tools@2.7.2/nip46` cargado bajo demanda como ESM.
 
-La clave efímera del cliente **no se persiste**. Al recargar la página el usuario debe pegar el `bunker://` otra vez. Pros:
+**Modo 2 — `nostrconnect://` con QR (app → signer):**
+
+Añadido en `nip46qr-1`. Útil para *"estoy en el portátil, quiero firmar con la clave que tengo en el móvil"* sin copiar/pegar URLs entre dispositivos.
+
+1. El usuario pulsa *"🛰️ Firmador remoto (NIP-46)"* y abre la pestaña *"📱 Generar QR"*.
+2. `LBW_NIP46.connectViaQR()` genera la clave efímera del cliente y un `secret` aleatorio, construye `nostrconnect://<clientPub>?relay=wss://relay.nsec.app&secret=...&perms=...&name=LiberBit%20World` y la pinta como QR (240×240) + texto copiable.
+3. El usuario escanea el QR desde su signer (Amber en Android, nsec.app en otra pestaña, etc.) o pega la URL.
+4. El signer envía a la app un evento kind 24133 cifrado a `clientPub` con `method:"connect"` y el secret esperado en `params`.
+5. La app valida el secret, captura `event.pubkey` como pubkey del usuario, responde `{result:"ack"}` cifrado.
+6. A partir de aquí, mismo runtime que el modo 1: cualquier `sign_event`/`nip04_*`/`nip44_*` viaja al signer y vuelve la respuesta.
+
+Implementación: cliente RPC propio (no `BunkerSigner`, que no soporta el handshake invertido). Mantiene una suscripción abierta sobre kind 24133 `#p=clientPub`, correlaciona requests/responses por `id`, gestiona `auth_url` y expone el mismo shape de API que `BunkerSigner`, así que `LBW_NIP46` puede usar el mismo `_signer` para ambos modos transparentemente. Relay por defecto: `wss://relay.nsec.app`. Timeout del handshake: 5 min (cancelable).
+
+**Session-only por diseño (ambos modos):**
+
+La clave efímera del cliente **no se persiste** en ninguno de los dos modos. Al recargar la página el usuario debe reconectar. Pros:
 
 - Cero secretos del NIP-46 en disco — ni cifrados.
 - Si alguien roba el `localStorage`, no recupera la sesión NIP-46.
@@ -248,5 +265,5 @@ Contra: peor UX que extension/passlock. Aceptable porque NIP-46 ya implica más 
 
 **Limitaciones conocidas:**
 
-- Solo dirección **bunker → app** (paste de URL). El flujo inverso (`nostrconnect://` con QR generado por la app) queda pendiente.
 - El descifrado masivo de DMs históricos puede ser lento porque cada mensaje cifrado pide un round-trip al bunker. La SyncEngine cachea los descifrados en IndexedDB, así que solo el primer load paga el coste.
+- En modo `nostrconnect://`, si el signer no soporta NIP-44 hacemos fallback a NIP-04 automáticamente en el cliente RPC propio. Para DMs con interlocutores que solo aceptan NIP-44 esto sería un problema; en la práctica los signers modernos (Amber, nsec.app) soportan ambos.
