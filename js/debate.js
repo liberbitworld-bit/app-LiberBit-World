@@ -1,4 +1,8 @@
-// LiberBit World — Debate Module v1.2
+// LiberBit World — Debate Module v1.3
+// Gate por admisión (NIP-72): solo se puede debatir si la propuesta
+// ha sido admitida por mayoría Génesis. Añade además `a`-tag NIP-72
+// al community kind:34550 emitido al admitirse, de forma que clientes
+// Nostr externos (Coracle, Habla) reconocen el hilo de debate.
 
 window.LBW_Debate = {
 
@@ -7,6 +11,17 @@ window.LBW_Debate = {
     _callbacks: {},
 
     _tag: function(dTag) { return 'lbw-debate-' + dTag; },
+
+    // ¿La propuesta está admitida (puede debatirse)?
+    // Las legacy sin admission_required cuentan como admitidas.
+    _isOpen: function(dTag) {
+        try {
+            if (typeof window.LBW_Governance === 'undefined' || !window.LBW_Governance.isAdmitted) return true;
+            return window.LBW_Governance.isAdmitted(dTag);
+        } catch (e) {
+            return true;  // fail-open para no romper UI legacy
+        }
+    },
 
     _ensureCache: function(dTag) {
         if (!this._messages[dTag]) this._messages[dTag] = {};
@@ -35,6 +50,14 @@ window.LBW_Debate = {
 
         if (!self._callbacks[proposalDTag]) self._callbacks[proposalDTag] = [];
         if (onMessage) self._callbacks[proposalDTag].push(onMessage);
+
+        // Gate de admisión: si la propuesta requiere admisión y aún no
+        // ha sido admitida, no abrimos suscripción. La UI debería
+        // mostrar un placeholder "debate bloqueado hasta admisión".
+        if (!self._isOpen(proposalDTag)) {
+            if (onMessage) onMessage(null, 'admission-pending');
+            return;
+        }
 
         if (self._subscriptions[proposalDTag]) {
             var cached = self.getMessages(proposalDTag);
@@ -95,10 +118,21 @@ window.LBW_Debate = {
         if (!content || !content.trim()) {
             throw new Error('El mensaje no puede estar vacío.');
         }
+        if (!this._isOpen(proposalDTag)) {
+            throw new Error('Esta propuesta aún no ha sido admitida por los Génesis. Espera a que se admita para debatir.');
+        }
         var tags = [
             ['t', 'lbw-debate'],
             ['t', this._tag(proposalDTag)]
         ];
+        // NIP-72: si existe community kind:34550 para esta propuesta,
+        // añadimos su `a`-tag para que clientes externos vean el debate.
+        try {
+            if (typeof window.LBW_Governance !== 'undefined' && window.LBW_Governance.getCommunityATag) {
+                var aTag = window.LBW_Governance.getCommunityATag(proposalDTag);
+                if (aTag) tags.push(['a', aTag, '', 'root']);
+            }
+        } catch (e) {}
         if (replyToEventId) {
             tags.push(['e', replyToEventId, '', 'reply']);
         }
@@ -124,4 +158,4 @@ window.LBW_Debate = {
     }
 };
 
-console.log('[Debate] ✅ LBW_Debate cargado v1.2');
+console.log('[Debate] ✅ LBW_Debate cargado v1.3 (admission gate + NIP-72 a-tag)');

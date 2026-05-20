@@ -37,8 +37,37 @@ const LBW_Governance = (() => {
         DELEGATE:    31004,
         RESULT:      31010,   // Proposal result tally
         EXECUTION:   31011,   // Author execution report
-        EXEC_VERIFY: 31012    // Génesis execution verification
+        EXEC_VERIFY: 31012,   // Génesis execution verification
+        COMMUNITY:   34550    // NIP-72 community (debate channel per PRP)
     };
+
+    // ── Admission Gate (NIP-72) ──────────────────────────────
+    // Cualquiera puede crear propuestas, pero antes de "salir a la luz"
+    // (visibilidad pública, votación temática, debate abierto) tienen
+    // que ser admitidas por los ciudadanos Génesis.
+    //
+    // Regla: mínimo 2 votos Génesis Y mayoría simple (>50% de los que
+    // votan) decide si la propuesta se admite o se rechaza. Los no-
+    // Génesis no pueden votar en esta fase.
+    //
+    // Cuando una propuesta cruza el umbral admitted=true, automáticamente
+    // se emite un kind:34550 (NIP-72 community) con d=lbw-prp-NNN para
+    // abrir el canal de debate público — clientes Nostr externos pueden
+    // descubrirlo como community normal.
+    //
+    // Backward compat: propuestas legacy (sin tag admission_required)
+    // se tratan como admitidas sin gate. Solo las nuevas llevan el tag.
+    const ADMISSION = {
+        MIN_GENESIS_VOTES: 2,   // quórum mínimo: ≥2 Génesis
+        MAJORITY_FRACTION: 0.5  // >50% yes para admitir
+    };
+
+    function _isGenesis(pubkey) {
+        if (!pubkey) return false;
+        if (typeof LBW_Merits === 'undefined' || !LBW_Merits.getUserMerits) return false;
+        const data = LBW_Merits.getUserMerits(pubkey);
+        return !!(data && data.total >= 3000);
+    }
 
     // ── Proposal Categories ──────────────────────────────────
     const CATEGORIES = {
@@ -72,11 +101,15 @@ const LBW_Governance = (() => {
     };
 
     // ── Internal State ───────────────────────────────────────
-    let _proposals   = new Map();   // dTag → proposal
-    let _votes       = new Map();   // dTag → [votes]
-    let _myVotes     = new Map();   // dTag → my vote
-    let _results     = new Map();   // dTag → result object
-    let _executions  = new Map();   // dTag → execution object
+    let _proposals       = new Map();   // dTag → proposal
+    let _votes           = new Map();   // dTag → [policy votes]
+    let _admissionVotes  = new Map();   // dTag → [admission votes Génesis-only]
+    let _myVotes         = new Map();   // dTag → my policy vote
+    let _myAdmissionVote = new Map();   // dTag → my admission vote
+    let _results         = new Map();   // dTag → result object
+    let _executions      = new Map();   // dTag → execution object
+    let _communities     = new Map();   // dTag → kind:34550 event (cache local)
+    let _communityEmitted = new Set();  // dTag con community ya emitido en esta sesión
     let _onProposalCallbacks = [];
     let _onVoteCallbacks     = [];
     let _onResultCallbacks   = [];
@@ -308,11 +341,18 @@ const LBW_Governance = (() => {
             ...(data.quorum ? { quorum: data.quorum } : {})
         });
 
+        // Admission gate: por defecto todas las propuestas nuevas requieren
+        // ser admitidas por mayoría Génesis antes de pasar a votación
+        // pública. data.requireAdmission=false la salta (caso solo para
+        // imports/migración o casos especiales).
+        const requireAdmission = data.requireAdmission !== false;
+        const initialStatus = requireAdmission ? 'pending_admission' : 'active';
+
         const tags = [
             ['d', dTag],
             ['title', data.title.trim()],
             ['category', category],
-            ['status', 'active'],
+            ['status', initialStatus],
             ['expires', String(expiresAt)],
             ['created', String(nowSecs)],
             ['proposal_number', String(proposalNumber)],
@@ -321,6 +361,7 @@ const LBW_Governance = (() => {
             ['t', `lbw-${category}`],
             ['client', 'LiberBit World']
         ];
+        if (requireAdmission) tags.push(['admission_required', 'true']);
 
         const result = await LBW_Nostr.publishEvent({ kind: KIND.PROPOSAL, content, tags });
 
@@ -337,10 +378,11 @@ const LBW_Governance = (() => {
         const localProposal = {
             id: result.event.id, pubkey, npub: LBW_Nostr.getNpub(),
             dTag, title: data.title.trim(), description: data.description.trim(),
-            category, status: 'active', options,
+            category, status: initialStatus, options,
             candidates: data.candidates || null, budget: data.budget || null,
             quorum: data.quorum || null, expiresAt, createdAt: nowSecs,
-            created_at: nowSecs, proposalNumber, tags, _rawContent: content
+            created_at: nowSecs, proposalNumber, tags, _rawContent: content,
+            requireAdmission
         };
 
         _proposals.set(dTag, localProposal);
@@ -371,6 +413,12 @@ const LBW_Governance = (() => {
 
         const proposal = _proposals.get(proposalDTag);
         if (proposal) {
+            // Admission gate: si la propuesta requiere admisión y no la
+            // tiene, no se puede votar el contenido todavía. La UI
+            // debería ocultar los controles, pero defensa en profundidad.
+            if (proposal.requireAdmission && !isAdmitted(proposalDTag)) {
+                throw new Error('Esta propuesta aún no ha sido admitida por los Génesis. Espera a que se admita para votar.');
+            }
             if (proposal.status !== 'active') throw new Error('La propuesta ya no está activa.');
             const nowSecs = Math.floor(Date.now() / 1000);
             if (proposal.expiresAt && nowSecs > proposal.expiresAt) throw new Error('El periodo de votación ha expirado.');
@@ -417,6 +465,234 @@ const LBW_Governance = (() => {
         return { ...result, relaysUsed: successfulRelays.length };
     }
 
+    // ─────────────────────────────────────────────────────────
+    // ADMISSION GATE — Génesis-only admission voting + NIP-72
+    // ─────────────────────────────────────────────────────────
+
+    // Devuelve true si la propuesta requiere admisión.
+    // Las propuestas legacy (sin tag) NO la requieren.
+    function requiresAdmission(dTag) {
+        const p = _proposals.get(dTag);
+        return !!(p && p.requireAdmission);
+    }
+
+    // Computa el estado de admisión a partir de los votos cacheados.
+    // Solo cuenta votos de pubkeys que son Génesis EN ESTE MOMENTO
+    // (lookup en LBW_Merits). Si un Génesis perdió su estatus, su voto
+    // deja de contar al recargar el cliente — políticamente consistente
+    // con cómo se calculan los resultados temáticos.
+    //
+    // Retorna {
+    //   status: 'pending' | 'admitted' | 'rejected' | 'not_required',
+    //   yes, no, totalVotes, genesisVoters, threshold, majorityReached, quorumMet
+    // }
+    function getAdmissionStatus(dTag) {
+        const p = _proposals.get(dTag);
+        if (!p) return { status: 'not_required', yes: 0, no: 0, totalVotes: 0, genesisVoters: 0, threshold: ADMISSION.MIN_GENESIS_VOTES, majorityReached: false, quorumMet: false };
+        if (!p.requireAdmission) return { status: 'not_required', yes: 0, no: 0, totalVotes: 0, genesisVoters: 0, threshold: ADMISSION.MIN_GENESIS_VOTES, majorityReached: false, quorumMet: false };
+
+        const votes = _admissionVotes.get(dTag) || [];
+        let yes = 0, no = 0;
+        const seenGenesis = new Set();   // un voto por Génesis (último)
+
+        // Pre-agrupar por pubkey y quedarse con el último por timestamp
+        const lastByPubkey = new Map();
+        for (const v of votes) {
+            const prev = lastByPubkey.get(v.pubkey);
+            if (!prev || v.created_at > prev.created_at) lastByPubkey.set(v.pubkey, v);
+        }
+        for (const v of lastByPubkey.values()) {
+            if (!_isGenesis(v.pubkey)) continue;     // filtro estricto
+            seenGenesis.add(v.pubkey);
+            const dec = (v.option || '').toLowerCase();
+            if (dec === 'yes' || dec === 'sí' || dec === 'si') yes++;
+            else if (dec === 'no') no++;
+        }
+        const totalVotes = yes + no;
+        const quorumMet = totalVotes >= ADMISSION.MIN_GENESIS_VOTES;
+        // Mayoría: >50% (estricto). Empate = no admitida aún.
+        const majorityReached = totalVotes > 0 && (yes / totalVotes) > ADMISSION.MAJORITY_FRACTION;
+
+        let status = 'pending';
+        if (quorumMet && majorityReached) status = 'admitted';
+        else if (quorumMet && !majorityReached && no > yes) status = 'rejected';
+
+        return {
+            status, yes, no, totalVotes,
+            genesisVoters: seenGenesis.size,
+            threshold: ADMISSION.MIN_GENESIS_VOTES,
+            majorityReached, quorumMet
+        };
+    }
+
+    // Atajo: ¿la propuesta es visible / debate abierto / votación abierta?
+    function isAdmitted(dTag) {
+        const p = _proposals.get(dTag);
+        if (!p) return false;
+        if (!p.requireAdmission) return true;
+        return getAdmissionStatus(dTag).status === 'admitted';
+    }
+
+    function getMyAdmissionVote(dTag) {
+        return _myAdmissionVote.get(dTag) || null;
+    }
+
+    // Publica un voto de admisión. Solo Génesis.
+    //   decision: 'yes' | 'no'
+    async function publishAdmissionVote(proposalEventId, proposalDTag, decision) {
+        if (!LBW_Nostr.isLoggedIn()) throw new Error('Login requerido.');
+        const myPubkey = LBW_Nostr.getPubkey();
+        if (!_isGenesis(myPubkey)) {
+            throw new Error('Solo los ciudadanos Génesis pueden votar admisión.');
+        }
+        const d = (decision || '').toLowerCase();
+        if (d !== 'yes' && d !== 'no') throw new Error('Decisión inválida (yes/no).');
+
+        const proposal = _proposals.get(proposalDTag);
+        if (!proposal) throw new Error('Propuesta no encontrada.');
+        if (!proposal.requireAdmission) throw new Error('Esta propuesta no requiere admisión.');
+        const status = getAdmissionStatus(proposalDTag).status;
+        if (status === 'admitted') throw new Error('La propuesta ya ha sido admitida.');
+        if (status === 'rejected') throw new Error('La propuesta ya ha sido rechazada.');
+
+        const tags = [
+            ['e', proposalEventId],
+            ['d', proposalDTag],
+            ['vote_type', 'admission'],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-admission'],
+            ['client', 'LiberBit World']
+        ];
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.VOTE, content: d, tags });
+        if (!result.event?.id) throw new Error('Error registrando voto de admisión.');
+        const okRelays = (result.results || []).filter(r => r.success === true);
+        if (okRelays.length === 0) throw new Error('No se pudo registrar en ningún relay.');
+
+        // Registro local + recalc
+        const nowSecs = Math.floor(Date.now() / 1000);
+        if (!_admissionVotes.has(proposalDTag)) _admissionVotes.set(proposalDTag, []);
+        const list = _admissionVotes.get(proposalDTag);
+        const idx = list.findIndex(v => v.pubkey === myPubkey);
+        const myVote = { id: result.event.id, pubkey: myPubkey, npub: LBW_Nostr.getNpub(), option: d, proposalDTag, created_at: nowSecs };
+        if (idx >= 0) list[idx] = myVote; else list.push(myVote);
+        _myAdmissionVote.set(proposalDTag, myVote);
+
+        console.log(`[Governance] 🛡️ Voto admisión: ${d} para d=${proposalDTag}`);
+
+        // Notificar callbacks (UI debe refrescar pill + contador)
+        _onProposalCallbacks.forEach(cb => { try { cb(proposal, 'admission-vote'); } catch (e) {} });
+
+        // Evaluar si cruzamos el umbral
+        await _evaluateAdmission(proposalDTag);
+
+        return { ...result, relaysUsed: okRelays.length };
+    }
+
+    // Tras cada nuevo voto de admisión: si la propuesta acaba de pasar
+    // a 'admitted' Y todavía no hay un kind:34550 publicado para ella,
+    // emitimos el community NIP-72. La emisión es idempotente: cualquier
+    // cliente puede emitirla; nostr-tools la trata como replaceable por
+    // (kind, pubkey, d-tag), así que múltiples emisiones del mismo
+    // creator no se duplican.
+    //
+    // Política: solo emite el AUTOR de la propuesta (si está online), o
+    // cualquier Génesis si el autor no es Génesis (poco probable, pero
+    // robusto). Esto evita races N→N.
+    async function _evaluateAdmission(dTag) {
+        const proposal = _proposals.get(dTag);
+        if (!proposal || !proposal.requireAdmission) return;
+        const s = getAdmissionStatus(dTag);
+        if (s.status !== 'admitted') return;
+        if (_communityEmitted.has(dTag)) return;
+        if (_communities.has(dTag)) {
+            _communityEmitted.add(dTag);
+            return;
+        }
+
+        // Evita races: solo el autor (o si no está online, cualquier
+        // Génesis que detecte la admisión) emite el community.
+        const myPubkey = LBW_Nostr.getPubkey();
+        if (!myPubkey) return;
+        const iAmAuthor = (myPubkey === proposal.pubkey);
+        const iAmGenesis = _isGenesis(myPubkey);
+        if (!iAmAuthor && !iAmGenesis) return;
+
+        try {
+            await _publishCommunity(proposal);
+            _communityEmitted.add(dTag);
+        } catch (e) {
+            console.warn('[Governance] No se pudo emitir community NIP-72 para', dTag, ':', e.message);
+        }
+    }
+
+    // Emite el kind:34550 (NIP-72 community) asociado a la propuesta.
+    // d-tag de la community: lbw-prp-NNN  (NNN = proposal_number).
+    // Moderadores: el autor de la propuesta. Los Génesis pueden moderar
+    // a futuro vía actualización del community event.
+    async function _publishCommunity(proposal) {
+        if (!proposal) throw new Error('Propuesta vacía');
+        const number = proposal.proposalNumber || 0;
+        if (!number) throw new Error('Propuesta sin proposal_number');
+        const communityDTag = 'lbw-prp-' + String(number).padStart(3, '0');
+        const tags = [
+            ['d', communityDTag],
+            ['name', formatProposalNumber(number) + ' — ' + (proposal.title || '').substring(0, 120)],
+            ['description', 'Debate de la propuesta ' + formatProposalNumber(number) + ' en LiberBit World. Ver detalles + votar en la app.'],
+            ['p', proposal.pubkey, '', 'moderator'],
+            ['t', 'lbw-debate'],
+            ['t', 'lbw-governance'],
+            ['t', 'lbw-prp-' + String(number).padStart(3, '0')],
+            ['proposal', proposal.id || '', '', 'root'],
+            ['client', 'LiberBit World']
+        ];
+        const content = '';
+        const result = await LBW_Nostr.publishEvent({ kind: KIND.COMMUNITY, content, tags });
+        if (!result.event?.id) throw new Error('Sin ID de evento community.');
+        _communities.set(proposal.dTag, { eventId: result.event.id, dTag: communityDTag, creator: LBW_Nostr.getPubkey() });
+        console.log(`[Governance] 🏛️ NIP-72 community emitida: ${communityDTag} (${formatProposalNumber(number)})`);
+        return result;
+    }
+
+    // Devuelve el `a`-tag NIP-72 para usar en mensajes de debate.
+    // Formato: 34550:<creator-pubkey>:<community-d-tag>
+    // Útil para clientes Nostr externos que reconocen NIP-72.
+    function getCommunityATag(dTag) {
+        const c = _communities.get(dTag);
+        if (!c || !c.creator) return null;
+        return `${KIND.COMMUNITY}:${c.creator}:${c.dTag}`;
+    }
+
+    function getCommunity(dTag) {
+        return _communities.get(dTag) || null;
+    }
+
+    // Suscripción a kind:34550 — escucha qué communities existen para
+    // poder pintar el `a`-tag correcto al postear en el debate y para
+    // que cualquier Génesis pueda detectar admisiones cruzadas
+    // (compartido entre clientes).
+    let _communitySub = null;
+    function _subscribeCommunities() {
+        if (_communitySub) return;
+        _communitySub = LBW_Nostr.subscribe(
+            { kinds: [KIND.COMMUNITY], '#t': ['lbw-governance'], limit: 500 },
+            (event) => {
+                try {
+                    const g = name => (event.tags.find(t => t[0] === name) || [])[1] || '';
+                    const cDTag = g('d');
+                    if (!cDTag || !cDTag.startsWith('lbw-prp-')) return;
+                    // Buscar la propuesta correspondiente por proposal_number
+                    const num = parseInt(cDTag.replace('lbw-prp-', ''), 10);
+                    if (!num) return;
+                    let matched = null;
+                    _proposals.forEach(p => { if (p.proposalNumber === num) matched = p; });
+                    if (matched) {
+                        _communities.set(matched.dTag, { eventId: event.id, dTag: cDTag, creator: event.pubkey });
+                    }
+                } catch (e) {}
+            }
+        );
+    }
+
     // ── Anti-Double-Vote ─────────────────────────────────────
     async function _checkAlreadyVoted(proposalEventId) {
         const pubkey = LBW_Nostr.getPubkey();
@@ -440,6 +716,7 @@ const LBW_Governance = (() => {
         if (_myVotes.size === 0) _fetchMyVotesFromNostr();
         if (!_resultSub) _subscribeResultEvents();
         if (!_execSub) _subscribeExecutionEvents();
+        if (!_communitySub) _subscribeCommunities();
 
         if (_sub) return _sub;
 
@@ -1199,6 +1476,15 @@ const LBW_Governance = (() => {
         const sub = LBW_Nostr.subscribe(
             { kinds: [KIND.VOTE], '#e': [proposalEventId], limit: 500 },
             (event) => {
+                // Distinguir votos de admisión (Génesis-only) de votos
+                // temáticos. Tag ['vote_type','admission'] = admission.
+                // Sin tag o vote_type=proposal = voto temático (legacy).
+                const voteType = (event.tags.find(t => t[0] === 'vote_type') || [])[1] || 'proposal';
+                if (voteType === 'admission') {
+                    _ingestAdmissionVote(event, proposalDTag);
+                    return;
+                }
+
                 const vote = _parseVote(event, proposalDTag);
                 if (!vote) return;
 
@@ -1222,6 +1508,35 @@ const LBW_Governance = (() => {
 
         _voteSubs[proposalDTag] = sub;
         return sub;
+    }
+
+    // Procesa un voto kind:31001 marcado como admisión. Mantiene la
+    // lista en _admissionVotes (deduplicada por pubkey, último prevalece)
+    // y dispara _evaluateAdmission si hace falta.
+    function _ingestAdmissionVote(event, proposalDTag) {
+        const v = {
+            id: event.id, pubkey: event.pubkey,
+            npub: LBW_Nostr.pubkeyToNpub(event.pubkey),
+            option: (event.content || '').trim().toLowerCase(),
+            proposalDTag, created_at: event.created_at
+        };
+        if (v.option !== 'yes' && v.option !== 'no' && v.option !== 'sí' && v.option !== 'si') return;
+        if (!_admissionVotes.has(proposalDTag)) _admissionVotes.set(proposalDTag, []);
+        const list = _admissionVotes.get(proposalDTag);
+        const idx = list.findIndex(x => x.pubkey === v.pubkey);
+        if (idx >= 0) {
+            if (v.created_at > list[idx].created_at) list[idx] = v;
+            else return;
+        } else {
+            list.push(v);
+        }
+        if (v.pubkey === LBW_Nostr.getPubkey()) _myAdmissionVote.set(proposalDTag, v);
+        _onProposalCallbacks.forEach(cb => {
+            const p = _proposals.get(proposalDTag);
+            try { cb(p, 'admission-vote'); } catch (e) {}
+        });
+        // Re-evaluar admisión (puede disparar emisión NIP-72)
+        _evaluateAdmission(proposalDTag).catch(e => console.warn('[Governance] evaluateAdmission falló:', e.message));
     }
 
     // ── Fetch My Votes from Nostr ────────────────────────────
@@ -1275,6 +1590,11 @@ const LBW_Governance = (() => {
             const nowSecs = Math.floor(Date.now() / 1000);
             let status = g('status') || 'active';
 
+            // Admission flag: solo las propuestas nuevas (post-nip72-1)
+            // llevan ['admission_required','true']. Las legacy no lo tienen
+            // y se consideran ya admitidas (no rompemos compatibilidad).
+            const requireAdmission = g('admission_required') === 'true';
+
             if (status === 'active' && expiresAt > 0 && nowSecs > expiresAt) {
                 status = 'expired';
             }
@@ -1295,7 +1615,8 @@ const LBW_Governance = (() => {
                 expiresAt, createdAt: parseInt(g('created'), 10) || event.created_at,
                 created_at: event.created_at,
                 proposalNumber: parseInt(g('proposal_number'), 10) || 0,
-                tags: event.tags, _rawContent: event.content
+                tags: event.tags, _rawContent: event.content,
+                requireAdmission
             };
         } catch (e) {
             // [M-15] Antes catch vacío. Ahora warn para diagnosticar relays con eventos malformados.
@@ -1427,11 +1748,16 @@ const LBW_Governance = (() => {
     // ── Reset ────────────────────────────────────────────────
     function reset() {
         unsubscribeAll();
+        if (_communitySub) { LBW_Nostr.unsubscribe(_communitySub); _communitySub = null; }
         _proposals.clear();
         _votes.clear();
+        _admissionVotes.clear();
         _myVotes.clear();
+        _myAdmissionVote.clear();
         _results.clear();
         _executions.clear();
+        _communities.clear();
+        _communityEmitted.clear();
         _resultCalcScheduled.clear();
         _fetchingVotes = false;
         try { localStorage.removeItem(_votesKey()); } catch (e) {}
@@ -1439,7 +1765,7 @@ const LBW_Governance = (() => {
 
     // ── Public API ───────────────────────────────────────────
     return {
-        KIND, CATEGORIES, DEFAULT_OPTIONS, DURATIONS, MERIT_CONFIG,
+        KIND, CATEGORIES, DEFAULT_OPTIONS, DURATIONS, MERIT_CONFIG, ADMISSION,
         publishProposal, closeProposal, publishVote,
         publishExecution, verifyExecution,
         subscribeProposals, subscribeVotes, unsubscribeAll, unsubscribeVotes,
@@ -1447,7 +1773,11 @@ const LBW_Governance = (() => {
         getResult, getExecution, getResults,
         getMyVote, getVotesForProposal, getStats, getTimeLeft,
         reset, reloadMyVotes, fetchMyVotes,
-        recalculateResult, formatProposalNumber
+        recalculateResult, formatProposalNumber,
+        // Admission gate (NIP-72)
+        requiresAdmission, getAdmissionStatus, isAdmitted, getMyAdmissionVote,
+        publishAdmissionVote, getCommunity, getCommunityATag,
+        isGenesis: _isGenesis
     };
 })();
 

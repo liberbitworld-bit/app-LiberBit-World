@@ -10,15 +10,33 @@ const PROPOSAL_TYPE_LABELS = {
 
 // Status display config
 const STATUS_CONFIG = {
-    active:       { label: '✅ Activa',          class: 'active',       badge: '🟢' },
-    expired:      { label: '⏰ Calculando...',    class: 'expired',      badge: '⏳' },
-    approved:     { label: '✅ Aprobada',         class: 'approved',     badge: '✅' },
-    rejected:     { label: '❌ Rechazada',        class: 'rejected',     badge: '❌' },
-    quorum_failed:{ label: '⚠️ Sin quórum',       class: 'quorum-failed',badge: '⚠️' },
-    in_execution: { label: '🔧 En ejecución',     class: 'in-execution', badge: '🔧' },
-    executed:     { label: '🏆 Ejecutada',        class: 'executed',     badge: '🏆' },
-    closed:       { label: '🔒 Cerrada',          class: 'closed',       badge: '🔒' },
+    active:            { label: '✅ Activa',                 class: 'active',          badge: '🟢' },
+    pending_admission: { label: '📋 Pendiente admisión',     class: 'pending-admission', badge: '📋' },
+    admission_rejected:{ label: '🚫 Admisión rechazada',     class: 'rejected',        badge: '🚫' },
+    expired:           { label: '⏰ Calculando...',           class: 'expired',         badge: '⏳' },
+    approved:          { label: '✅ Aprobada',                class: 'approved',        badge: '✅' },
+    rejected:          { label: '❌ Rechazada',               class: 'rejected',        badge: '❌' },
+    quorum_failed:     { label: '⚠️ Sin quórum',              class: 'quorum-failed',   badge: '⚠️' },
+    in_execution:      { label: '🔧 En ejecución',            class: 'in-execution',    badge: '🔧' },
+    executed:          { label: '🏆 Ejecutada',               class: 'executed',        badge: '🏆' },
+    closed:            { label: '🔒 Cerrada',                 class: 'closed',          badge: '🔒' },
 };
+
+// Helper: aplica el estado de admisión sobre el status base.
+// Si la propuesta requiere admisión y aún no la tiene, fuerza el
+// status 'pending_admission' o 'admission_rejected' para que el resto
+// del UI no la trate como 'active' por defecto.
+function _applyAdmissionStatus(p) {
+    if (!p || typeof LBW_Governance === 'undefined') return p;
+    if (!p._nostrOriginal) return p;
+    const orig = p._nostrOriginal;
+    if (!orig.requireAdmission) return p;
+    if (!LBW_Governance.isAdmitted(orig.dTag)) {
+        const adm = LBW_Governance.getAdmissionStatus(orig.dTag);
+        p.status = adm.status === 'rejected' ? 'admission_rejected' : 'pending_admission';
+    }
+    return p;
+}
 
 function showNewProposalForm() {
     document.getElementById('newProposalForm').style.display = 'block';
@@ -161,15 +179,20 @@ function displayProposals() {
         allProposals = LBW_Governance.getAllProposals().map(_nostrProposalToLegacy);
     }
 
+    // Aplicar status de admisión a todas (sobreescribe el status base si
+    // la propuesta requiere admisión y aún no la tiene).
+    allProposals.forEach(_applyAdmissionStatus);
+
     let proposalsToShow = allProposals;
     if (currentProposalFilter !== 'all') {
         if (currentProposalFilter === 'pending') {
-            proposalsToShow = [];
+            // Filtro "pending" ahora muestra las propuestas en admisión
+            proposalsToShow = allProposals.filter(p => p.status === 'pending_admission');
         } else {
             proposalsToShow = allProposals.filter(p => {
                 if (currentProposalFilter === 'active')   return p.status === 'active';
                 if (currentProposalFilter === 'approved') return ['approved', 'in_execution', 'executed'].includes(p.status);
-                if (currentProposalFilter === 'closed')   return !['active'].includes(p.status);
+                if (currentProposalFilter === 'closed')   return !['active', 'pending_admission'].includes(p.status);
                 return true;
             });
         }
@@ -209,6 +232,10 @@ function displayProposals() {
 
                 ${result ? _renderResultBadge(result, proposal) : ''}
 
+                ${proposal.status === 'pending_admission' || proposal.status === 'admission_rejected'
+                    ? _renderAdmissionBlock(nostrP)
+                    : ''}
+
                 ${proposal.status === 'active' ? `
                     <div class="vote-progress">
                         <div class="vote-stats">
@@ -239,6 +266,68 @@ function displayProposals() {
             </div>
         `;
     }).join('');
+}
+
+// Renderiza el bloque de admisión Génesis para una propuesta pendiente.
+// Muestra el contador (yes/no/quórum) y, si el usuario actual es Génesis,
+// botones para votar admisión. Los no-Génesis solo ven el contador.
+function _renderAdmissionBlock(nostrP) {
+    if (!nostrP || typeof LBW_Governance === 'undefined') return '';
+    const adm = LBW_Governance.getAdmissionStatus(nostrP.dTag);
+    const myVote = LBW_Governance.getMyAdmissionVote(nostrP.dTag);
+    const myPubkey = (typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) ? LBW_Nostr.getPubkey() : null;
+    const iAmGenesis = myPubkey ? LBW_Governance.isGenesis(myPubkey) : false;
+
+    const yesPct = adm.totalVotes > 0 ? Math.round((adm.yes / adm.totalVotes) * 100) : 0;
+    const noPct  = adm.totalVotes > 0 ? Math.round((adm.no  / adm.totalVotes) * 100) : 0;
+
+    let statusHtml = '';
+    if (adm.status === 'rejected') {
+        statusHtml = `<div style="color:#ff4d4f;font-weight:600;">🚫 Admisión rechazada por mayoría Génesis</div>`;
+    } else if (adm.status === 'admitted') {
+        statusHtml = `<div style="color:#52c41a;font-weight:600;">✅ Admitida — abriendo debate público</div>`;
+    } else {
+        statusHtml = `<div style="color:#90CAF9;font-weight:600;">📋 Pendiente de admisión Génesis</div>`;
+    }
+
+    const counter = `
+        <div style="display:flex;gap:0.5rem;margin-top:0.4rem;font-size:0.78rem;font-family:monospace;">
+            <span style="color:#52c41a;">✅ ${adm.yes}</span>
+            <span style="color:#ff4d4f;">❌ ${adm.no}</span>
+            <span style="color:var(--color-text-secondary);opacity:0.8;">· ${adm.genesisVoters}/${adm.threshold}+ Génesis</span>
+            ${adm.totalVotes > 0 ? `<span style="color:var(--color-text-secondary);opacity:0.8;">· ${yesPct}% sí</span>` : ''}
+        </div>
+    `;
+
+    const dTagAttr = escapeHtml(nostrP.dTag);
+    const eventIdAttr = escapeHtml(nostrP.id);
+    let actions = '';
+    if (adm.status === 'pending' && iAmGenesis && !myVote) {
+        actions = `
+            <div style="display:flex;gap:0.4rem;margin-top:0.5rem;">
+                <button data-lbw-action="admitProposal" data-dtag="${dTagAttr}" data-eid="${eventIdAttr}" data-decision="yes"
+                    style="flex:1;padding:0.4rem 0.6rem;border-radius:6px;border:0;background:#52c41a;color:#fff;font-weight:700;cursor:pointer;font-size:0.8rem;">
+                    ✅ Admitir
+                </button>
+                <button data-lbw-action="admitProposal" data-dtag="${dTagAttr}" data-eid="${eventIdAttr}" data-decision="no"
+                    style="flex:1;padding:0.4rem 0.6rem;border-radius:6px;border:0;background:#ff4d4f;color:#fff;font-weight:700;cursor:pointer;font-size:0.8rem;">
+                    ❌ Rechazar
+                </button>
+            </div>
+        `;
+    } else if (myVote) {
+        actions = `<div style="margin-top:0.4rem;color:var(--color-accent-green);font-size:0.78rem;">✓ Tu voto admisión: <strong>${myVote.option}</strong></div>`;
+    } else if (adm.status === 'pending' && !iAmGenesis) {
+        actions = `<div style="margin-top:0.4rem;color:var(--color-text-secondary);font-size:0.72rem;opacity:0.75;font-style:italic;">Solo Génesis pueden votar admisión</div>`;
+    }
+
+    return `
+        <div style="background:rgba(64,196,255,0.06);border:1px solid rgba(64,196,255,0.25);border-radius:8px;padding:0.55rem 0.75rem;margin-top:0.5rem;font-size:0.82rem;">
+            ${statusHtml}
+            ${counter}
+            ${actions}
+        </div>
+    `;
 }
 
 function _renderResultBadge(result, proposal) {
@@ -279,6 +368,29 @@ async function recalculateGovResult(dTag) {
         console.error('[Governance] recalculate error:', err);
     }
     setTimeout(() => { updateGovStats(); displayProposals(); }, 1000);
+}
+
+// Génesis: emitir voto de admisión yes/no para una propuesta pendiente.
+async function admitProposal(dTag, proposalEventId, decision) {
+    if (typeof LBW_Governance === 'undefined' || !LBW_Nostr.isLoggedIn()) {
+        showNotification('Necesitas estar conectado con Nostr', 'error');
+        return;
+    }
+    const proposal = LBW_Governance.getProposal(dTag);
+    if (!proposal) {
+        showNotification('Propuesta no encontrada', 'error');
+        return;
+    }
+    const label = decision === 'yes' ? 'admitir' : 'rechazar';
+    if (!confirm(`¿Confirmas tu voto Génesis para ${label} esta propuesta?`)) return;
+    try {
+        await LBW_Governance.publishAdmissionVote(proposalEventId || proposal.id, dTag, decision);
+        showNotification(`✅ Voto admisión registrado (${decision})`, 'success');
+        setTimeout(() => { updateGovStats(); displayProposals(); }, 800);
+    } catch (err) {
+        showNotification('Error en voto admisión: ' + err.message, 'error');
+        console.error('[Governance] admission vote error:', err);
+    }
 }
 
 function filterProposals(filter) {
@@ -372,6 +484,10 @@ async function showProposalDetail(proposalIdentifier) {
                         <div style="color:#faad14;font-weight:600;">Calculando resultado...</div>
                         <div style="color:var(--color-text-secondary);font-size:0.85rem;margin-top:0.25rem;">El sistema está procesando los votos ponderados</div>
                     </div>
+                ` : ''}
+
+                ${(proposal.status === 'pending_admission' || proposal.status === 'admission_rejected') ? `
+                    <div style="margin-bottom:1.5rem;">${_renderAdmissionBlock(nostrP)}</div>
                 ` : ''}
 
                 <div id="voteSectionContainer">
@@ -833,6 +949,10 @@ function updateVoteResultsInModal(proposalDTag) {
                     break;
                 case 'submitExecVerification':
                     submitExecVerification(el.dataset.dtag);
+                    break;
+                case 'admitProposal':
+                    e.stopPropagation();   // No abrir detail al clicar
+                    admitProposal(el.dataset.dtag, el.dataset.eid, el.dataset.decision);
                     break;
                 // Other actions handled by other modules.
             }

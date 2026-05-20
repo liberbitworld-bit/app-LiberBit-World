@@ -631,6 +631,21 @@ function openDebateChannel(proposalDTag, proposalTitle) {
     // Suscribirse al debate vía Nostr
     if (window.LBW_Debate) {
         window.LBW_Debate.subscribeDebate(proposalDTag, function(msg, type) {
+            if (type === 'admission-pending') {
+                // El debate está bloqueado hasta que los Génesis admitan la
+                // propuesta. Sustituye el spinner por un mensaje explicativo.
+                const c = document.getElementById('debateMessages');
+                if (c) {
+                    c.innerHTML = `
+                        <div style="padding:2rem; text-align:center; color:var(--color-text-secondary); font-size:0.9rem; line-height:1.5;">
+                            <div style="font-size:2rem; margin-bottom:0.75rem;">🛡️</div>
+                            <div style="color:#40C4FF; font-weight:600; margin-bottom:0.4rem;">Debate cerrado</div>
+                            <div style="font-size:0.82rem;">Esta propuesta aún no ha sido admitida por los ciudadanos Génesis.</div>
+                            <div style="font-size:0.78rem; margin-top:0.6rem; opacity:0.75;">El debate público se abre automáticamente cuando se cruza la mayoría Génesis.</div>
+                        </div>`;
+                }
+                return;
+            }
             if (type === 'eose') {
                 _renderDebateMessages(proposalDTag);
                 return;
