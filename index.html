@@ -1467,6 +1467,16 @@
                     <button class="lbw-map-toggle" onclick="LBW_Map.refresh()">🔄 Refrescar</button>
                 </div>
 
+                <!-- Filtro por profesión (agrupado por ciudad — preserva privacidad) -->
+                <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;flex-wrap:wrap;">
+                    <label for="lbwMapProfessionFilter" style="font-size:0.85rem;color:var(--color-text-secondary);">🔎 Buscar profesión en el ecosistema:</label>
+                    <select id="lbwMapProfessionFilter"
+                        onchange="if(window.LBW_Map) LBW_Map.setProfessionFilter(this.value);"
+                        style="flex:1;min-width:200px;padding:0.5rem 0.65rem;background:var(--color-bg-dark);border:2px solid var(--color-border);border-radius:8px;color:var(--color-text-primary);font-family:var(--font-display);cursor:pointer;">
+                        <option value="">💼 Todas las profesiones</option>
+                    </select>
+                </div>
+
                 <div class="lbw-map-status" id="lbwMapStatus">Inicializando...</div>
 
                 <!-- Mapa -->
@@ -2528,7 +2538,7 @@
                 </div>
 
                 <!-- Búsqueda por texto libre (Phase 1) -->
-                <div id="marketSearchBar" style="position:relative; margin-bottom: 1.5rem;">
+                <div id="marketSearchBar" style="position:relative; margin-bottom: 0.75rem;">
                     <input
                         type="text"
                         id="marketSearch"
@@ -2541,6 +2551,15 @@
                         style="position:absolute;right:0.6rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--color-text-secondary);cursor:pointer;font-size:1.1rem;padding:0;"
                         title="Limpiar búsqueda"
                     >✕</button>
+                </div>
+
+                <!-- Filtro por profesión del vendedor -->
+                <div id="marketProfessionFilterBar" style="margin-bottom: 1.5rem;">
+                    <select id="marketProfessionFilter"
+                        onchange="filterOffersByProfession(this.value)"
+                        style="width:100%; padding:0.65rem 0.75rem; background:var(--color-bg-dark); border:2px solid var(--color-border); border-radius:8px; color:var(--color-text-primary); font-family:var(--font-display); cursor:pointer;">
+                        <option value="">💼 Todas las profesiones</option>
+                    </select>
                 </div>
 
                 <!-- New Offer Button -->
@@ -2723,6 +2742,9 @@
                             </div>
                             <div id="profileLud16Display" style="display:none;margin-top:0.25rem;font-size:0.75rem;color:#FFB74D;">
                                 ⚡ <span id="profileLud16Value"></span>
+                            </div>
+                            <div id="profileProfessionDisplay" style="display:none;margin-top:0.25rem;font-size:0.8rem;color:#90CAF9;">
+                                <span id="profileProfessionLabel"></span><span id="profileProfessionSpecialtyLabel" style="opacity:0.8;font-style:italic;"></span>
                             </div>
                             <!-- [v2.0] Governor badge -->
                             <div id="profileGovernorBadge" style="display:none;align-items:center;gap:0.4rem;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;background:rgba(156,39,176,0.15);color:#CE93D8;border:1px solid rgba(156,39,176,0.3);margin-top:0.4rem;"></div>
@@ -2950,6 +2972,27 @@
                     <input type="text" class="form-input" id="customCityInput" placeholder="Escribe tu ciudad...">
                 </div>
 
+                <!-- Profession (taxonomía + especialidad libre) -->
+                <div class="form-group">
+                    <label class="form-label">💼 Profesión / Sector</label>
+                    <select class="form-select" id="profileProfessionSelect">
+                        <option value="">— Sin especificar —</option>
+                    </select>
+                    <small style="color:var(--color-text-secondary);font-size:0.75rem;">
+                        Visible en tu perfil y junto a tus ofertas del Marketplace · Filtrable en mapa
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">✨ Especialidad (opcional)</label>
+                    <input type="text" class="form-input" id="profileProfessionSpecialty"
+                        placeholder="Ej: Rust + Bitcoin Lightning, Albañil, Tarot, Permacultura tropical..."
+                        maxlength="80" autocomplete="off">
+                    <small style="color:var(--color-text-secondary);font-size:0.75rem;">
+                        Texto libre para tu especialidad concreta (máx. 80 caracteres)
+                    </small>
+                </div>
+
                 <!-- Lightning address (Phase 2) -->
                 <div class="form-group">
                     <label class="form-label">⚡ Lightning Address (para recibir pagos)</label>
@@ -2974,6 +3017,8 @@
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/escape-utils.js?v=sec11"></script>
     <!-- NIP-49 passlock: cifra la nsec con contraseña en localStorage. Debe ir antes de auth.js y nostr-bridge.js (ambos lo usan). -->
     <script src="js/lbw-passlock.js?v=relogin-1"></script>
+    <!-- Taxonomía de profesiones: usado por profile.js, marketplace.js, map.js -->
+    <script src="js/lbw-professions.js?v=profession-1"></script>
     <script src="js/config.js?v=phase2"></script>
     <script src="js/auth.js?v=m12-1"></script>
     <script src="js/ui.js?v=apr17c"></script>
@@ -2989,7 +3034,7 @@
     </script>
 
     <script src="js/posts.js?v=phase1b"></script>
-    <script src="js/marketplace.js?v=phase4"></script>
+    <script src="js/marketplace.js?v=profession-1"></script>
     <script src="js/p2p-exchange.js?v=hardening-1"></script>
     <script src="js/notifications.js?v=sec11"></script>
     <script src="js/chat.js?v=nip72-4"></script>
@@ -2998,7 +3043,7 @@
             crossorigin="anonymous"></script>
     <script src="js/lightning.js?v=secC1-1"></script>
     <script src="js/governance.js?v=nip72-5"></script>
-    <script src="js/profile.js?v=nip49-2"></script>
+    <script src="js/profile.js?v=profession-1"></script>
     <script src="js/nwc.js?v=secA1-1"></script>
     <script src="js/wallet.js?v=secA1-1"></script>
 
@@ -3023,7 +3068,7 @@
     <script src="js/nostr-reviews.js?v=hardening-1"></script>
     <script src="js/nostr-marketplace-pay.js?v=m9-1"></script>
     <script src="js/nostr-stalls.js?v=hardening-1"></script>
-    <script src="js/nostr-bridge.js?v=nip46qr-1"></script>
+    <script src="js/nostr-bridge.js?v=profession-1"></script>
     <script src="js/debate.js?v=nip72-1"></script>
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->
@@ -3031,7 +3076,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
-    <script src="js/map.js?v=3"></script>
+    <script src="js/map.js?v=profession-1"></script>
     <script src="js/city-prompt.js?v=2"></script>
     <!-- Emoji Picker -->
     <style>

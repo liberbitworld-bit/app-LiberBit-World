@@ -1675,6 +1675,12 @@ const LBW_NostrBridge = (() => {
                 // Collect t-tags for search
                 const tTags = (listing.tags || []).filter(t => t[0] === 't').map(t => t[1]).join(' ');
                 card.dataset.tags = tTags;
+                // Profesión del vendedor (taxonomía cerrada) para el filtro.
+                // Se rellena async tras resolver el perfil del seller; mientras
+                // tanto el card pasa por el filtro como "sin profesión" (oculto
+                // si hay un filtro activo). En cuanto llega el perfil, se
+                // actualiza el dataset y se re-aplica el filtro.
+                card.dataset.profession = '';
                 _registerListing(listing);
 
                 card.style.cssText = 'background:var(--color-bg-card);border:2px solid var(--color-border);border-radius:16px;overflow:hidden;transition:all 0.3s;';
@@ -1719,9 +1725,12 @@ const LBW_NostrBridge = (() => {
                         </div>
                         <h4 style="color:var(--color-text-primary);font-size:1rem;margin-bottom:0.4rem;">${_esc(listing.title)}</h4>
                         <p style="color:var(--color-text-secondary);font-size:0.8rem;margin-bottom:0.75rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${_esc(listing.description)}</p>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.3rem;">
                             <span style="font-weight:700;color:var(--color-gold);font-size:0.9rem;">${_esc(priceDisplay)}</span>
-                            <span style="font-size:0.7rem;color:var(--color-text-secondary);" id="seller-name-${listing.id.substring(0,8)}">${_esc(name)}</span>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.15rem;min-width:0;">
+                                <span style="font-size:0.7rem;color:var(--color-text-secondary);" id="seller-name-${listing.id.substring(0,8)}">${_esc(name)}</span>
+                                <span id="seller-prof-${listing.id.substring(0,8)}" style="display:none;font-size:0.65rem;color:#90CAF9;opacity:0.85;"></span>
+                            </div>
                         </div>
                         <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;" class="card-actions">
                             ${(!isMine && listing.price && listing.price !== 'A negociar' && !isNaN(parseInt(listing.price)) && listing.status === 'active')
@@ -1739,6 +1748,37 @@ const LBW_NostrBridge = (() => {
                 });
 
                 grid.appendChild(card);
+
+                // [profession-1] Resuelve el perfil del seller para mostrar
+                // su categoría profesional + setear data-profession en la card
+                // (para el filtro). Async y best-effort — si falla queda en
+                // blanco y la card pasa el filtro como "sin profesión".
+                if (typeof LBW_Sync !== 'undefined' && LBW_Sync.resolveProfile && typeof LBW_Professions !== 'undefined') {
+                    LBW_Sync.resolveProfile(listing.pubkey).then(p => {
+                        if (!p) return;
+                        const profCode = p.lbw_profession || '';
+                        const profSpec = p.lbw_profession_specialty || '';
+                        if (profCode || profSpec) {
+                            const label = LBW_Professions.getLabel(profCode);
+                            const profEl = document.getElementById('seller-prof-' + listing.id.substring(0,8));
+                            if (profEl) {
+                                const txt = [label, profSpec].filter(Boolean).join(' · ');
+                                if (txt) {
+                                    profEl.textContent = txt;
+                                    profEl.style.display = 'block';
+                                }
+                            }
+                            if (profCode) {
+                                card.dataset.profession = profCode;
+                                // Re-aplicar filtros por si hay uno activo
+                                const sel = document.getElementById('marketProfessionFilter');
+                                if (sel && sel.value && sel.value !== profCode) {
+                                    card.style.display = 'none';
+                                }
+                            }
+                        }
+                    }).catch(() => {});
+                }
 
                 // [Phase 2] Inject citizenship + reputation badges next to seller name (async, non-blocking)
                 if (typeof LBW_Reviews !== 'undefined') {

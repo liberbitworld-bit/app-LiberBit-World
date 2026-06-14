@@ -159,17 +159,33 @@ function filterOffers(category) {
     if (searchVal) filterOffersBySearch(searchVal);
 }
 
-// ── Búsqueda por texto libre ──────────────────────────────
+// ── Búsqueda por texto libre + filtro profesión ──────────
+// Los tres filtros (categoría · texto · profesión) se aplican juntos:
+// una card se ve solo si CUMPLE LOS TRES. Cada filtro es independiente
+// pero combinable.
+
+function _activeProfessionFilter() {
+    const sel = document.getElementById('marketProfessionFilter');
+    return (sel && sel.value) || '';
+}
+
 function filterOffersBySearch(query) {
     const q = (query || '').toLowerCase().trim();
     const activeCat = document.querySelector('.filter-btn.active')?.dataset?.filter || 'todos';
+    const activeProf = _activeProfessionFilter();
 
     document.querySelectorAll('.offer-card:not(.mission-card)').forEach(card => {
         // Filtro de categoría primero
         const catMatch = activeCat === 'todos' || card.dataset.category === activeCat;
         if (!catMatch) { card.style.display = 'none'; return; }
 
-        // Sin búsqueda → mostrar todo
+        // Filtro de profesión del vendedor
+        if (activeProf) {
+            const cardProf = card.dataset.profession || '';
+            if (cardProf !== activeProf) { card.style.display = 'none'; return; }
+        }
+
+        // Sin búsqueda → mostrar (ya cumple categoría + profesión)
         if (!q) { card.style.display = ''; return; }
 
         const title = (card.dataset.title || '').toLowerCase();
@@ -181,6 +197,39 @@ function filterOffersBySearch(query) {
             ? '' : 'none';
     });
 }
+
+// Filtro por profesión del vendedor. Re-aplica los filtros existentes
+// (categoría + texto) para evitar mostrar cards que ya estaban ocultas
+// por otros criterios.
+function filterOffersByProfession(professionCode) {
+    const searchVal = document.getElementById('marketSearch')?.value || '';
+    filterOffersBySearch(searchVal);
+}
+
+// Pobla el <select> de profesiones desde la taxonomía. Idempotente —
+// llamable múltiples veces sin duplicar opciones. Mantiene el valor
+// seleccionado actual si sigue siendo válido.
+function _populateMarketProfessionFilter() {
+    const sel = document.getElementById('marketProfessionFilter');
+    if (!sel || typeof LBW_Professions === 'undefined') return;
+    const prev = sel.value || '';
+    const opts = ['<option value="">💼 Todas las profesiones</option>']
+        .concat(LBW_Professions.getList().map(p =>
+            `<option value="${p.code}">${p.label}</option>`
+        )).join('');
+    sel.innerHTML = opts;
+    // Restaurar selección si sigue siendo válida
+    if (prev && LBW_Professions.isValidCode(prev)) sel.value = prev;
+}
+
+// Auto-init al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    _populateMarketProfessionFilter();
+});
+// Expose para que otros módulos puedan llamarlo (p.ej. al cargar
+// la sección Marketplace por primera vez si DOMContentLoaded ya pasó)
+window._populateMarketProfessionFilter = _populateMarketProfessionFilter;
+window.filterOffersByProfession = filterOffersByProfession;
 
 // ── Carga ─────────────────────────────────────────────────
 function loadOffers() {

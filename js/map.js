@@ -264,18 +264,33 @@
     // ═══════════════════════════════════════════════════════════════
     // DATOS: ciudadanos por ciudad
     // ═══════════════════════════════════════════════════════════════
-    async function loadCitizensByCity() {
+    // Filtro opcional por profesión. Si se pasa una professionCode, solo
+    // se cuentan usuarios cuyo `users.profession` coincida. Preserva la
+    // privacidad: seguimos agregando por ciudad, NUNCA listamos usuarios
+    // individuales.
+    async function loadCitizensByCity(professionFilter) {
         try {
             if (typeof supabaseClient === 'undefined') return {};
-            const { data, error } = await supabaseClient
-                .from('users')
-                .select('city');
-            if (error || !data) return {};
+            // Pedimos profession también para poder filtrar client-side.
+            // Si la columna no existe (migración pendiente), Supabase
+            // devuelve error → fallback al SELECT solo city.
+            let rows = null;
+            try {
+                const r = await supabaseClient.from('users').select('city, profession');
+                if (!r.error && r.data) rows = r.data;
+            } catch (e) {}
+            if (!rows) {
+                const r2 = await supabaseClient.from('users').select('city');
+                if (r2.error || !r2.data) return {};
+                rows = r2.data;
+            }
 
+            const filter = (professionFilter || '').trim();
             const counts = {};
-            data.forEach(u => {
+            rows.forEach(u => {
                 const c = (u.city || '').trim();
                 if (!c) return;
+                if (filter && (u.profession || '') !== filter) return;
                 const key = c.toLowerCase();
                 if (!counts[key]) counts[key] = { name: c, count: 0 };
                 counts[key].count++;
@@ -375,6 +390,9 @@
         updateStatsBar();
     }
 
+    // Profesión actualmente filtrada en la UI (vacío = todas)
+    let _activeProfession = '';
+
     async function renderCitizens() {
         if (!map || loadingCitizens) return;
         loadingCitizens = true;
@@ -385,7 +403,7 @@
         const statusEl = document.getElementById('lbwMapStatus');
         if (statusEl) statusEl.textContent = '⏳ Cargando ciudadanos...';
 
-        const counts = await loadCitizensByCity();
+        const counts = await loadCitizensByCity(_activeProfession);
         const entries = Object.values(counts);
 
         let totalCitizens = 0;
@@ -430,12 +448,22 @@
         if (!citizenLayer) return;
         const marker = L.marker(coords, { icon: citizenIcon(entry.count) });
         const word = entry.count === 1 ? 'ciudadano' : 'ciudadanos';
+        // Si hay filtro de profesión activo, lo reflejamos en el popup
+        // (manteniendo agregado por privacidad — solo el count cambia).
+        let profLine = '';
+        if (_activeProfession && typeof window.LBW_Professions !== 'undefined') {
+            const label = window.LBW_Professions.getLabel(_activeProfession);
+            if (label) {
+                profLine = `<div class="lbw-map-popup-desc" style="font-size:0.78rem;color:#90CAF9;margin-top:0.2rem;">${label}</div>`;
+            }
+        }
         marker.bindPopup(`
             <div class="lbw-map-popup">
                 <div class="lbw-map-popup-title">📍 ${entry.name}</div>
                 <div class="lbw-map-popup-count">
                     <strong>${entry.count}</strong> ${word}
                 </div>
+                ${profLine}
                 <div class="lbw-map-popup-desc" style="font-size:0.75rem;opacity:0.7;">
                     Agregado por privacidad
                 </div>
@@ -759,11 +787,26 @@
         renderNodes();
         renderRelays();
         renderCitizens();
+        _populateProfessionFilterDom();
 
         initialized = true;
         setTimeout(() => map.invalidateSize(), 250);
 
         console.info('[LBW_Map] Inicializado');
+    }
+
+    // Rellena el <select id="lbwMapProfessionFilter"> con la taxonomía
+    // LBW_Professions. Idempotente — re-llamarlo no duplica opciones.
+    function _populateProfessionFilterDom() {
+        const sel = document.getElementById('lbwMapProfessionFilter');
+        if (!sel || typeof window.LBW_Professions === 'undefined') return;
+        const prev = sel.value || '';
+        const opts = ['<option value="">💼 Todas las profesiones</option>']
+            .concat(window.LBW_Professions.getList().map(p =>
+                '<option value="' + p.code + '">' + p.label + '</option>'
+            )).join('');
+        sel.innerHTML = opts;
+        if (prev) sel.value = prev;
     }
 
     async function refresh() {
@@ -801,12 +844,25 @@
         setupAutoInit();
     }
 
+    // Cambia el filtro de profesión y re-renderiza ciudadanos por
+    // ciudad. Pasar '' (cadena vacía) restaura "todos".
+    function setProfessionFilter(code) {
+        _activeProfession = (code || '').trim();
+        renderCitizens();
+    }
+
+    function getProfessionFilter() {
+        return _activeProfession;
+    }
+
     // API pública
     window.LBW_Map = {
         init: init,
         refresh: refresh,
         toggleNodes: toggleNodes,
         toggleCitizens: toggleCitizens,
-        toggleRelays: toggleRelays
+        toggleRelays: toggleRelays,
+        setProfessionFilter: setProfessionFilter,
+        getProfessionFilter: getProfessionFilter
     };
 })(window);

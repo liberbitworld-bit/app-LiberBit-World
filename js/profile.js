@@ -223,16 +223,18 @@ async function loadUserProfile() {
         // Load from Supabase first
         const { data, error } = await supabaseClient
             .from('users')
-            .select('citizenship_type, city, registration_date, avatar_url')
+            .select('citizenship_type, city, registration_date, avatar_url, profession, profession_specialty')
             .eq('public_key', pubKey)
             .single();
-        
+
         if (data) {
             userProfile = {
                 citizenshipType: data.citizenship_type || 'Amigo',
                 city: data.city || '',
                 registrationDate: data.registration_date || new Date().toISOString(),
-                avatarUrl: data.avatar_url || null
+                avatarUrl: data.avatar_url || null,
+                profession: data.profession || '',
+                professionSpecialty: data.profession_specialty || ''
             };
             
             // Update avatar if exists
@@ -327,6 +329,32 @@ function updateProfileDisplay() {
     const citizenshipBadge = document.getElementById('profileCitizenship');
     if (citizenshipBadge) {
         citizenshipBadge.textContent = `${citizenship.icon} ${citizenship.title}`;
+    }
+
+    // Profession badge (taxonomía + especialidad libre). Prioridad de
+    // datos: kind:0 metadata Nostr → userProfile (Supabase cached) → vacío.
+    const profDisplay = document.getElementById('profileProfessionDisplay');
+    if (profDisplay && typeof LBW_Professions !== 'undefined') {
+        let code = '';
+        let specialty = '';
+        if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+            const p = LBW_Nostr.getProfile() || {};
+            code = p.lbw_profession || '';
+            specialty = p.lbw_profession_specialty || '';
+        }
+        if (!code && userProfile) code = userProfile.profession || '';
+        if (!specialty && userProfile) specialty = userProfile.professionSpecialty || '';
+
+        const label = LBW_Professions.getLabel(code);
+        if (label || specialty) {
+            profDisplay.style.display = 'block';
+            const labelEl = document.getElementById('profileProfessionLabel');
+            const specEl  = document.getElementById('profileProfessionSpecialtyLabel');
+            if (labelEl) labelEl.textContent = label || '💼 Sin categoría';
+            if (specEl)  specEl.textContent  = specialty ? ' · ' + specialty : '';
+        } else {
+            profDisplay.style.display = 'none';
+        }
     }
 
     // [v2.0] Génesis badge + Founder indicator
@@ -474,6 +502,27 @@ function showCitizenshipModal() {
             if (pubKey) lud16 = localStorage.getItem('lbw_lud16_' + pubKey.substring(0, 16)) || '';
         }
         lud16Input.value = lud16;
+    }
+
+    // Pre-fill profession (taxonomía + especialidad libre)
+    const profSelect = document.getElementById('profileProfessionSelect');
+    const profSpecialty = document.getElementById('profileProfessionSpecialty');
+    if (profSelect && typeof LBW_Professions !== 'undefined') {
+        // Repopulamos opciones desde la taxonomía (idempotente — sobreescribe
+        // las que vinieran del HTML). Así no hay que mantener la lista en 2 sitios.
+        let currentCode = '';
+        let currentSpecialty = '';
+        if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
+            const p = LBW_Nostr.getProfile() || {};
+            currentCode = p.lbw_profession || '';
+            currentSpecialty = p.lbw_profession_specialty || '';
+        }
+        // Fallback a localStorage si no hay perfil Nostr cargado aún
+        if (!currentCode && userProfile && userProfile.profession) currentCode = userProfile.profession;
+        if (!currentSpecialty && userProfile && userProfile.professionSpecialty) currentSpecialty = userProfile.professionSpecialty;
+
+        profSelect.innerHTML = LBW_Professions.renderOptionsHtml(currentCode);
+        if (profSpecialty) profSpecialty.value = currentSpecialty;
     }
 }
 
@@ -686,6 +735,16 @@ async function saveCitizenship() {
             .eq('public_key', pubKey)
             .maybeSingle();
         
+        // Recoger profesión + especialidad del modal (taxonomía cerrada)
+        const profSelect = document.getElementById('profileProfessionSelect');
+        const profSpecialtyInput = document.getElementById('profileProfessionSpecialty');
+        let professionCode = profSelect ? (profSelect.value || '') : '';
+        // Sanitizar: si el code no está en la taxonomía actual, lo descartamos
+        if (professionCode && typeof LBW_Professions !== 'undefined' && !LBW_Professions.isValidCode(professionCode)) {
+            professionCode = '';
+        }
+        let professionSpecialty = profSpecialtyInput ? (profSpecialtyInput.value || '').trim().substring(0, 80) : '';
+
         if (!existingUser) {
             // User doesn't exist, create it first
             const { data: newUser, error: insertError } = await supabaseClient
@@ -694,17 +753,19 @@ async function saveCitizenship() {
                     id: generateUUID(),
                     public_key: pubKey,
                     name: currentUser.name,
-                    city: city
+                    city: city,
+                    profession: professionCode || null,
+                    profession_specialty: professionSpecialty || null
                 }])
                 .select()
                 .single();
-            
+
             if (insertError) {
                 console.error('Error creating user:', insertError);
-                showNotification('Error al crear usuario: ' + insertError.message, 'error');
+                showNotification('Error al crear usuario: ' + insertError.message + ' (¿migración Supabase pendiente?)', 'error');
                 return;
             }
-            
+
             currentUser.id = newUser.id;
             window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
         } else {
@@ -712,7 +773,9 @@ async function saveCitizenship() {
             const { data, error } = await supabaseClient
                 .from('users')
                 .update({
-                    city: city
+                    city: city,
+                    profession: professionCode || null,
+                    profession_specialty: professionSpecialty || null
                 })
                 .eq('public_key', pubKey)
                 .select()
@@ -720,7 +783,7 @@ async function saveCitizenship() {
 
             if (error) {
                 console.error('Error updating profile:', error);
-                showNotification('Error al actualizar perfil: ' + error.message, 'error');
+                showNotification('Error al actualizar perfil: ' + error.message + ' (¿migración Supabase pendiente?)', 'error');
                 return;
             }
         }
@@ -736,12 +799,18 @@ async function saveCitizenship() {
 
         if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
             try {
-                // Actualizar perfil Nostr (kind-0) con el lud16
+                // Actualizar perfil Nostr (kind-0) con lud16, ciudad, profesión y especialidad
                 const currentProfile = LBW_Nostr.getProfile() || {};
-                await LBW_Nostr.updateProfile({ ...currentProfile, lud16: lud16 || '' });
-                console.log('[Profile] ⚡ lud16 actualizado en Nostr:', lud16 || '(eliminado)');
+                await LBW_Nostr.updateProfile({
+                    ...currentProfile,
+                    lud16: lud16 || '',
+                    lbw_city: city || '',
+                    lbw_profession: professionCode || '',
+                    lbw_profession_specialty: professionSpecialty || ''
+                });
+                console.log('[Profile] ⚡ Nostr metadata actualizado:', { lud16, city, profession: professionCode, specialty: professionSpecialty });
             } catch (e) {
-                console.warn('[Profile] No se pudo actualizar lud16 en Nostr:', e.message);
+                console.warn('[Profile] No se pudo actualizar metadata en Nostr:', e.message);
             }
         }
 
@@ -761,7 +830,9 @@ async function saveCitizenship() {
         // Update local profile
         userProfile.citizenshipType = citizenship.title;
         userProfile.city = city;
-        
+        userProfile.profession = professionCode || '';
+        userProfile.professionSpecialty = professionSpecialty || '';
+
         // Also save to localStorage as backup
         localStorage.setItem('userProfile_' + pubKey, JSON.stringify(userProfile));
         
