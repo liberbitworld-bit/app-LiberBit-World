@@ -1151,11 +1151,24 @@ const LBW_NostrBridge = (() => {
             let replyHtml = '';
             if (msg.isReply) replyHtml = `<div class="chat-msg-reply-indicator">↩️ Respuesta</div>`;
 
+            // Nombre clicable que abre DM con el autor del mensaje. Para
+            // mensajes propios lo dejamos como span estático (no tiene
+            // sentido abrir DM contigo mismo). Para el resto, span con
+            // role=button + data-lbw-action delegado al bridge.
+            const nameHtml = isMine
+                ? `<span class="chat-msg-name" style="color:var(--color-gold);">${_esc(name)}</span>`
+                : `<span class="chat-msg-name chat-msg-name-clickable"
+                       role="button" tabindex="0"
+                       data-lbw-action="bridgeStartDM"
+                       data-pubkey="${_esc(msg.pubkey)}"
+                       title="Enviar mensaje privado a ${_esc(name).replace(/"/g,'&quot;')}"
+                       style="color:var(--color-teal-light);cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-decoration-thickness:1px;text-underline-offset:3px;">${_esc(name)}</span>`;
+
             el.innerHTML = `
                 <div class="chat-msg-header">
                     <div class="chat-msg-author-row">
                         ${_avatarHtml('chat-msg-avatar', name, profile.picture)}
-                        <span class="chat-msg-name" style="color:${isMine ? 'var(--color-gold)' : 'var(--color-teal-light)'};">${_esc(name)}</span>
+                        ${nameHtml}
                     </div>
                     <span class="chat-msg-time">${time}</span>
                 </div>
