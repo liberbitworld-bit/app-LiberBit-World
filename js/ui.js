@@ -462,7 +462,53 @@ function backToMenu() {
     updateAllBadges(); // Refresh badges when returning to menu
 }
 
+// ── History API SPA navigation ───────────────────────────────
+// Sin esto, el botón de retroceder del navegador (o el gesto en móvil)
+// saca al usuario de la app porque la URL nunca cambia y el back va a
+// la página anterior del browser. Con pushState/popstate, cada cambio
+// de sección añade una entrada en el historial, y el back invoca
+// popstate → restauramos la sección previa.
+let _skipHistoryPush = false;
+
+function _initHistoryNavigation() {
+    if (window._lbwHistoryInit) return;
+    window._lbwHistoryInit = true;
+    const active = document.querySelector('.section.active');
+    const initialSection = (active && active.id) || 'mainMenuSection';
+    try { history.replaceState({ lbwSection: initialSection }, '', ''); } catch (e) {}
+    window.addEventListener('popstate', (event) => {
+        const target = (event.state && event.state.lbwSection) || 'mainMenuSection';
+        _skipHistoryPush = true;
+        try {
+            // Si el destino es el menú principal, usamos backToMenu para
+            // que se ejecuten los side-effects (limpiar interval del badge,
+            // refrescar badges). Para el resto, showSection puro.
+            if (target === 'mainMenuSection' && typeof backToMenu === 'function') {
+                backToMenu();
+            } else {
+                showSection(target);
+            }
+        } finally {
+            _skipHistoryPush = false;
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', _initHistoryNavigation);
+
 function showSection(sectionId) {
+    // Push a la pila de historia salvo que vengamos del propio popstate
+    // (evita el loop infinito). Tampoco re-pushear si ya estamos en la
+    // misma sección.
+    if (!_skipHistoryPush) {
+        try {
+            const cur = history.state;
+            if (!cur || cur.lbwSection !== sectionId) {
+                history.pushState({ lbwSection: sectionId }, '', '');
+            }
+        } catch (e) {}
+    }
+
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById(sectionId).classList.add('active');
     window.scrollTo(0, 0);
