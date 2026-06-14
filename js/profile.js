@@ -798,20 +798,29 @@ async function saveCitizenship() {
         }
 
         if (window.LBW_Nostr && LBW_Nostr.isLoggedIn()) {
-            try {
-                // Actualizar perfil Nostr (kind-0) con lud16, ciudad, profesión y especialidad
-                const currentProfile = LBW_Nostr.getProfile() || {};
-                await LBW_Nostr.updateProfile({
-                    ...currentProfile,
-                    lud16: lud16 || '',
-                    lbw_city: city || '',
-                    lbw_profession: professionCode || '',
-                    lbw_profession_specialty: professionSpecialty || ''
-                });
+            // Actualizar perfil Nostr (kind-0) con lud16, ciudad, profesión y
+            // especialidad. NO BLOQUEAR la UI esperando al publish: nostr-tools
+            // SimplePool no aplica timeout al pool.publish, así que si algún
+            // relay no devuelve OK el await queda pendiente indefinidamente y
+            // el modal nunca se cierra. Supabase es la source of truth del
+            // guardado; Nostr es un sync secundario "best-effort". Disparamos
+            // fire-and-forget con timeout de cortesía para tracking en logs.
+            const currentProfile = LBW_Nostr.getProfile() || {};
+            const payload = {
+                ...currentProfile,
+                lud16: lud16 || '',
+                lbw_city: city || '',
+                lbw_profession: professionCode || '',
+                lbw_profession_specialty: professionSpecialty || ''
+            };
+            Promise.race([
+                LBW_Nostr.updateProfile(payload),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('publish kind:0 timeout 8s')), 8000))
+            ]).then(() => {
                 console.log('[Profile] ⚡ Nostr metadata actualizado:', { lud16, city, profession: professionCode, specialty: professionSpecialty });
-            } catch (e) {
-                console.warn('[Profile] No se pudo actualizar metadata en Nostr:', e.message);
-            }
+            }).catch(e => {
+                console.warn('[Profile] Metadata Nostr no actualizada (continuando guardado):', e.message);
+            });
         }
 
         // Guardar también en localStorage como caché rápido
