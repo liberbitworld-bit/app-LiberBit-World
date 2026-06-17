@@ -2923,6 +2923,17 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Personal mute list -->
+                <div class="profile-edit-section" style="background: rgba(13,23,30,0.6); border: 1px solid var(--color-border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">
+                    <h3 style="color:var(--color-text-primary); font-size:0.95rem; margin-bottom:0.5rem;">🔇 Usuarios silenciados</h3>
+                    <p style="color:var(--color-text-secondary); font-size:0.78rem; margin-bottom:0.75rem;">
+                        Solo tú no verás sus mensajes en el chat comunitario. Los demás siguen viéndolos. El mute se guarda en este dispositivo.
+                    </p>
+                    <div id="mutedUsersList" class="flex flex-col gap-2">
+                        <div class="text-sm opacity-50 italic">No has silenciado a nadie.</div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -3043,7 +3054,7 @@
             crossorigin="anonymous"></script>
     <script src="js/lightning.js?v=secC1-1"></script>
     <script src="js/governance.js?v=nip72-5"></script>
-    <script src="js/profile.js?v=profession-2"></script>
+    <script src="js/profile.js?v=mute-1"></script>
     <script src="js/nwc.js?v=secA1-1"></script>
     <script src="js/wallet.js?v=secA1-1"></script>
 
@@ -3068,7 +3079,9 @@
     <script src="js/nostr-reviews.js?v=hardening-1"></script>
     <script src="js/nostr-marketplace-pay.js?v=m9-1"></script>
     <script src="js/nostr-stalls.js?v=hardening-1"></script>
-    <script src="js/nostr-bridge.js?v=chatdm-1"></script>
+    <!-- Mute personal cliente-side: usado por nostr-bridge para ocultar mensajes -->
+    <script src="js/lbw-mute.js?v=mute-1"></script>
+    <script src="js/nostr-bridge.js?v=mute-1"></script>
     <script src="js/debate.js?v=nip72-1"></script>
     <script src="js/avatar-fix.js?v=2"></script>
     <!-- Missions system (Merit Bounties) -->

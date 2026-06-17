@@ -1178,7 +1178,16 @@ const LBW_NostrBridge = (() => {
                 <div class="chat-msg-actions">
                     <button data-reply-id="${msg.id}" data-reply-name="${_esc(name).replace(/"/g,'&quot;')}" onclick="LBW_NostrBridge.replyToMessage(this.dataset.replyId, this.dataset.replyName)" class="chat-msg-action-btn">↩️ Responder</button>
                     <button data-zap-id="${msg.id}" data-zap-pk="${msg.pubkey}" onclick="LBW_NostrBridge.zapMessage(this.dataset.zapId, this.dataset.zapPk, this)" class="chat-msg-action-btn chat-zap-btn">⚡</button>
+                    ${!isMine ? `<button data-lbw-action="bridgeMuteUser" data-pubkey="${_esc(msg.pubkey)}" data-name="${_esc(name).replace(/"/g,'&quot;')}" class="chat-msg-action-btn" title="Silenciar a este usuario (no verás sus mensajes)">🔇</button>` : ''}
                 </div>`;
+
+            // Aplicar mute si la pubkey está en la lista de silenciados.
+            // No saltamos el render — la guardamos hidden para poder
+            // reactivar sin re-fetch del backlog.
+            if (typeof LBW_Mute !== 'undefined' && LBW_Mute.isMuted(msg.pubkey)) {
+                el.style.display = 'none';
+                el.dataset.muted = '1';
+            }
 
             // Insert sorted DESCENDING (newest first)
             const existing = container.querySelectorAll('.chat-message');
@@ -2291,6 +2300,57 @@ const LBW_NostrBridge = (() => {
     function clearIncomingZaps() { _incomingZaps = []; }
     function clearIncomingReplies() { _incomingReplies = []; }
 
+    // ── Mute personal (cliente-side) ────────────────────────
+    // Llamado desde el botón 🔇 en cada mensaje del chat comunitario.
+    // No borra ni modifica eventos en relays — solo oculta visualmente
+    // los mensajes de esa pubkey en la app local. Persistencia en
+    // localStorage vía LBW_Mute.
+    function muteUser(pubkey, name) {
+        if (typeof LBW_Mute === 'undefined') return;
+        const displayName = (name || '').replace(/[<>'"]/g, '');
+        const ok = confirm('¿Silenciar a ' + (displayName || 'este usuario') +
+            '?\n\nSus mensajes no aparecerán en tu chat. Puedes reactivarlo desde el perfil → Usuarios silenciados.');
+        if (!ok) return;
+        if (!LBW_Mute.mute(pubkey)) {
+            console.warn('[Bridge] Mute rechazado para', pubkey);
+            return;
+        }
+        // Ocultar mensajes ya renderizados de esa pubkey (no los borramos
+        // del DOM por si el usuario reactiva luego)
+        try {
+            const selector = `.chat-message[data-pubkey="${CSS.escape(pubkey)}"]`;
+            document.querySelectorAll(selector).forEach(el => {
+                el.style.display = 'none';
+                el.dataset.muted = '1';
+            });
+        } catch (e) {}
+        if (typeof showNotification === 'function') {
+            showNotification('🔇 Usuario silenciado', 'info');
+        }
+        // Refrescar la lista de muted en perfil si está visible
+        if (typeof renderMutedUsersList === 'function') {
+            try { renderMutedUsersList(); } catch (e) {}
+        }
+    }
+
+    function unmuteUser(pubkey) {
+        if (typeof LBW_Mute === 'undefined') return;
+        if (!LBW_Mute.unmute(pubkey)) return;
+        try {
+            const selector = `.chat-message[data-pubkey="${CSS.escape(pubkey)}"]`;
+            document.querySelectorAll(selector).forEach(el => {
+                el.style.display = '';
+                delete el.dataset.muted;
+            });
+        } catch (e) {}
+        if (typeof showNotification === 'function') {
+            showNotification('🔉 Usuario reactivado', 'info');
+        }
+        if (typeof renderMutedUsersList === 'function') {
+            try { renderMutedUsersList(); } catch (e) {}
+        }
+    }
+
     // ── Public API ───────────────────────────────────────────
     return {
         init,
@@ -2300,6 +2360,7 @@ const LBW_NostrBridge = (() => {
         publishOffer, deleteListing, filterMarketplace, buyListing, startMarketplace, stopMarketplace, refreshMarketplace,
         startGovernance, stopGovernance, startMerits, stopMerits,
         togglePrivacyStrict,
+        muteUser, unmuteUser,
         _resolveName, _resolveProfileData, _avatarHtml, _injectAvatarImg, getDebugStats, getMyOffersCount, getMyChatCount,
         resolveName: _resolveName,
         // Nuevos métodos para integración con chat.js
@@ -2354,6 +2415,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     break;
                 case 'bridgeDeleteListing':
                     LBW_NostrBridge.deleteListing(el.dataset.id);
+                    break;
+                case 'bridgeMuteUser':
+                    LBW_NostrBridge.muteUser(el.dataset.pubkey, el.dataset.name);
+                    break;
+                case 'bridgeUnmuteUser':
+                    LBW_NostrBridge.unmuteUser(el.dataset.pubkey);
                     break;
             }
         } catch (err) {

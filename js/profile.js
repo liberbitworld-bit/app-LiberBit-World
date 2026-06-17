@@ -272,6 +272,9 @@ async function loadUserProfile() {
     
     updateProfileDisplay();
 
+    // Refrescar lista de usuarios silenciados (mute personal)
+    try { renderMutedUsersList(); } catch (e) {}
+
     // Re-update after delays to catch late-loaded feeds (chat, marketplace, governance).
     // Cancel any previously registered timeouts to avoid stale callbacks from old visits.
     if (window._profileUpdateTimers) window._profileUpdateTimers.forEach(clearTimeout);
@@ -871,6 +874,49 @@ function _updateLud16Display(lud16) {
         display.style.display = 'none';
     }
 }
+
+// ── Mute personal — render de la lista en perfil ────────────────────
+// Llamado al entrar en la sección de perfil y desde nostr-bridge.muteUser/
+// unmuteUser para refrescar tras cambios. Resuelve cada pubkey via
+// LBW_Sync.resolveProfile para mostrar nombre legible.
+async function renderMutedUsersList() {
+    const container = document.getElementById('mutedUsersList');
+    if (!container) return;
+    if (typeof LBW_Mute === 'undefined') return;
+    const list = LBW_Mute.getMuted();
+    if (list.length === 0) {
+        container.innerHTML = '<div class="text-sm opacity-50 italic">No has silenciado a nadie.</div>';
+        return;
+    }
+    // Render placeholder mientras resolvemos perfiles
+    container.innerHTML = list.map(pk => {
+        const short = pk.substring(0, 12) + '…' + pk.substring(pk.length - 4);
+        return `
+            <div class="muted-user-entry" data-pubkey="${pk}"
+                 style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:rgba(44,95,111,0.08);border:1px solid rgba(44,95,111,0.2);border-radius:8px;">
+                <span class="muted-user-name" style="font-size:0.85rem;color:var(--color-text-primary);font-family:var(--font-mono);word-break:break-all;">${short}</span>
+                <button data-lbw-action="bridgeUnmuteUser" data-pubkey="${pk}"
+                    style="font-size:0.75rem;padding:0.3rem 0.7rem;border-radius:6px;border:1px solid var(--color-teal-light);background:transparent;color:var(--color-teal-light);cursor:pointer;white-space:nowrap;">
+                    🔉 Reactivar
+                </button>
+            </div>
+        `;
+    }).join('');
+    // Resolver nombres async
+    if (typeof LBW_Sync !== 'undefined' && LBW_Sync.resolveProfile) {
+        for (const pk of list) {
+            LBW_Sync.resolveProfile(pk).then(profile => {
+                if (!profile) return;
+                const name = profile.name || profile.display_name || '';
+                if (!name) return;
+                const row = container.querySelector(`.muted-user-entry[data-pubkey="${pk}"] .muted-user-name`);
+                if (row) row.textContent = name;
+            }).catch(() => {});
+        }
+    }
+}
+
+window.renderMutedUsersList = renderMutedUsersList;
 
 // Expose functions needed globally (called from index.html onclick, merits.js, ui.js, etc.)
 window.getCitizenshipLevel = getCitizenshipLevel;
