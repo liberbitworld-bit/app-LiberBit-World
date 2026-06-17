@@ -132,6 +132,9 @@ const LBW_Merits = (() => {
 
     const MERITS_STORAGE_KEY = 'lbw_merits_cache';
     const CONTRIBS_STORAGE_KEY = 'lbw_contribs_cache';
+    // [transparency-1] Cache aparte para la lista plana global, así la
+    // sección Transparencia tiene datos al cargar sin esperar al relay.
+    const ALL_MERITS_STORAGE_KEY = 'lbw_all_merits_cache';
 
     // ── LocalStorage Persistence ─────────────────────────────
     function _persistMeritsToStorage() {
@@ -139,6 +142,7 @@ const LBW_Merits = (() => {
             const data = {};
             _merits.forEach((v, k) => { data[k] = v; });
             localStorage.setItem(MERITS_STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(ALL_MERITS_STORAGE_KEY, JSON.stringify(_allMerits));
         } catch (e) { console.warn('[Merits] Storage save error:', e); }
     }
 
@@ -150,6 +154,20 @@ const LBW_Merits = (() => {
 
     function _loadMeritsFromStorage() {
         try {
+            // [transparency-1] Cargar la lista plana global primero.
+            const rawAll = localStorage.getItem(ALL_MERITS_STORAGE_KEY);
+            if (rawAll) {
+                try {
+                    const list = JSON.parse(rawAll);
+                    if (Array.isArray(list)) {
+                        _allMerits = list.filter(m =>
+                            m && typeof m === 'object' && m.id && m.recipient && typeof m.amount === 'number'
+                        );
+                        console.log(`[Merits] 📂 ${_allMerits.length} méritos (flat) cargados de caché`);
+                    }
+                } catch (e) {}
+            }
+
             const raw = localStorage.getItem(MERITS_STORAGE_KEY);
             if (raw) {
                 const data = JSON.parse(raw);
@@ -854,6 +872,37 @@ const LBW_Merits = (() => {
     function _processMerit(merit) {
         const { pubkey, amount, category, created_at, source, id, dTag } = merit;
 
+        // [transparency-1] Update _allMerits PRIMERO, antes del dedup
+        // por id (que retorna early para eventos ya en cache). Así la
+        // lista plana global se rellena incluso para eventos previamente
+        // cacheados que el relay re-envía, sin afectar al doble-conteo
+        // de userData.records (eso lo protege la dedup de abajo).
+        if (id) {
+            const existingFlatIdx = _allMerits.findIndex(m => m.id === id);
+            if (existingFlatIdx === -1) {
+                const flatEntry = {
+                    id, dTag: dTag || '', recipient: pubkey,
+                    issuer: merit.awardedBy || '', amount,
+                    category, reason: merit.reason || '',
+                    created_at, source
+                };
+                if (dTag) {
+                    const sameDIdx = _allMerits.findIndex(m => m.dTag === dTag);
+                    if (sameDIdx !== -1) {
+                        if (_allMerits[sameDIdx].created_at < created_at) {
+                            _allMerits.splice(sameDIdx, 1);
+                            _allMerits.push(flatEntry);
+                        }
+                        // si el existente es más nuevo o igual, no sustituir
+                    } else {
+                        _allMerits.push(flatEntry);
+                    }
+                } else {
+                    _allMerits.push(flatEntry);
+                }
+            }
+        }
+
         if (!_merits.has(pubkey)) {
             _merits.set(pubkey, {
                 total: 0,
@@ -904,45 +953,8 @@ const LBW_Merits = (() => {
         userData.records.push({ id, dTag, amount, category, created_at, source });
         userData.total += amount;
         userData.byCategory[category] = (userData.byCategory[category] || 0) + amount;
-
-        // [transparency-1] Mantener lista plana global con TODOS los
-        // méritos emitidos (incluyendo issuer + reason). Usada por la
-        // sección Transparencia. Dedup por id y NIP-33 por dTag.
-        if (merit.id) {
-            const existingFlatIdx = _allMerits.findIndex(m => m.id === merit.id);
-            if (existingFlatIdx === -1) {
-                if (merit.dTag) {
-                    const sameDIdx = _allMerits.findIndex(m => m.dTag === merit.dTag);
-                    if (sameDIdx !== -1) {
-                        if (_allMerits[sameDIdx].created_at >= merit.created_at) {
-                            // El existente es más nuevo o igual, no sustituir
-                        } else {
-                            _allMerits.splice(sameDIdx, 1);
-                            _allMerits.push({
-                                id: merit.id, dTag: merit.dTag, recipient: merit.pubkey,
-                                issuer: merit.awardedBy || '', amount: merit.amount,
-                                category: merit.category, reason: merit.reason || '',
-                                created_at: merit.created_at, source: merit.source
-                            });
-                        }
-                    } else {
-                        _allMerits.push({
-                            id: merit.id, dTag: merit.dTag, recipient: merit.pubkey,
-                            issuer: merit.awardedBy || '', amount: merit.amount,
-                            category: merit.category, reason: merit.reason || '',
-                            created_at: merit.created_at, source: merit.source
-                        });
-                    }
-                } else {
-                    _allMerits.push({
-                        id: merit.id, dTag: '', recipient: merit.pubkey,
-                        issuer: merit.awardedBy || '', amount: merit.amount,
-                        category: merit.category, reason: merit.reason || '',
-                        created_at: merit.created_at, source: merit.source
-                    });
-                }
-            }
-        }
+        // [transparency-1] _allMerits ya se actualizó arriba (antes del
+        // dedup-by-id). No duplicar aquí.
 
         // Update citizenship level
         userData.level = getCitizenshipLevel(userData.total);
