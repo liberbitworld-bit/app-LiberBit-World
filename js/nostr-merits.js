@@ -98,6 +98,10 @@ const LBW_Merits = (() => {
 
     // ── Internal State ───────────────────────────────────────
     let _merits = new Map();
+    // [transparency-1] Lista plana global de TODOS los méritos aceptados,
+    // con info completa (issuer + reason). Usada por la sección
+    // Transparencia. Mantenida en _processMerit junto al _merits map.
+    let _allMerits = [];
     let _contributions = [];
     let _myContributions = [];
     let _leaderboard = [];
@@ -901,6 +905,45 @@ const LBW_Merits = (() => {
         userData.total += amount;
         userData.byCategory[category] = (userData.byCategory[category] || 0) + amount;
 
+        // [transparency-1] Mantener lista plana global con TODOS los
+        // méritos emitidos (incluyendo issuer + reason). Usada por la
+        // sección Transparencia. Dedup por id y NIP-33 por dTag.
+        if (merit.id) {
+            const existingFlatIdx = _allMerits.findIndex(m => m.id === merit.id);
+            if (existingFlatIdx === -1) {
+                if (merit.dTag) {
+                    const sameDIdx = _allMerits.findIndex(m => m.dTag === merit.dTag);
+                    if (sameDIdx !== -1) {
+                        if (_allMerits[sameDIdx].created_at >= merit.created_at) {
+                            // El existente es más nuevo o igual, no sustituir
+                        } else {
+                            _allMerits.splice(sameDIdx, 1);
+                            _allMerits.push({
+                                id: merit.id, dTag: merit.dTag, recipient: merit.pubkey,
+                                issuer: merit.awardedBy || '', amount: merit.amount,
+                                category: merit.category, reason: merit.reason || '',
+                                created_at: merit.created_at, source: merit.source
+                            });
+                        }
+                    } else {
+                        _allMerits.push({
+                            id: merit.id, dTag: merit.dTag, recipient: merit.pubkey,
+                            issuer: merit.awardedBy || '', amount: merit.amount,
+                            category: merit.category, reason: merit.reason || '',
+                            created_at: merit.created_at, source: merit.source
+                        });
+                    }
+                } else {
+                    _allMerits.push({
+                        id: merit.id, dTag: '', recipient: merit.pubkey,
+                        issuer: merit.awardedBy || '', amount: merit.amount,
+                        category: merit.category, reason: merit.reason || '',
+                        created_at: merit.created_at, source: merit.source
+                    });
+                }
+            }
+        }
+
         // Update citizenship level
         userData.level = getCitizenshipLevel(userData.total);
 
@@ -950,6 +993,44 @@ const LBW_Merits = (() => {
         if (_leaderboard.length === 0) _leaderboard = _buildLeaderboard();
         if (limit >= _leaderboard.length) return _leaderboard;
         return _leaderboard.slice(0, limit);
+    }
+
+    // [transparency-1] Devuelve TODOS los méritos aceptados como lista
+    // plana, ordenada por created_at desc (más recientes primero) por
+    // defecto. Cada entry: {id, dTag, recipient, issuer, amount, category,
+    // reason, created_at, source}. Cliente puede aplicar filtros adicionales
+    // (categoría, recipient, issuer, fecha).
+    function getAllMerits(opts) {
+        const o = opts || {};
+        let list = _allMerits.slice();
+        if (o.category) list = list.filter(m => m.category === o.category);
+        if (o.recipient) list = list.filter(m => m.recipient === o.recipient);
+        if (o.issuer)    list = list.filter(m => m.issuer === o.issuer);
+        if (o.since)     list = list.filter(m => m.created_at >= o.since);
+        list.sort((a, b) => b.created_at - a.created_at);
+        if (o.limit && o.limit > 0) list = list.slice(0, o.limit);
+        return list;
+    }
+
+    function getAllMeritsStats() {
+        const total = _allMerits.reduce((s, m) => s + (m.amount || 0), 0);
+        const byCategory = {};
+        const byIssuer = {};
+        const byRecipient = {};
+        const uniqueIssuers = new Set();
+        const uniqueRecipients = new Set();
+        for (const m of _allMerits) {
+            byCategory[m.category] = (byCategory[m.category] || 0) + m.amount;
+            if (m.issuer)    { byIssuer[m.issuer]    = (byIssuer[m.issuer]    || 0) + m.amount; uniqueIssuers.add(m.issuer); }
+            if (m.recipient) { byRecipient[m.recipient] = (byRecipient[m.recipient] || 0) + m.amount; uniqueRecipients.add(m.recipient); }
+        }
+        return {
+            count: _allMerits.length,
+            total,
+            byCategory,
+            uniqueIssuers: uniqueIssuers.size,
+            uniqueRecipients: uniqueRecipients.size
+        };
     }
 
     // ── User Merit Data ──────────────────────────────────────
@@ -1125,6 +1206,7 @@ const LBW_Merits = (() => {
     function reset() {
         unsubscribeAll();
         _merits.clear();
+        _allMerits = [];
         _contributions = [];
         _myContributions = [];
         _leaderboard = [];
@@ -1287,6 +1369,8 @@ const LBW_Merits = (() => {
         getMyContributions,
         getAllContributions,
         getLeaderboard,
+        getAllMerits,
+        getAllMeritsStats,
         getCitizenshipLevel,
         getNextLevel,
         getUserVotingPower,

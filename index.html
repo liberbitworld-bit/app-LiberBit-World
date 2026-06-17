@@ -411,6 +411,13 @@
                         <div class="app-name">SOS</div>
                         <div class="app-description">Seguridad y Respuesta Inmediata</div>
                     </div>
+
+                    <!-- 9. Transparencia -->
+                    <div class="app-card" onclick="openApp('transparencia')">
+                        <div class="app-icon">🔍</div>
+                        <div class="app-name">Transparencia</div>
+                        <div class="app-description">Méritos y Treasury Públicos</div>
+                    </div>
                 </div>
 
                 <!-- Fila de acciones destacadas: Aportar Valor + Aportación Económica -->
@@ -1422,6 +1429,34 @@
                         ⚙️ Sistema en desarrollo — Disponible pronto con geolocalización P2P y notificaciones vía Nostr
                     </p>
                 </div>
+            </div>
+        </section>
+
+        <!-- Transparency Section -->
+        <section class="section" id="transparenciaSection">
+            <div class="chat-section" style="max-width:900px;">
+                <button class="back-btn" onclick="backToMenu()">← Volver al Menú</button>
+
+                <h2 style="color: var(--color-gold); margin-bottom: 0.5rem;">🔍 Transparencia</h2>
+                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                    Auditoría pública del ecosistema LiberBit: emisiones de méritos LBWM y movimientos de la treasury comunitaria.
+                </p>
+
+                <!-- Tabs -->
+                <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--color-border);padding-bottom:0;">
+                    <button data-tx-tab="merits" onclick="LBW_Transparency.switchTab('merits')"
+                        style="flex:1;padding:0.7rem;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);border-bottom:none;border-radius:8px 8px 0 0;color:var(--color-gold);font-weight:700;cursor:pointer;font-size:0.9rem;">
+                        🏅 Méritos
+                    </button>
+                    <button data-tx-tab="wallet" onclick="LBW_Transparency.switchTab('wallet')"
+                        style="flex:1;padding:0.7rem;background:transparent;border:1px solid var(--color-border);border-bottom:none;border-radius:8px 8px 0 0;color:var(--color-text-secondary);cursor:pointer;font-size:0.9rem;">
+                        💰 Wallet
+                    </button>
+                </div>
+
+                <!-- Panels -->
+                <div id="transparencyMeritsPanel"></div>
+                <div id="transparencyWalletPanel" style="display:none;"></div>
             </div>
         </section>
 
@@ -3069,7 +3104,9 @@
     <script src="js/nostr-governance.js?v=nip72-6"></script>
     <script src="js/nostr-delegations.js?v=apr17a"></script>
     <script src="js/delegations-ui.js?v=apr17a"></script>
-    <script src="js/nostr-merits.js?v=m11-1"></script>
+    <script src="js/nostr-merits.js?v=transparency-1"></script>
+    <!-- Sección Transparencia: méritos + treasury -->
+    <script src="js/transparency.js?v=transparency-1"></script>
     <!-- merits.js cargado DESPUÉS de nostr-merits.js ya que depende de LBW_Merits -->
     <script src="js/merits.js?v=apr13c"></script>
     <!-- supabase-merits-sync: sincroniza merit events Nostr → Supabase -->
@@ -3624,6 +3661,12 @@
                         updateProfileStatus();
                         if (typeof window._loadLud16OnProfile === 'function') _loadLud16OnProfile();
                     }, 300);
+                } else if (app === 'transparencia') {
+                    // Init de la sección Transparencia tras 100ms para asegurar
+                    // que el DOM ya se ha activado (showSection hace el toggle).
+                    setTimeout(() => {
+                        if (window.LBW_Transparency && LBW_Transparency.init) LBW_Transparency.init();
+                    }, 100);
                 }
             };
         }
