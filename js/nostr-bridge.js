@@ -201,6 +201,62 @@ const LBW_NostrBridge = (() => {
         return newVal;
     }
 
+    // ── Helper: registrar al usuario en Supabase si aún no existe ─────
+    // Llamado desde todos los flujos de login (nsec, NIP-07, NIP-46) para
+    // que TODO usuario que acceda quede registrado en `users` y aparezca
+    // en el contador "ID Registradas". Sin esto, solo los que crean cuenta
+    // nueva via "Crear identidad" quedaban en Supabase; los que entraban
+    // con su nsec/extension/bunker existente quedaban fuera del dashboard.
+    //
+    // Idempotente: si el usuario ya existe (matched por public_key=npub),
+    // devuelve su id sin tocar nada. Si no existe, inserta con citizenship
+    // 'Amigo' por defecto (LBWM v2.0 calcula el level real desde méritos).
+    async function _ensureUserInSupabase(npub, displayName) {
+        if (typeof supabaseClient === 'undefined') return null;
+        if (!npub || typeof npub !== 'string' || !npub.startsWith('npub1')) return null;
+        try {
+            // Check first — evita race con insert si ya existe
+            const { data: existing, error: selErr } = await supabaseClient
+                .from('users')
+                .select('id')
+                .eq('public_key', npub)
+                .maybeSingle();
+            if (selErr) {
+                console.warn('[Bridge] _ensureUserInSupabase select error:', selErr.message);
+                return null;
+            }
+            if (existing && existing.id) return existing.id;
+
+            // Insert nuevo
+            const name = (displayName && typeof displayName === 'string')
+                ? displayName.trim().substring(0, 80)
+                : '';
+            const newId = (typeof generateUUID === 'function')
+                ? generateUUID()
+                : ('lbw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10));
+            const { data: inserted, error: insErr } = await supabaseClient
+                .from('users')
+                .insert([{
+                    id: newId,
+                    public_key: npub,
+                    name: name || npub.substring(0, 16),
+                    citizenship_type: 'Amigo',
+                    registration_date: new Date().toISOString()
+                }])
+                .select('id')
+                .single();
+            if (insErr) {
+                console.warn('[Bridge] _ensureUserInSupabase insert error:', insErr.message);
+                return null;
+            }
+            console.log('[Bridge] 📋 Usuario registrado en Supabase:', npub.substring(0, 20) + '…');
+            return inserted ? inserted.id : newId;
+        } catch (e) {
+            console.warn('[Bridge] _ensureUserInSupabase exception:', e.message);
+            return null;
+        }
+    }
+
     // ── Auth ─────────────────────────────────────────────────
     async function handleNIP07Login() {
         const btn = document.getElementById('nip07LoginBtn');
@@ -214,6 +270,16 @@ const LBW_NostrBridge = (() => {
                 method: 'extension', loginTime: Date.now()
             };
             localStorage.setItem('lbw_nostr_session', JSON.stringify(session));
+            // Registrar en Supabase si es la primera vez que entra a LBW
+            // (idempotente — no duplica si ya existe). Best-effort: si
+            // falla, el login continúa, simplemente no aparecerá en el
+            // dashboard hasta que vuelva a entrar.
+            _ensureUserInSupabase(result.npub, session.name).then(id => {
+                if (id && typeof currentUser !== 'undefined' && currentUser) {
+                    currentUser.id = id;
+                    try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
+                }
+            }).catch(() => {});
             _applyLoginToUI(session);
             _updateLoginModeUI('extension');
             await _startAllFeeds();
@@ -268,6 +334,15 @@ const LBW_NostrBridge = (() => {
                 };
                 window.LBW_persistKeys && window.LBW_persistKeys(currentUser);
             }
+
+            // Registrar en Supabase (idempotente) para que aparezca en
+            // el contador "ID Registradas"
+            _ensureUserInSupabase(result.npub, session.name).then(id => {
+                if (id && typeof currentUser !== 'undefined' && currentUser) {
+                    currentUser.id = id;
+                    try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
+                }
+            }).catch(() => {});
 
             _applyLoginToUI(session);
             _updateLoginModeUI('bunker');
@@ -573,6 +648,22 @@ const LBW_NostrBridge = (() => {
                 }
             } catch(e) {
                 console.warn('[Bridge] Relay lookup failed:', e.message);
+            }
+        }
+
+        // Si tras todo el lookup no apareció en Supabase, lo registramos
+        // ahora con el nombre resuelto (de Nostr o npub corto como
+        // fallback). Idempotente — si ya existe no hace nada. Garantiza
+        // que TODO usuario que accede vía "Ya tengo cuenta" quede en el
+        // contador "ID Registradas".
+        if (!foundInSupabase) {
+            const nameForReg = (session.name && !session.name.startsWith('npub1') && !session.name.endsWith('...'))
+                ? session.name
+                : '';
+            const ensuredId = await _ensureUserInSupabase(result.npub, nameForReg);
+            if (ensuredId) {
+                currentUser.id = ensuredId;
+                try { window.LBW_persistKeys && window.LBW_persistKeys(currentUser); } catch(e) {}
             }
         }
 
