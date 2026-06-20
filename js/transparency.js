@@ -172,77 +172,72 @@ const LBW_Transparency = (() => {
     // para reflejar TODO mérito generado en el ecosistema (formal +
     // actividad). El cap de 300 por usuario solo afecta al total
     // ponderado del Ledger Maestro, no al registro per-evento de aquí.
+    //
+    // IMPORTANTE: leemos de IndexedDB (LBW_Store), NO de relays vía
+    // LBW_Nostr.subscribe. Motivo: LBW_Nostr.subscribe tiene un dedup
+    // global _seenEvents (nostr.js:865) que bloquea cualquier evento ya
+    // visto por otra suscripción. Como chat/marketplace/gobernanza ya
+    // habrán cargado estos kinds antes de que el usuario abra
+    // Transparency, el callback no recibiría nada. LBW_Store sí tiene
+    // todos los eventos persistidos vía LBW_Sync.syncedSubscribe.
     async function _fetchActivityEvents(force) {
         if (!force && _activityEventsCache && (Date.now() - _activityEventsCacheAt < SUPABASE_CACHE_TTL_MS)) {
+            console.warn('[Transparency] activity cache hit:', _activityEventsCache.length);
             return _activityEventsCache;
         }
-        if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.subscribe) return [];
-        const events = await new Promise(resolve => {
-            const all = [];
-            const seen = new Set();
-            let done = 0;
-            const TARGET = 4;
-            const timeout = setTimeout(() => resolve(all), 12000);
-            function done1() {
-                done++;
-                if (done >= TARGET) { clearTimeout(timeout); resolve(all); }
-            }
-            function add(event, category, reasonContent) {
-                if (!event || !event.id || seen.has(event.id)) return;
-                seen.add(event.id);
-                all.push({
-                    id: event.id,
-                    dTag: '',
-                    recipient: event.pubkey,
-                    issuer: '',                                // sistema, sin issuer
-                    amount: 10,
-                    category,
-                    reason: (reasonContent || '').toString().substring(0, 80),
-                    created_at: event.created_at || 0,
-                    source: 'actividad'
-                });
-            }
-            // 1. Chat comunitario
-            const sub1 = LBW_Nostr.subscribe(
-                { kinds: [1], '#t': ['liberbit'], limit: 500 },
-                (event) => {
-                    const hasTag = event.tags && event.tags.some(
-                        t => t[0] === 't' && (t[1] === 'liberbit' || t[1] === 'lbw')
-                    );
-                    if (hasTag) add(event, 'actividad_chat', event.content || '');
-                },
-                () => { try { LBW_Nostr.unsubscribe(sub1); } catch(e) {} done1(); }
-            );
-            // 2. Marketplace
-            const sub2 = LBW_Nostr.subscribe(
-                { kinds: [30402], '#t': ['liberbit-market'], limit: 500 },
-                (event) => {
-                    const title = (event.tags && (event.tags.find(t => t[0] === 'title') || [])[1]) || '';
-                    add(event, 'actividad_marketplace', title);
-                },
-                () => { try { LBW_Nostr.unsubscribe(sub2); } catch(e) {} done1(); }
-            );
-            // 3. Propuestas
-            const sub3 = LBW_Nostr.subscribe(
-                { kinds: [31000], '#t': ['lbw-proposal'], limit: 500 },
-                (event) => {
-                    const title = (event.tags && (event.tags.find(t => t[0] === 'title') || [])[1]) || '';
-                    add(event, 'actividad_proposal', title);
-                },
-                () => { try { LBW_Nostr.unsubscribe(sub3); } catch(e) {} done1(); }
-            );
-            // 4. Votos
-            const sub4 = LBW_Nostr.subscribe(
-                { kinds: [31001], '#t': ['lbw-governance'], limit: 500 },
-                (event) => {
-                    add(event, 'actividad_vote', event.content || '');
-                },
-                () => { try { LBW_Nostr.unsubscribe(sub4); } catch(e) {} done1(); }
-            );
-        });
-        _activityEventsCache = events;
+        if (typeof LBW_Store === 'undefined' || !LBW_Store.getEventsByKind) {
+            console.warn('[Transparency] LBW_Store no disponible para fetch de actividad');
+            return [];
+        }
+        console.warn('[Transparency] leyendo actividad desde IndexedDB (4 kinds)…');
+        const all = [];
+        const seen = new Set();
+        const counts = { chat: 0, marketplace: 0, proposal: 0, vote: 0 };
+        function add(event, category, reasonContent, countKey) {
+            if (!event || !event.id || seen.has(event.id)) return;
+            seen.add(event.id);
+            counts[countKey]++;
+            all.push({
+                id: event.id,
+                dTag: '',
+                recipient: event.pubkey,
+                issuer: '',                                // sistema, sin issuer
+                amount: 10,
+                category,
+                reason: (reasonContent || '').toString().substring(0, 80),
+                created_at: event.created_at || 0,
+                source: 'actividad'
+            });
+        }
+        try {
+            const [chat, market, props, votes] = await Promise.all([
+                LBW_Store.getEventsByKind(1,     { limit: 1000, tags: { t: ['liberbit', 'lbw'] } }).catch(() => []),
+                LBW_Store.getEventsByKind(30402, { limit: 1000, tags: { t: ['liberbit-market'] } }).catch(() => []),
+                LBW_Store.getEventsByKind(31000, { limit: 1000, tags: { t: ['lbw-proposal'] } }).catch(() => []),
+                LBW_Store.getEventsByKind(31001, { limit: 1000, tags: { t: ['lbw-governance'] } }).catch(() => [])
+            ]);
+            (chat || []).forEach(e => {
+                const hasTag = e.tags && e.tags.some(t => t[0] === 't' && (t[1] === 'liberbit' || t[1] === 'lbw'));
+                if (hasTag) add(e, 'actividad_chat', e.content || '', 'chat');
+            });
+            (market || []).forEach(e => {
+                const title = (e.tags && (e.tags.find(t => t[0] === 'title') || [])[1]) || '';
+                add(e, 'actividad_marketplace', title, 'marketplace');
+            });
+            (props || []).forEach(e => {
+                const title = (e.tags && (e.tags.find(t => t[0] === 'title') || [])[1]) || '';
+                add(e, 'actividad_proposal', title, 'proposal');
+            });
+            (votes || []).forEach(e => {
+                add(e, 'actividad_vote', e.content || '', 'vote');
+            });
+            console.warn('[Transparency] ✅ actividad cargada: ' + all.length + ' eventos · ' + JSON.stringify(counts));
+        } catch (e) {
+            console.warn('[Transparency] error leyendo actividad:', e && e.message);
+        }
+        _activityEventsCache = all;
         _activityEventsCacheAt = Date.now();
-        return events;
+        return all;
     }
 
     async function _fetchSupabaseLedger(force) {
