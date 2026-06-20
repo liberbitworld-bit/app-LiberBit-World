@@ -472,8 +472,6 @@ const LBW_Transparency = (() => {
                     </div>
                 </div>` : ''}
 
-            ${_renderUsersLeaderboardHtml(supa && supa.users)}
-
             <div style="margin-bottom:0.75rem;">
                 <input type="text" id="meritSearchInput" placeholder="🔍 Buscar por razón o categoría..."
                     value="${_esc(_meritFilter.search)}"
@@ -570,6 +568,9 @@ const LBW_Transparency = (() => {
                     </div>
                 </div>
             `}
+
+            <div style="margin-top:1.5rem;"></div>
+            ${_renderUsersLeaderboardHtml(supa && supa.users)}
         `;
 
         // Resolver nombres async
