@@ -630,6 +630,20 @@ const LBW_Transparency = (() => {
                 console.warn('[Transparency] snapshot treasury fallo:', e && e.message);
                 // Seguimos con el perfil público — la UI lo soporta vía authNotSupported
             }
+            // 3. Zaps NIP-57 (kind:9735) firmados por coinos con #p=treasury.
+            //    Los emparejamos por amount+ts con cada movimiento entrante
+            //    para mostrar la pubkey verificable del donante.
+            try {
+                if (data.pubkey && Array.isArray(data.movements) && data.movements.length > 0) {
+                    const zaps = await _fetchZapsForTreasury(data.pubkey, false);
+                    if (zaps.length > 0) {
+                        data.movements = _matchMovementsWithZaps(data.movements, zaps);
+                        data.zapsFound = zaps.length;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Transparency] zaps fetch fallo:', e && e.message);
+            }
             _walletData = data;
             _walletDataAt = Date.now();
             _walletError = data && data.error ? data : null;
@@ -640,18 +654,88 @@ const LBW_Transparency = (() => {
         }
     }
 
-    // Sanitiza memo: trunca + escapa + oculta texto largo que parezca npub/email/teléfono.
-    // El memo lo escribe el pagador, asumimos que es público pero anonimizamos identificadores
-    // accidentales para no doxxear donantes.
+    // Sanitiza memo: trunca + escapa HTML. NO oculta npub/email porque si
+    // alguien los escribe en el memo es voluntario (quiere ser identificado).
+    // Solo oculta nsec porque eso sería siempre un blunder de seguridad.
     function _sanitizeMemo(s) {
         if (!s) return '';
         let str = String(s).trim();
-        if (str.length > 100) str = str.substring(0, 100) + '…';
-        // Oculta posibles npubs/nsec
-        str = str.replace(/(npub1|nsec1)[a-z0-9]{20,}/gi, '[id oculto]');
-        // Oculta emails
-        str = str.replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '[email oculto]');
+        str = str.replace(/nsec1[a-z0-9]{50,}/gi, '[nsec ocultada]');
+        if (str.length > 200) str = str.substring(0, 200) + '…';
         return _esc(str);
+    }
+
+    // ── Zap receipts NIP-57 (kind:9735) ──────────────────────
+    // Cuando alguien paga la tesorería como zap Nostr (no como Lightning
+    // address genérico), coinos publica un kind:9735 con la pubkey del
+    // donante en el evento embebido (description tag = kind:9734 zap req
+    // firmado por el sender). Eso nos da atribución verificable.
+    let _zapsCache = null;
+    let _zapsCacheAt = 0;
+    const ZAPS_CACHE_TTL_MS = 60 * 1000;
+    async function _fetchZapsForTreasury(treasuryPubkey, force) {
+        if (!treasuryPubkey) return [];
+        if (!force && _zapsCache && (Date.now() - _zapsCacheAt < ZAPS_CACHE_TTL_MS)) {
+            return _zapsCache;
+        }
+        if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.subscribe) return [];
+        const zaps = await new Promise(resolve => {
+            const out = [];
+            const seen = new Set();
+            const timeout = setTimeout(() => resolve(out), 8000);
+            let done = false;
+            function finish() {
+                if (done) return;
+                done = true;
+                clearTimeout(timeout);
+                resolve(out);
+            }
+            const sub = LBW_Nostr.subscribe(
+                { kinds: [9735], '#p': [treasuryPubkey], limit: 200 },
+                (event) => {
+                    if (!event || !event.id || seen.has(event.id)) return;
+                    seen.add(event.id);
+                    const descTag = (event.tags || []).find(t => t[0] === 'description');
+                    if (!descTag) return;
+                    let zapReq;
+                    try { zapReq = JSON.parse(descTag[1]); } catch (e) { return; }
+                    if (!zapReq || !zapReq.pubkey) return;
+                    const amountTag = (event.tags || []).find(t => t[0] === 'amount')
+                                    || (zapReq.tags || []).find(t => t[0] === 'amount');
+                    const msats = amountTag ? Number(amountTag[1]) : 0;
+                    const sats = Math.floor(msats / 1000);
+                    out.push({
+                        id: event.id,
+                        senderPubkey: zapReq.pubkey,
+                        senderMessage: (zapReq.content || '').toString().substring(0, 200),
+                        sats,
+                        ts: event.created_at || 0
+                    });
+                },
+                () => {
+                    try { LBW_Nostr.unsubscribe(sub); } catch (e) {}
+                    finish();
+                }
+            );
+        });
+        _zapsCache = zaps;
+        _zapsCacheAt = Date.now();
+        return zaps;
+    }
+
+    // Empareja cada movimiento entrante con su zap (si lo hay) por amount + ts ±10min
+    function _matchMovementsWithZaps(movements, zaps) {
+        if (!Array.isArray(zaps) || zaps.length === 0) return movements;
+        const WINDOW_SECS = 600;
+        return movements.map(m => {
+            if (m.type !== 'in') return m;
+            const matches = zaps.filter(z => z.sats === m.amount && Math.abs(z.ts - m.ts) < WINDOW_SECS);
+            if (matches.length === 0) return m;
+            const best = matches.reduce((a, b) =>
+                Math.abs(a.ts - m.ts) < Math.abs(b.ts - m.ts) ? a : b
+            );
+            return Object.assign({}, m, { zap: best });
+        });
     }
 
     async function renderWalletPanel() {
@@ -820,8 +904,8 @@ const LBW_Transparency = (() => {
                         ⬇️ Exportar CSV
                     </button>
                 </div>
-                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;margin-bottom:0.6rem;line-height:1.4;">
-                    💡 Cada bloque es un pago Lightning real con su hash y memo. Los memos se sanitizan: emails y npubs en texto libre se sustituyen por <code style="font-family:var(--font-mono);font-size:0.68rem;background:rgba(44,95,111,0.18);padding:0.05rem 0.3rem;border-radius:3px;">[oculto]</code> para no doxxear donantes.
+                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.75;margin-bottom:0.6rem;line-height:1.4;">
+                    💡 Cada bloque es un pago Lightning real con su hash. Los <span style="color:#CE93D8;">badges ⚡ zap</span> indican donantes identificados criptográficamente vía NIP-57 (sender pubkey firmada por coinos en el zap receipt kind:9735).${data.zapsFound ? ` <strong style="color:#CE93D8;">${data.zapsFound}</strong> zap${data.zapsFound===1?'':'s'} encontrados.` : ''} Los memos en texto libre son lo que escribió el pagador.
                 </div>
                 <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:10px;background:linear-gradient(180deg,rgba(13,23,30,0.6) 0%,rgba(13,23,30,0.35) 100%);box-shadow:inset 0 0 0 1px rgba(229,185,92,0.05);">
                     <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:760px;font-family:var(--font-mono);">
@@ -866,8 +950,16 @@ const LBW_Transparency = (() => {
                                         <span style="font-size:0.68rem;background:${isIn ? 'rgba(81,207,102,0.12)' : 'rgba(255,77,79,0.12)'};color:${color};padding:0.18rem 0.55rem;border-radius:10px;border:1px solid ${isIn ? 'rgba(81,207,102,0.3)' : 'rgba(255,77,79,0.3)'};font-family:var(--font-display);">${typeLabel}</span>
                                     </td>
                                     <td style="padding:0.55rem 0.7rem;text-align:right;font-weight:700;color:${color};white-space:nowrap;">${sign}${Math.abs(m.amount || 0).toLocaleString('es-ES')}</td>
-                                    <td style="padding:0.55rem 0.7rem;max-width:260px;color:var(--color-text-secondary);font-style:italic;font-family:var(--font-display);font-size:0.76rem;">
-                                        ${m.memo ? `"${_sanitizeMemo(m.memo)}"` : '<span style="opacity:0.4;">—</span>'}
+                                    <td style="padding:0.55rem 0.7rem;max-width:280px;color:var(--color-text-secondary);font-family:var(--font-display);font-size:0.76rem;">
+                                        ${m.zap ? `
+                                            <div style="display:flex;flex-direction:column;gap:0.2rem;">
+                                                <div style="display:flex;align-items:center;gap:0.35rem;">
+                                                    <span title="Donante verificado vía zap Nostr (NIP-57)" style="font-size:0.65rem;background:rgba(206,147,216,0.15);color:#CE93D8;padding:0.1rem 0.4rem;border-radius:8px;border:1px solid rgba(206,147,216,0.3);font-family:var(--font-display);">⚡ zap</span>
+                                                    <span data-pubkey-slot="${m.zap.senderPubkey}" title="${_esc(m.zap.senderPubkey)}" style="font-family:var(--font-mono);font-size:0.72rem;color:#CE93D8;font-weight:600;">${_shortNpub(m.zap.senderPubkey)}</span>
+                                                </div>
+                                                ${m.zap.senderMessage ? `<div style="font-style:italic;color:var(--color-text-secondary);">"${_sanitizeMemo(m.zap.senderMessage)}"</div>` : ''}
+                                            </div>
+                                        ` : (m.memo ? `<span style="font-style:italic;">"${_sanitizeMemo(m.memo)}"</span>` : '<span style="opacity:0.4;">—</span>')}
                                     </td>
                                 </tr>
                             `;}).join('')}
@@ -892,12 +984,23 @@ const LBW_Transparency = (() => {
                 </div>
             `}
         `;
+
+        // Resolver nombres async de las pubkeys de donantes (zaps)
+        const donorPubkeys = new Set();
+        for (const m of pageRows) {
+            if (m.zap && m.zap.senderPubkey) donorPubkeys.add(m.zap.senderPubkey);
+        }
+        for (const pk of donorPubkeys) {
+            _resolveNameInto(pk, `[data-pubkey-slot="${pk}"]`);
+        }
     }
 
     async function refreshWallet() {
         _walletData = null;
         _walletDataAt = 0;
         _walletError = null;
+        _zapsCache = null;
+        _zapsCacheAt = 0;
         await renderWalletPanel();
     }
 
