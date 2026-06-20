@@ -218,14 +218,43 @@ const LBW_NostrBridge = (() => {
             // Check first — evita race con insert si ya existe
             const { data: existing, error: selErr } = await supabaseClient
                 .from('users')
-                .select('id')
+                .select('id, name')
                 .eq('public_key', npub)
                 .maybeSingle();
             if (selErr) {
                 console.warn('[Bridge] _ensureUserInSupabase select error:', selErr.message);
                 return null;
             }
-            if (existing && existing.id) return existing.id;
+            if (existing && existing.id) {
+                // Si el nombre actual parece un placeholder (un npub o
+                // truncado) y ahora tenemos un nombre real desde Nostr,
+                // lo actualizamos. Esto cubre el caso del backfill SQL
+                // que dejó name=npub para usuarios registrados sin haber
+                // hecho login todavía.
+                try {
+                    const looksLikePlaceholder = existing.name && (
+                        existing.name.startsWith('npub1') ||
+                        existing.name.endsWith('...') ||
+                        existing.name.endsWith('…')
+                    );
+                    const haveRealName = displayName &&
+                        typeof displayName === 'string' &&
+                        displayName.trim() &&
+                        !displayName.startsWith('npub1') &&
+                        !displayName.endsWith('...') &&
+                        !displayName.endsWith('…');
+                    if (looksLikePlaceholder && haveRealName && displayName.trim() !== existing.name) {
+                        const { error: updErr } = await supabaseClient
+                            .from('users')
+                            .update({ name: displayName.trim().substring(0, 80) })
+                            .eq('id', existing.id);
+                        if (!updErr) {
+                            console.log('[Bridge] 📝 Nombre actualizado en Supabase (placeholder → real):', displayName);
+                        }
+                    }
+                } catch (e) {}
+                return existing.id;
+            }
 
             // Insert nuevo
             const name = (displayName && typeof displayName === 'string')
