@@ -248,8 +248,46 @@ const LBW_Transparency = (() => {
         }
     }
 
+    // Arranca la suscripción a méritos si todavía no está activa.
+    // Importante: el feed de méritos en LBW_Merits.subscribeMerits solo
+    // se abre cuando alguien lo pide (típicamente la sección Gobernanza
+    // o Méritos). Si el usuario entra directo a Transparencia sin pasar
+    // por ahí, _allMerits queda vacío. Aquí lo forzamos.
+    let _meritsSubStarted = false;
+    let _meritsRefreshTimer = null;
+    function _ensureMeritsSubscription() {
+        if (_meritsSubStarted) return;
+        try {
+            if (typeof LBW_NostrBridge !== 'undefined' && LBW_NostrBridge.startMerits) {
+                LBW_NostrBridge.startMerits();
+                _meritsSubStarted = true;
+                // Re-render del panel cada 2s durante el primer minuto para
+                // recoger eventos que el relay vaya enviando. Después
+                // paramos para no consumir recursos.
+                let ticks = 0;
+                _meritsRefreshTimer = setInterval(() => {
+                    if (_currentTab === 'merits') {
+                        try { renderMeritsPanel(); } catch (e) {}
+                    }
+                    ticks++;
+                    if (ticks >= 30) {
+                        clearInterval(_meritsRefreshTimer);
+                        _meritsRefreshTimer = null;
+                    }
+                }, 2000);
+            } else if (typeof LBW_Merits !== 'undefined' && LBW_Merits.subscribeMerits) {
+                // Fallback: bridge no disponible, llamamos directo
+                LBW_Merits.subscribeMerits();
+                _meritsSubStarted = true;
+            }
+        } catch (e) {
+            console.warn('[Transparency] No se pudo iniciar subscribeMerits:', e.message);
+        }
+    }
+
     // Punto de entrada cuando se abre la sección
     function init() {
+        _ensureMeritsSubscription();
         switchTab(_currentTab);
     }
 
