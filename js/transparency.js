@@ -95,7 +95,56 @@ const LBW_Transparency = (() => {
         }).catch(() => {});
     }
 
-    function renderMeritsPanel() {
+    // Cache de datos del ledger Supabase para evitar refetch en cada
+    // re-render por cambio de filtro. Se invalida al cabo de 60s o cuando
+    // el usuario pulsa "Actualizar".
+    let _supabaseDataCache = null;
+    let _supabaseDataCacheAt = 0;
+    const SUPABASE_CACHE_TTL_MS = 60 * 1000;
+
+    async function _fetchSupabaseLedger(force) {
+        if (!force && _supabaseDataCache && (Date.now() - _supabaseDataCacheAt < SUPABASE_CACHE_TTL_MS)) {
+            return _supabaseDataCache;
+        }
+        if (typeof supabaseClient === 'undefined') return null;
+        try {
+            // Stats agregadas (mismo getter que usa el Ledger Maestro)
+            let stats = null;
+            if (typeof LBW_MeritsSync !== 'undefined' && LBW_MeritsSync.loadSupabaseLedger) {
+                const ledger = await LBW_MeritsSync.loadSupabaseLedger({ limit: 999 });
+                if (ledger && ledger.stats) stats = ledger.stats;
+            }
+            // Lista de emisiones individuales (kind:31002) más recientes
+            const { data, error } = await supabaseClient
+                .from('lbwm_merit_events')
+                .select('id, pubkey, npub, amount, category, reason, awarded_by, nostr_d_tag, nostr_created_at, source')
+                .order('nostr_created_at', { ascending: false })
+                .limit(500);
+            if (error) {
+                console.warn('[Transparency] Supabase lbwm_merit_events error:', error.message);
+                return stats ? { stats, entries: [] } : null;
+            }
+            const entries = (data || []).map(r => ({
+                id: r.id,
+                dTag: r.nostr_d_tag || '',
+                recipient: r.pubkey,
+                issuer: r.awarded_by || '',
+                amount: r.amount || 0,
+                category: r.category || '',
+                reason: r.reason || '',
+                created_at: r.nostr_created_at || 0,
+                source: r.source || ''
+            }));
+            _supabaseDataCache = { stats, entries };
+            _supabaseDataCacheAt = Date.now();
+            return _supabaseDataCache;
+        } catch (e) {
+            console.warn('[Transparency] _fetchSupabaseLedger error:', e.message);
+            return null;
+        }
+    }
+
+    async function renderMeritsPanel() {
         const panel = document.getElementById('transparencyMeritsPanel');
         if (!panel) return;
         if (typeof LBW_Merits === 'undefined' || !LBW_Merits.getAllMerits) {
@@ -103,11 +152,43 @@ const LBW_Transparency = (() => {
             return;
         }
 
-        const stats = LBW_Merits.getAllMeritsStats();
-        const merits = LBW_Merits.getAllMerits({
-            category: _meritFilter.category || undefined,
-            limit: 500
-        });
+        // Prefer Supabase (canonical, igual fuente que Ledger Maestro).
+        // Fallback a memoria local si Supabase falla.
+        const supa = await _fetchSupabaseLedger(false);
+        let stats, merits, dataSource;
+        if (supa && supa.stats) {
+            const cats = supa.stats.byCategory || {};
+            // Adaptar formato: byCategory ya viene aggregado por Supabase
+            // (econ, prod, resp, fin, fund). Construimos el shape esperado
+            // por el render (mismo objeto que LBW_Merits.getAllMeritsStats).
+            const totalAmount = supa.stats.totalMerits || 0;
+            const totalEvents = (supa.entries || []).length;
+            const uniqueIssuers = new Set();
+            const uniqueRecipients = new Set();
+            (supa.entries || []).forEach(e => {
+                if (e.issuer) uniqueIssuers.add(e.issuer);
+                if (e.recipient) uniqueRecipients.add(e.recipient);
+            });
+            stats = {
+                count: totalEvents,
+                total: totalAmount,
+                byCategory: cats,
+                uniqueIssuers: uniqueIssuers.size || supa.stats.totalUsers || 0,
+                uniqueRecipients: supa.stats.totalUsers || uniqueRecipients.size
+            };
+            // Aplicar filtros sobre la lista de Supabase
+            let list = supa.entries.slice();
+            if (_meritFilter.category) list = list.filter(m => m.category === _meritFilter.category);
+            merits = list;
+            dataSource = 'supabase';
+        } else {
+            stats = LBW_Merits.getAllMeritsStats();
+            merits = LBW_Merits.getAllMerits({
+                category: _meritFilter.category || undefined,
+                limit: 500
+            });
+            dataSource = 'memory';
+        }
 
         const searchQ = (_meritFilter.search || '').toLowerCase();
         const filtered = searchQ
@@ -149,9 +230,22 @@ const LBW_Transparency = (() => {
             }
         } catch (e) {}
 
+        const sourceBadge = dataSource === 'supabase'
+            ? `<span style="font-size:0.65rem;background:rgba(81,207,102,0.15);color:#51cf66;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(81,207,102,0.3);">📚 Ledger Maestro (Supabase)</span>`
+            : `<span style="font-size:0.65rem;background:rgba(255,167,38,0.15);color:#FFA726;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(255,167,38,0.3);">💾 Cache local (Supabase no disponible)</span>`;
+
         panel.innerHTML = `
             ${myActivityHtml}
-            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:0.5rem;font-weight:600;">📜 Emisiones formales (kind:31002 por Génesis)</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+                <div style="font-size:0.78rem;color:var(--color-text-secondary);font-weight:600;">📜 Emisiones formales (kind:31002 por Génesis)</div>
+                <div style="display:flex;gap:0.4rem;align-items:center;">
+                    ${sourceBadge}
+                    <button onclick="LBW_Transparency.refreshMerits()"
+                        style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">
+                        🔄 Actualizar
+                    </button>
+                </div>
+            </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
                 <div class="stat-card" style="background:rgba(229,185,92,0.08);border:1px solid rgba(229,185,92,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
                     <div style="font-size:1.6rem;font-weight:700;color:var(--color-gold);">${stats.total.toLocaleString('es-ES')}</div>
@@ -322,7 +416,14 @@ const LBW_Transparency = (() => {
         switchTab(_currentTab);
     }
 
-    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel };
+    // Fuerza refetch de Supabase y re-render
+    async function refreshMerits() {
+        _supabaseDataCache = null;
+        _supabaseDataCacheAt = 0;
+        await renderMeritsPanel();
+    }
+
+    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits };
 })();
 
 window.LBW_Transparency = LBW_Transparency;
