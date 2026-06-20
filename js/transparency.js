@@ -424,7 +424,6 @@ const LBW_Transparency = (() => {
             : `<span style="font-size:0.65rem;background:rgba(255,167,38,0.15);color:#FFA726;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(255,167,38,0.3);">💾 Cache local (Supabase no disponible)</span>`;
 
         panel.innerHTML = `
-            ${myActivityHtml}
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
                 <div style="font-size:0.78rem;color:var(--color-text-secondary);font-weight:600;">📜 Emisiones formales (kind:31002 por Génesis)</div>
                 <div style="display:flex;gap:0.4rem;align-items:center;">
@@ -570,6 +569,7 @@ const LBW_Transparency = (() => {
             `}
 
             <div style="margin-top:1.5rem;"></div>
+            ${myActivityHtml}
             ${_renderUsersLeaderboardHtml(supa && supa.users)}
         `;
 
