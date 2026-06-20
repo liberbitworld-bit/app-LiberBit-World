@@ -71,8 +71,26 @@ async function nip98Token(url, method) {
     const id = bytesToHex(idBytes);
     const sigBytes = await schnorr.sign(idBytes, skBytes);
     const sig = bytesToHex(sigBytes);
+
+    // Self-verify para confirmar que la firma es válida ANTES de mandarla.
+    // Si fallara, es bug en mi serialización o sk corrupta.
+    const valid = schnorr.verify(sigBytes, idBytes, pubkeyBytes);
+    if (!valid) {
+        throw new Error('Self-verify falló — firma inválida localmente. id=' + id);
+    }
+
     const event = { kind, created_at, tags, content, pubkey, id, sig };
-    return 'Nostr ' + Buffer.from(JSON.stringify(event)).toString('base64');
+    const eventJson = JSON.stringify(event);
+    const base64 = Buffer.from(eventJson).toString('base64');
+
+    // Diagnóstico: dump del evento + serialización canónica + curl reproducible
+    console.log('[nip98] url:           ', url);
+    console.log('[nip98] canonical:     ', serialized);
+    console.log('[nip98] id:            ', id);
+    console.log('[nip98] sig valid (local schnorr.verify):', valid);
+    console.log('[nip98] curl -i -H "Authorization: Nostr ' + base64 + '" "' + url + '"');
+
+    return 'Nostr ' + base64;
 }
 
 // Diagnóstico: nuestro pubkey (lo que coinos espera ver firmado)
