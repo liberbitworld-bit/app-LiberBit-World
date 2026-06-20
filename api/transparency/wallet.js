@@ -1,25 +1,15 @@
 // ============================================================
 // LiberBit World — Transparency Wallet endpoint
 //
-// Proxy a coinos.io para exponer balance + movimientos de la
-// wallet de tesorería pública. La nsec NUNCA llega al navegador:
-// vive solo como env var COINOS_SK en Vercel y se usa aquí para
-// firmar eventos NIP-98 (kind:27235) que coinos exige como auth.
+// Proxy a coinos.io. La nsec NUNCA llega al navegador: vive solo
+// como env var COINOS_SK en Vercel y se usa aquí para firmar
+// eventos NIP-98 (kind:27235) que coinos exige como auth.
 //
-// Implementamos NIP-98 inline con @noble/curves (schnorr) +
-// @noble/hashes (sha256) en vez de depender de nostr-tools, porque
-// los subpath imports de nostr-tools no se resuelven bien en el
-// bundler de Vercel ("Cannot find module" al runtime). @noble/*
-// son las mismas libs que nostr-tools usa por debajo, pero con
-// exports estándar que Vercel sí bundlea.
-//
-// Cache 30s para no martillear coinos cuando varios usuarios
-// abren la sección a la vez.
+// Dependencias mínimas: @noble/secp256k1 (standalone, sin subpath
+// problemático) para schnorr + node:crypto built-in para sha256.
+// Imports dinámicos en el handler para devolver JSON con stack
+// si algo falla al cargar (no HTML genérico de 502).
 // ============================================================
-
-import { schnorr } from '@noble/curves/secp256k1';
-import { sha256 } from '@noble/hashes/sha256';
-import { utf8ToBytes } from '@noble/hashes/utils';
 
 let _cache = null;
 let _cacheAt = 0;
@@ -43,27 +33,6 @@ function bytesToHex(bytes) {
         s += bytes[i].toString(16).padStart(2, '0');
     }
     return s;
-}
-
-// Construye el header Authorization NIP-98 para una petición HTTP.
-// Spec: kind:27235, tags [["u", url], ["method", method]], content="",
-// pubkey x-only, id = sha256(canonical), sig = schnorr(id).
-// Header = "Nostr " + base64(JSON.stringify(event))
-function buildNip98Token(skBytes, url, method) {
-    const pubkeyBytes = schnorr.getPublicKey(skBytes);
-    const pubkey = bytesToHex(pubkeyBytes);
-    const created_at = Math.floor(Date.now() / 1000);
-    const kind = 27235;
-    const tags = [['u', url], ['method', method.toUpperCase()]];
-    const content = '';
-    const serialized = JSON.stringify([0, pubkey, created_at, kind, tags, content]);
-    const idBytes = sha256(utf8ToBytes(serialized));
-    const id = bytesToHex(idBytes);
-    const sigBytes = schnorr.sign(idBytes, skBytes);
-    const sig = bytesToHex(sigBytes);
-    const event = { kind, created_at, tags, content, pubkey, id, sig };
-    const base64 = Buffer.from(JSON.stringify(event)).toString('base64');
-    return 'Nostr ' + base64;
 }
 
 export default async function handler(req, res) {
@@ -97,8 +66,51 @@ export default async function handler(req, res) {
         });
     }
 
+    // Imports dinámicos — si algo no resuelve, devolvemos JSON con el detalle
+    let schnorr, createHash;
+    try {
+        const secp = await import('@noble/secp256k1');
+        const nodeCrypto = await import('node:crypto');
+        schnorr = secp.schnorr;
+        createHash = nodeCrypto.createHash;
+        if (!schnorr || typeof schnorr.sign !== 'function') {
+            throw new Error('schnorr.sign no disponible. exports: ' + Object.keys(secp).join(','));
+        }
+    } catch (e) {
+        return res.status(500).json({
+            error: 'fallo cargando crypto',
+            detail: e.message,
+            stack: (e.stack || '').substring(0, 500),
+            configured: true
+        });
+    }
+
+    function sha256Bytes(bytes) {
+        const h = createHash('sha256');
+        h.update(Buffer.from(bytes));
+        return new Uint8Array(h.digest());
+    }
+
+    // NIP-98 inline: kind:27235, tags [["u",url],["method",method]], sig schnorr
+    function buildNip98Token(url, method) {
+        const pubkeyBytes = schnorr.getPublicKey(skBytes);
+        const pubkey = bytesToHex(pubkeyBytes);
+        const created_at = Math.floor(Date.now() / 1000);
+        const kind = 27235;
+        const tags = [['u', url], ['method', method.toUpperCase()]];
+        const content = '';
+        const serialized = JSON.stringify([0, pubkey, created_at, kind, tags, content]);
+        const idBytes = sha256Bytes(new TextEncoder().encode(serialized));
+        const id = bytesToHex(idBytes);
+        const sigBytes = schnorr.sign(idBytes, skBytes);
+        const sig = bytesToHex(sigBytes);
+        const event = { kind, created_at, tags, content, pubkey, id, sig };
+        const base64 = Buffer.from(JSON.stringify(event)).toString('base64');
+        return 'Nostr ' + base64;
+    }
+
     async function authedGet(url) {
-        const token = buildNip98Token(skBytes, url, 'GET');
+        const token = buildNip98Token(url, 'GET');
         const r = await fetch(url, { headers: { Authorization: token } });
         if (!r.ok) {
             const body = await r.text().catch(() => '');
@@ -153,7 +165,6 @@ export default async function handler(req, res) {
 
         return res.status(200).json(result);
     } catch (e) {
-        // Si tenemos cache viejo lo devolvemos con flag stale
         if (_cache) {
             return res.status(200).json({
                 ..._cache,
