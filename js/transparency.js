@@ -655,6 +655,65 @@ const LBW_Transparency = (() => {
             return;
         }
 
+        // Modo "auth-not-supported": coinos.io requiere NIP-98 para balance + tx,
+        // que no podemos firmar en el lambda de Vercel (los noble libs crashean).
+        // Renderizamos sólo la info pública con link directo a coinos para auditoría.
+        if (data.authNotSupported) {
+            const lnAddr = data.lightning || '';
+            const publicUrl = data.publicUrl || '';
+            panel.innerHTML = `
+                <div style="background:linear-gradient(135deg,rgba(229,185,92,0.08),rgba(44,95,111,0.08));border:1px solid rgba(229,185,92,0.25);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;">
+                    <div style="display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;">
+                        ${data.picture ? `<img src="${_esc(data.picture)}" alt="" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--color-gold);object-fit:cover;">` : ''}
+                        <div style="flex:1;min-width:200px;">
+                            <div style="font-size:0.7rem;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Wallet de tesorería</div>
+                            <div style="font-size:1.1rem;color:var(--color-gold);font-weight:700;margin-top:0.1rem;">${_esc(data.display || data.username)}</div>
+                            ${data.about ? `<div style="font-size:0.78rem;color:var(--color-text-secondary);margin-top:0.3rem;line-height:1.4;">${_esc(data.about)}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:rgba(229,185,92,0.06);border:1px solid rgba(229,185,92,0.3);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1rem;">
+                    <div style="font-size:0.7rem;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">⚡ Lightning address</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                        <span style="font-family:var(--font-mono);font-size:1rem;color:var(--color-gold);font-weight:700;flex:1;">${_esc(lnAddr)}</span>
+                        <button onclick="LBW_Transparency.copyToClipboard('${_esc(lnAddr)}', this)" style="font-size:0.78rem;padding:0.35rem 0.75rem;border-radius:8px;background:rgba(229,185,92,0.15);border:1px solid var(--color-gold);color:var(--color-gold);cursor:pointer;font-weight:600;">📋 Copiar</button>
+                    </div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.5rem;line-height:1.4;">
+                        Envía sats por Lightning a esta dirección para contribuir a la tesorería comunitaria. Compatible con Alby, Wallet of Satoshi, Phoenix, Zeus, BlueWallet, y cualquier wallet que soporte Lightning Address.
+                    </div>
+                </div>
+
+                <div style="background:rgba(64,196,255,0.06);border:1px solid rgba(64,196,255,0.25);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1rem;">
+                    <div style="font-size:0.78rem;color:#40C4FF;font-weight:600;margin-bottom:0.4rem;">🔍 Auditoría de saldo y movimientos</div>
+                    <div style="font-size:0.78rem;color:var(--color-text-secondary);line-height:1.5;margin-bottom:0.6rem;">
+                        Coinos.io aún no expone balance y transacciones sin autenticación, así que de momento la auditoría se hace abriendo la wallet directamente en coinos. El perfil es público y muestra los movimientos.
+                    </div>
+                    <a href="${_esc(publicUrl)}" target="_blank" rel="noopener noreferrer"
+                       style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;background:rgba(64,196,255,0.12);border:1px solid rgba(64,196,255,0.4);color:#40C4FF;text-decoration:none;font-weight:600;">
+                        ↗ Ver wallet en coinos.io
+                    </a>
+                </div>
+
+                ${data.lnurlp ? `
+                    <div style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:10px;padding:0.85rem 1rem;">
+                        <div style="font-size:0.7rem;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">Parámetros LNURLP</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem;font-size:0.75rem;font-family:var(--font-mono);">
+                            <div><span style="color:var(--color-text-secondary);">Min:</span> <strong style="color:var(--color-text-primary);">${Math.floor((data.lnurlp.minSendable||0)/1000).toLocaleString('es-ES')}</strong> sats</div>
+                            <div><span style="color:var(--color-text-secondary);">Max:</span> <strong style="color:var(--color-text-primary);">${Math.floor((data.lnurlp.maxSendable||0)/1000).toLocaleString('es-ES')}</strong> sats</div>
+                            <div><span style="color:var(--color-text-secondary);">Memo:</span> <strong style="color:var(--color-text-primary);">${data.lnurlp.commentAllowed || 0}</strong> chars</div>
+                            <div><span style="color:var(--color-text-secondary);">Nostr zaps:</span> <strong style="color:${data.lnurlp.allowsNostr ? '#51cf66' : '#ff4d4f'};">${data.lnurlp.allowsNostr ? 'sí' : 'no'}</strong></div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div style="text-align:right;margin-top:1rem;">
+                    <button onclick="LBW_Transparency.refreshWallet()" style="font-size:0.72rem;padding:0.3rem 0.7rem;border-radius:8px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">🔄 Actualizar</button>
+                </div>
+            `;
+            return;
+        }
+
         const movs = Array.isArray(data.movements) ? data.movements : [];
         // Asignar número de bloque (1 = más antiguo)
         const sortedAsc = movs.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
