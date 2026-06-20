@@ -75,11 +75,23 @@ async function nip98Token(url, method) {
     return 'Nostr ' + Buffer.from(JSON.stringify(event)).toString('base64');
 }
 
+// Diagnóstico: nuestro pubkey (lo que coinos espera ver firmado)
+{
+    const pubkeyHex = bytesToHex(schnorr.getPublicKey(skBytes));
+    console.log('[treasury-sync] 🔑 pubkey (x-only):', pubkeyHex);
+    console.log('[treasury-sync] 🕐 server time:    ', new Date().toISOString(), '(unix:', Math.floor(Date.now()/1000) + ')');
+}
+
 async function authedGet(url) {
     const token = await nip98Token(url, 'GET');
     const r = await fetch(url, { headers: { Authorization: token } });
     if (!r.ok) {
         const body = await r.text().catch(() => '');
+        // Diagnóstico extra: decodificar nuestro token para inspección
+        const eventJson = Buffer.from(token.replace(/^Nostr\s+/, ''), 'base64').toString('utf8');
+        console.error('[treasury-sync] ❌ ' + r.status + ' ' + url);
+        console.error('[treasury-sync]    response body:', body.substring(0, 300));
+        console.error('[treasury-sync]    event enviado:', eventJson.substring(0, 400));
         throw new Error(`coinos ${url} → ${r.status}: ${body.substring(0, 200)}`);
     }
     return r.json();
