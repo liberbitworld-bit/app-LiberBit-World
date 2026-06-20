@@ -52,9 +52,11 @@ WHERE u.id IS NULL
 -- Paso 2: Backfill — inserta una fila users por cada pubkey con méritos
 -- que aún no esté registrado. Usa el npub como nombre placeholder; se
 -- actualizará cuando el usuario entre.
+-- NOTA: la columna users.id es de tipo `uuid` en este Supabase,
+-- así que NO cast a text. gen_random_uuid() devuelve uuid nativo.
 INSERT INTO users (id, public_key, name, citizenship_type, registration_date)
 SELECT
-    gen_random_uuid()::text                                 AS id,
+    gen_random_uuid()                                       AS id,
     m.npub                                                  AS public_key,
     COALESCE(NULLIF(m.npub, ''), substring(m.pubkey, 1, 16)) AS name,
     'Amigo'                                                 AS citizenship_type,
