@@ -23,6 +23,12 @@ const LBW_Transparency = (() => {
     const USERS_TOP_DEFAULT = 10;
     let _meritsPage = 1;
     const MERITS_PAGE_SIZE = 25;
+    let _walletPage = 1;
+    const WALLET_PAGE_SIZE = 25;
+    let _walletData = null;
+    let _walletDataAt = 0;
+    let _walletError = null;
+    const WALLET_CACHE_TTL_MS = 30 * 1000;
 
     function _esc(s) {
         if (s === null || s === undefined) return '';
@@ -585,77 +591,259 @@ const LBW_Transparency = (() => {
         }
     }
 
-    function renderWalletPanel() {
+    async function _fetchWalletData(force) {
+        if (!force && _walletData && (Date.now() - _walletDataAt < WALLET_CACHE_TTL_MS)) {
+            return _walletData;
+        }
+        try {
+            const r = await fetch('/api/transparency/wallet', { cache: 'no-store' });
+            const data = await r.json();
+            if (!r.ok && data && !data.configured) {
+                _walletData = null;
+                _walletError = data;
+                return null;
+            }
+            _walletData = data;
+            _walletDataAt = Date.now();
+            _walletError = data && data.error ? data : null;
+            return data;
+        } catch (e) {
+            _walletError = { error: 'red caída', detail: e.message };
+            return null;
+        }
+    }
+
+    // Sanitiza memo: trunca + escapa + oculta texto largo que parezca npub/email/teléfono.
+    // El memo lo escribe el pagador, asumimos que es público pero anonimizamos identificadores
+    // accidentales para no doxxear donantes.
+    function _sanitizeMemo(s) {
+        if (!s) return '';
+        let str = String(s).trim();
+        if (str.length > 100) str = str.substring(0, 100) + '…';
+        // Oculta posibles npubs/nsec
+        str = str.replace(/(npub1|nsec1)[a-z0-9]{20,}/gi, '[id oculto]');
+        // Oculta emails
+        str = str.replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '[email oculto]');
+        return _esc(str);
+    }
+
+    async function renderWalletPanel() {
         const panel = document.getElementById('transparencyWalletPanel');
         if (!panel) return;
-        // Placeholder hasta que el endpoint /api/transparency/wallet esté
-        // disponible (requiere token coinos en Vercel env vars). Mostramos
-        // un mockup de cómo se verá para que el operador (y los curiosos)
-        // sepan qué esperar.
+
+        // Loading inicial
+        if (!_walletData && !_walletError) {
+            panel.innerHTML = `
+                <div style="text-align:center;padding:2.5rem;color:var(--color-text-secondary);">
+                    <div style="font-size:2rem;margin-bottom:0.5rem;">⚡</div>
+                    <div style="font-size:0.85rem;">Cargando wallet de tesorería…</div>
+                </div>
+            `;
+        }
+
+        const data = await _fetchWalletData(false);
+
+        // Estado no configurado
+        if (!data || data.configured === false) {
+            const errMsg = (_walletError && _walletError.detail) || 'Falta env var COINOS_SK en Vercel';
+            panel.innerHTML = `
+                <div style="background:rgba(255,167,38,0.08);border:1px solid rgba(255,167,38,0.3);border-radius:10px;padding:1rem 1.2rem;">
+                    <div style="color:#FFA726;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">⚙️ Wallet no configurada</div>
+                    <div style="color:var(--color-text-secondary);font-size:0.8rem;line-height:1.5;">${_esc(errMsg)}</div>
+                </div>
+            `;
+            return;
+        }
+
+        const movs = Array.isArray(data.movements) ? data.movements : [];
+        // Asignar número de bloque (1 = más antiguo)
+        const sortedAsc = movs.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        sortedAsc.forEach((m, i) => { m._blockNum = i + 1; });
+        const totalBlocks = sortedAsc.length;
+
+        // Paginación
+        const totalPages = Math.max(1, Math.ceil(movs.length / WALLET_PAGE_SIZE));
+        if (_walletPage > totalPages) _walletPage = totalPages;
+        if (_walletPage < 1) _walletPage = 1;
+        const pageStart = (_walletPage - 1) * WALLET_PAGE_SIZE;
+        const pageEnd = pageStart + WALLET_PAGE_SIZE;
+        const pageRows = movs.slice(pageStart, pageEnd);
+
+        const lnAddr = data.lightning || '';
+        const username = data.username || '';
+
+        const staleBadge = data.stale
+            ? `<span title="${_esc(data.error || '')}" style="font-size:0.65rem;background:rgba(255,77,79,0.15);color:#ff4d4f;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(255,77,79,0.3);">⚠ datos viejos</span>`
+            : `<span style="font-size:0.65rem;background:rgba(81,207,102,0.15);color:#51cf66;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(81,207,102,0.3);">🟢 coinos.io</span>`;
+
         panel.innerHTML = `
-            <div style="background:rgba(255,167,38,0.08);border:1px solid rgba(255,167,38,0.3);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;">
-                <div style="color:#FFA726;font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;">⚙️ Pendiente de configuración</div>
-                <div style="color:var(--color-text-secondary);font-size:0.78rem;line-height:1.5;">
-                    Falta crear la dirección dedicada en coinos.io y añadir el access token como env var en Vercel. La estructura ya está preparada — debajo se muestra cómo se verá la sección.
+            <div style="background:linear-gradient(135deg,rgba(229,185,92,0.08),rgba(44,95,111,0.08));border:1px solid rgba(229,185,92,0.25);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.25rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <div>
+                        <div style="font-size:0.7rem;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Wallet de tesorería</div>
+                        <div style="font-family:var(--font-mono);font-size:0.95rem;color:var(--color-gold);font-weight:700;margin-top:0.15rem;">⚡ ${_esc(lnAddr || username || '—')}</div>
+                    </div>
+                    <div style="display:flex;gap:0.4rem;align-items:center;">
+                        ${staleBadge}
+                        ${lnAddr ? `<button onclick="LBW_Transparency.copyToClipboard('${_esc(lnAddr)}', this)" style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:rgba(229,185,92,0.12);border:1px solid rgba(229,185,92,0.35);color:var(--color-gold);cursor:pointer;">📋 Copiar address</button>` : ''}
+                        <button onclick="LBW_Transparency.refreshWallet()" style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">🔄 Actualizar</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Stats placeholder -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.25rem;opacity:0.5;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
                 <div style="background:rgba(229,185,92,0.08);border:1px solid rgba(229,185,92,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:700;color:var(--color-gold);">— sats</div>
-                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Saldo actual</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:var(--color-gold);">${(data.balance || 0).toLocaleString('es-ES')}</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">sats · Saldo actual</div>
                 </div>
                 <div style="background:rgba(81,207,102,0.08);border:1px solid rgba(81,207,102,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:700;color:#51cf66;">— sats</div>
-                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Total recibido</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#51cf66;">+${(data.totalIn || 0).toLocaleString('es-ES')}</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">sats · Total recibido</div>
                 </div>
                 <div style="background:rgba(255,77,79,0.08);border:1px solid rgba(255,77,79,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:700;color:#ff4d4f;">— sats</div>
-                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Total gastado</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#ff4d4f;">−${(data.totalOut || 0).toLocaleString('es-ES')}</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">sats · Total gastado</div>
                 </div>
                 <div style="background:rgba(64,196,255,0.08);border:1px solid rgba(64,196,255,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
-                    <div style="font-size:1.6rem;font-weight:700;color:#40C4FF;">—</div>
-                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Nº movimientos</div>
+                    <div style="font-size:1.6rem;font-weight:700;color:#40C4FF;">${(data.txCount || 0).toLocaleString('es-ES')}</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">movimientos</div>
                 </div>
             </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
-                <div style="font-size:0.78rem;color:var(--color-text-secondary);">
-                    📒 Diario de movimientos (entrada / salida) · cronológico · más recientes primero
+            ${movs.length === 0 ? `
+                <div class="placeholder" style="text-align:center;padding:2rem;color:var(--color-text-secondary);">
+                    <div style="font-size:2rem;margin-bottom:0.5rem;">⚡</div>
+                    <p>Aún sin movimientos en esta wallet.</p>
                 </div>
-                <button disabled style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);opacity:0.4;cursor:not-allowed;">
-                    ⬇️ Exportar CSV
-                </button>
-            </div>
-
-            <!-- Tabla mockup vacía -->
-            <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-card);opacity:0.6;">
-                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:760px;">
-                    <thead>
-                        <tr style="background:rgba(13,23,30,0.6);border-bottom:1px solid var(--color-border);">
-                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Fecha</th>
-                            <th style="text-align:center;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Tipo</th>
-                            <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Sats</th>
-                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Memo</th>
-                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Origen / Destino</th>
-                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Tx hash</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="border-bottom:1px solid rgba(44,95,111,0.15);">
-                            <td colspan="6" style="text-align:center;padding:2rem;color:var(--color-text-secondary);font-style:italic;">
-                                Sin datos · configurar coinos token primero
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div style="margin-top:1rem;font-size:0.72rem;color:var(--color-text-secondary);opacity:0.7;line-height:1.5;">
-                💡 Cuando esté operativo: cada movimiento entrante (donación) o saliente (gasto comunitario) aparecerá automáticamente, con timestamp, monto en sats, memo del pagador (sanitizado: identidades en texto libre se anonimizarán como [oculto]), origen/destino y hash de la transacción Lightning.
-            </div>
+            ` : `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
+                    <div style="font-size:0.78rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:0.4rem;">
+                        <span style="color:var(--color-gold);font-weight:700;">⛓️</span>
+                        <span>Cadena de movimientos · <strong style="color:var(--color-text-primary);">${totalBlocks.toLocaleString('es-ES')}</strong> bloques · más recientes primero</span>
+                    </div>
+                    <button onclick="LBW_Transparency.exportWalletCSV()"
+                        style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">
+                        ⬇️ Exportar CSV
+                    </button>
+                </div>
+                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;margin-bottom:0.6rem;line-height:1.4;">
+                    💡 Cada bloque es un pago Lightning real con su hash y memo. Los memos se sanitizan: emails y npubs en texto libre se sustituyen por <code style="font-family:var(--font-mono);font-size:0.68rem;background:rgba(44,95,111,0.18);padding:0.05rem 0.3rem;border-radius:3px;">[oculto]</code> para no doxxear donantes.
+                </div>
+                <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:10px;background:linear-gradient(180deg,rgba(13,23,30,0.6) 0%,rgba(13,23,30,0.35) 100%);box-shadow:inset 0 0 0 1px rgba(229,185,92,0.05);">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:760px;font-family:var(--font-mono);">
+                        <thead>
+                            <tr style="background:linear-gradient(180deg,rgba(229,185,92,0.06),rgba(13,23,30,0.55));border-bottom:1px solid rgba(229,185,92,0.25);">
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-gold);text-transform:uppercase;letter-spacing:0.08em;border-right:1px solid rgba(229,185,92,0.1);">Bloque</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Tx hash</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Timestamp</th>
+                                <th style="text-align:center;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Tipo</th>
+                                <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Sats</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Memo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pageRows.map((m, idx) => {
+                                const blockNum = m._blockNum || 0;
+                                const isGenesis = blockNum === 1;
+                                const isLatest = blockNum === totalBlocks;
+                                const blockLabel = '#' + String(blockNum).padStart(4, '0');
+                                const hash = m.hash || m.id || '';
+                                const hashShort = hash ? (hash.substring(0, 10) + '…' + hash.substring(Math.max(0, hash.length - 6))) : '—';
+                                const isIn = m.type === 'in';
+                                const sign = isIn ? '+' : '−';
+                                const color = isIn ? '#51cf66' : '#ff4d4f';
+                                const typeLabel = isIn ? '↓ in' : '↑ out';
+                                const blockBg = idx % 2 === 0 ? 'rgba(13,23,30,0.35)' : 'rgba(13,23,30,0.15)';
+                                const borderLeft = isGenesis ? 'var(--color-gold)' : (isLatest ? '#51cf66' : (isIn ? 'rgba(81,207,102,0.4)' : 'rgba(255,77,79,0.4)'));
+                                return `
+                                <tr style="border-bottom:1px solid rgba(44,95,111,0.18);background:${blockBg};border-left:3px solid ${borderLeft};">
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;border-right:1px solid rgba(229,185,92,0.08);">
+                                        <div style="display:flex;flex-direction:column;gap:0.15rem;">
+                                            <span style="font-weight:700;color:var(--color-gold);font-size:0.82rem;letter-spacing:0.02em;">${blockLabel}</span>
+                                            ${isGenesis ? '<span style="font-size:0.6rem;color:var(--color-gold);opacity:0.8;text-transform:uppercase;letter-spacing:0.1em;">génesis</span>' : ''}
+                                            ${isLatest && !isGenesis ? '<span style="font-size:0.6rem;color:#51cf66;text-transform:uppercase;letter-spacing:0.1em;">latest</span>' : ''}
+                                        </div>
+                                    </td>
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;font-size:0.68rem;">
+                                        ${hash ? `<span title="${_esc(hash)} (click para copiar)" onclick="LBW_Transparency.copyToClipboard('${_esc(hash)}', this)" style="cursor:pointer;color:var(--color-text-secondary);background:rgba(44,95,111,0.15);padding:0.2rem 0.5rem;border-radius:4px;border:1px solid rgba(44,95,111,0.3);">⛓ ${hashShort}</span>` : '<span style="opacity:0.4;">—</span>'}
+                                    </td>
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;color:var(--color-text-secondary);font-size:0.72rem;">${_formatDate(m.ts)}</td>
+                                    <td style="padding:0.55rem 0.7rem;text-align:center;white-space:nowrap;">
+                                        <span style="font-size:0.68rem;background:${isIn ? 'rgba(81,207,102,0.12)' : 'rgba(255,77,79,0.12)'};color:${color};padding:0.18rem 0.55rem;border-radius:10px;border:1px solid ${isIn ? 'rgba(81,207,102,0.3)' : 'rgba(255,77,79,0.3)'};font-family:var(--font-display);">${typeLabel}</span>
+                                    </td>
+                                    <td style="padding:0.55rem 0.7rem;text-align:right;font-weight:700;color:${color};white-space:nowrap;">${sign}${Math.abs(m.amount || 0).toLocaleString('es-ES')}</td>
+                                    <td style="padding:0.55rem 0.7rem;max-width:260px;color:var(--color-text-secondary);font-style:italic;font-family:var(--font-display);font-size:0.76rem;">
+                                        ${m.memo ? `"${_sanitizeMemo(m.memo)}"` : '<span style="opacity:0.4;">—</span>'}
+                                    </td>
+                                </tr>
+                            `;}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem;flex-wrap:wrap;gap:0.5rem;">
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);">
+                        Mostrando <strong style="color:var(--color-text-primary);">${(pageStart + 1).toLocaleString('es-ES')}</strong>–<strong style="color:var(--color-text-primary);">${Math.min(pageEnd, movs.length).toLocaleString('es-ES')}</strong> de <strong style="color:var(--color-text-primary);">${movs.length.toLocaleString('es-ES')}</strong> bloques
+                    </div>
+                    <div style="display:flex;gap:0.3rem;align-items:center;">
+                        <button onclick="LBW_Transparency.goToWalletPage(1)" ${_walletPage <= 1 ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.55rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_walletPage <= 1 ? 'not-allowed' : 'pointer'};opacity:${_walletPage <= 1 ? '0.35' : '1'};font-family:var(--font-mono);" title="Primera">⏮</button>
+                        <button onclick="LBW_Transparency.goToWalletPage(${_walletPage - 1})" ${_walletPage <= 1 ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.65rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_walletPage <= 1 ? 'not-allowed' : 'pointer'};opacity:${_walletPage <= 1 ? '0.35' : '1'};font-family:var(--font-mono);">◀ Prev</button>
+                        <span style="font-size:0.72rem;color:var(--color-text-primary);padding:0 0.55rem;font-family:var(--font-mono);">Página <strong style="color:var(--color-gold);">${_walletPage}</strong> / ${totalPages}</span>
+                        <button onclick="LBW_Transparency.goToWalletPage(${_walletPage + 1})" ${_walletPage >= totalPages ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.65rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_walletPage >= totalPages ? 'not-allowed' : 'pointer'};opacity:${_walletPage >= totalPages ? '0.35' : '1'};font-family:var(--font-mono);">Next ▶</button>
+                        <button onclick="LBW_Transparency.goToWalletPage(${totalPages})" ${_walletPage >= totalPages ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.55rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_walletPage >= totalPages ? 'not-allowed' : 'pointer'};opacity:${_walletPage >= totalPages ? '0.35' : '1'};font-family:var(--font-mono);" title="Última">⏭</button>
+                    </div>
+                </div>
+            `}
         `;
+    }
+
+    async function refreshWallet() {
+        _walletData = null;
+        _walletDataAt = 0;
+        _walletError = null;
+        await renderWalletPanel();
+    }
+
+    function goToWalletPage(n) {
+        const next = parseInt(n, 10);
+        if (!Number.isFinite(next) || next < 1) return;
+        _walletPage = next;
+        renderWalletPanel();
+    }
+
+    function exportWalletCSV() {
+        if (!_walletData || !Array.isArray(_walletData.movements)) {
+            alert('No hay movimientos para exportar.');
+            return;
+        }
+        const movs = _walletData.movements;
+        const esc = v => {
+            if (v === null || v === undefined) return '';
+            const s = String(v).replace(/"/g, '""');
+            return /[",\n;]/.test(s) ? '"' + s + '"' : s;
+        };
+        const header = ['fecha_iso', 'fecha_unix', 'tipo', 'sats', 'memo_sanitizado', 'tx_hash'];
+        const rows = movs.map(m => [
+            new Date((m.ts || 0) * 1000).toISOString(),
+            m.ts || 0,
+            m.type || '',
+            m.amount || 0,
+            (m.memo || '').replace(/(npub1|nsec1)[a-z0-9]{20,}/gi, '[id oculto]')
+                          .replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '[email oculto]'),
+            m.hash || m.id || ''
+        ].map(esc).join(','));
+        const csv = header.join(',') + '\n' + rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'lbw-wallet-' + new Date().toISOString().substring(0, 10) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     }
 
     function setMeritCategoryFilter(cat) {
@@ -817,7 +1005,7 @@ const LBW_Transparency = (() => {
         }
     }
 
-    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers, exportMeritsCSV, copyToClipboard, goToMeritsPage };
+    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, refreshWallet, toggleAllUsers, exportMeritsCSV, exportWalletCSV, copyToClipboard, goToMeritsPage, goToWalletPage };
 })();
 
 window.LBW_Transparency = LBW_Transparency;
