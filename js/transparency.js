@@ -363,30 +363,52 @@ const LBW_Transparency = (() => {
                     <p>No hay méritos que coincidan con el filtro actual.</p>
                 </div>
             ` : `
-                <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">
-                    Mostrando ${filtered.length} de ${stats.count} emisiones (más recientes primero):
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
+                    <div style="font-size:0.78rem;color:var(--color-text-secondary);">
+                        📒 Registro inmutable · ${filtered.length} de ${stats.count} emisiones · más recientes primero
+                    </div>
+                    <button onclick="LBW_Transparency.exportMeritsCSV()"
+                        style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">
+                        ⬇️ Exportar CSV
+                    </button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                    ${filtered.map(m => `
-                        <div style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:0.7rem 0.9rem;">
-                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.3rem;">
-                                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                                    <span style="font-weight:700;color:var(--color-gold);font-size:1rem;">+${m.amount.toLocaleString('es-ES')}</span>
-                                    <span style="font-size:0.72rem;background:rgba(64,196,255,0.12);color:#40C4FF;padding:0.15rem 0.55rem;border-radius:14px;border:1px solid rgba(64,196,255,0.25);">${_esc(m.category)}</span>
-                                </div>
-                                <span style="font-size:0.72rem;color:var(--color-text-secondary);font-family:var(--font-mono);">${_formatDate(m.created_at)}</span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--color-text-primary);flex-wrap:wrap;">
-                                <span data-pubkey-slot="${m.issuer}" style="font-family:var(--font-mono);font-weight:600;" title="${_esc(m.issuer)}">${_shortNpub(m.issuer)}</span>
-                                <span style="color:var(--color-text-secondary);">→</span>
-                                <span data-pubkey-slot="${m.recipient}" style="font-family:var(--font-mono);" title="${_esc(m.recipient)}">${_shortNpub(m.recipient)}</span>
-                            </div>
-                            ${m.reason ? `
-                                <div style="margin-top:0.35rem;font-size:0.78rem;color:var(--color-text-secondary);font-style:italic;">
-                                    "${_sanitizeReason(m.reason, 120)}"
-                                </div>` : ''}
-                        </div>
-                    `).join('')}
+                <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-card);">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:720px;">
+                        <thead>
+                            <tr style="background:rgba(13,23,30,0.6);border-bottom:1px solid var(--color-border);">
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Fecha</th>
+                                <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">LBWM</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Categoría</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Emisor</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Destinatario</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Motivo</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Event ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filtered.map((m, idx) => `
+                                <tr style="border-bottom:1px solid rgba(44,95,111,0.15);${idx % 2 === 0 ? 'background:rgba(13,23,30,0.25);' : ''}">
+                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);color:var(--color-text-secondary);font-size:0.72rem;">${_formatDate(m.created_at)}</td>
+                                    <td style="padding:0.5rem 0.7rem;text-align:right;font-weight:700;color:var(--color-gold);white-space:nowrap;">+${m.amount.toLocaleString('es-ES')}</td>
+                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;">
+                                        <span style="font-size:0.7rem;background:rgba(64,196,255,0.12);color:#40C4FF;padding:0.15rem 0.5rem;border-radius:10px;border:1px solid rgba(64,196,255,0.25);">${_esc(m.category)}</span>
+                                    </td>
+                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);">
+                                        <span data-pubkey-slot="${m.issuer}" title="${_esc(m.issuer)}">${_shortNpub(m.issuer)}</span>
+                                    </td>
+                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);">
+                                        <span data-pubkey-slot="${m.recipient}" title="${_esc(m.recipient)}">${_shortNpub(m.recipient)}</span>
+                                    </td>
+                                    <td style="padding:0.5rem 0.7rem;max-width:240px;color:var(--color-text-secondary);font-style:italic;">
+                                        ${m.reason ? `"${_sanitizeReason(m.reason, 80)}"` : '<span style="opacity:0.4;">—</span>'}
+                                    </td>
+                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-secondary);opacity:0.75;">
+                                        <span title="${_esc(m.id)} (click para copiar)" onclick="LBW_Transparency.copyToClipboard('${_esc(m.id)}', this)" style="cursor:pointer;">${m.id ? m.id.substring(0, 8) + '…' : '—'}</span>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             `}
         `;
@@ -407,20 +429,71 @@ const LBW_Transparency = (() => {
         const panel = document.getElementById('transparencyWalletPanel');
         if (!panel) return;
         // Placeholder hasta que el endpoint /api/transparency/wallet esté
-        // disponible (requiere token coinos en Vercel env vars).
+        // disponible (requiere token coinos en Vercel env vars). Mostramos
+        // un mockup de cómo se verá para que el operador (y los curiosos)
+        // sepan qué esperar.
         panel.innerHTML = `
-            <div style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:12px;padding:1.5rem;text-align:center;">
-                <div style="font-size:2.5rem;margin-bottom:0.75rem;">💰</div>
-                <h3 style="color:var(--color-gold);margin-bottom:0.5rem;">Wallet de la treasury LBW</h3>
-                <p style="color:var(--color-text-secondary);font-size:0.85rem;line-height:1.5;margin-bottom:1rem;">
-                    Saldo, donaciones recibidas y pagos emitidos. Datos en tiempo real vía API de coinos.io.
-                </p>
-                <div style="background:rgba(255,167,38,0.08);border:1px solid rgba(255,167,38,0.3);border-radius:8px;padding:0.85rem;margin-top:1rem;">
-                    <div style="color:#FFA726;font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;">⚙️ Pendiente de configuración</div>
-                    <div style="color:var(--color-text-secondary);font-size:0.78rem;line-height:1.5;">
-                        Falta crear la dirección dedicada en coinos.io y añadir el access token como variable de entorno en Vercel. En cuanto esté listo, este panel mostrará balance + historial completo.
-                    </div>
+            <div style="background:rgba(255,167,38,0.08);border:1px solid rgba(255,167,38,0.3);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;">
+                <div style="color:#FFA726;font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;">⚙️ Pendiente de configuración</div>
+                <div style="color:var(--color-text-secondary);font-size:0.78rem;line-height:1.5;">
+                    Falta crear la dirección dedicada en coinos.io y añadir el access token como env var en Vercel. La estructura ya está preparada — debajo se muestra cómo se verá la sección.
                 </div>
+            </div>
+
+            <!-- Stats placeholder -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.25rem;opacity:0.5;">
+                <div style="background:rgba(229,185,92,0.08);border:1px solid rgba(229,185,92,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:700;color:var(--color-gold);">— sats</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Saldo actual</div>
+                </div>
+                <div style="background:rgba(81,207,102,0.08);border:1px solid rgba(81,207,102,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:700;color:#51cf66;">— sats</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Total recibido</div>
+                </div>
+                <div style="background:rgba(255,77,79,0.08);border:1px solid rgba(255,77,79,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:700;color:#ff4d4f;">— sats</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Total gastado</div>
+                </div>
+                <div style="background:rgba(64,196,255,0.08);border:1px solid rgba(64,196,255,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
+                    <div style="font-size:1.6rem;font-weight:700;color:#40C4FF;">—</div>
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);margin-top:0.15rem;">Nº movimientos</div>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
+                <div style="font-size:0.78rem;color:var(--color-text-secondary);">
+                    📒 Diario de movimientos (entrada / salida) · cronológico · más recientes primero
+                </div>
+                <button disabled style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);opacity:0.4;cursor:not-allowed;">
+                    ⬇️ Exportar CSV
+                </button>
+            </div>
+
+            <!-- Tabla mockup vacía -->
+            <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-card);opacity:0.6;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:760px;">
+                    <thead>
+                        <tr style="background:rgba(13,23,30,0.6);border-bottom:1px solid var(--color-border);">
+                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Fecha</th>
+                            <th style="text-align:center;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Tipo</th>
+                            <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Sats</th>
+                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Memo</th>
+                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Origen / Destino</th>
+                            <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Tx hash</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid rgba(44,95,111,0.15);">
+                            <td colspan="6" style="text-align:center;padding:2rem;color:var(--color-text-secondary);font-style:italic;">
+                                Sin datos · configurar coinos token primero
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:1rem;font-size:0.72rem;color:var(--color-text-secondary);opacity:0.7;line-height:1.5;">
+                💡 Cuando esté operativo: cada movimiento entrante (donación) o saliente (gasto comunitario) aparecerá automáticamente, con timestamp, monto en sats, memo del pagador (sanitizado: identidades en texto libre se anonimizarán como [oculto]), origen/destino y hash de la transacción Lightning.
             </div>
         `;
     }
@@ -499,7 +572,69 @@ const LBW_Transparency = (() => {
         await renderMeritsPanel();
     }
 
-    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers };
+    // Exporta el registro filtrado a CSV. Usa los mismos filtros activos
+    // (categoría + búsqueda) que están aplicados en la vista.
+    async function exportMeritsCSV() {
+        const supa = await _fetchSupabaseLedger(false);
+        let entries = (supa && Array.isArray(supa.entries))
+            ? supa.entries
+            : (LBW_Merits && LBW_Merits.getAllMerits ? LBW_Merits.getAllMerits({ limit: 9999 }) : []);
+        if (_meritFilter.category) entries = entries.filter(m => m.category === _meritFilter.category);
+        if (_meritFilter.search) {
+            const q = _meritFilter.search.toLowerCase();
+            entries = entries.filter(m =>
+                (m.reason || '').toLowerCase().includes(q) ||
+                (m.category || '').toLowerCase().includes(q)
+            );
+        }
+        if (entries.length === 0) {
+            alert('No hay méritos para exportar con el filtro actual.');
+            return;
+        }
+        const esc = v => {
+            if (v === null || v === undefined) return '';
+            const s = String(v).replace(/"/g, '""');
+            return /[",\n;]/.test(s) ? '"' + s + '"' : s;
+        };
+        const header = ['fecha_iso', 'fecha_unix', 'amount', 'category', 'issuer', 'recipient', 'reason', 'event_id', 'd_tag', 'source'];
+        const rows = entries.map(m => [
+            new Date((m.created_at || 0) * 1000).toISOString(),
+            m.created_at || 0,
+            m.amount || 0,
+            m.category || '',
+            m.issuer || '',
+            m.recipient || '',
+            m.reason || '',
+            m.id || '',
+            m.dTag || '',
+            m.source || ''
+        ].map(esc).join(','));
+        const csv = header.join(',') + '\n' + rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'lbwm-merits-' + new Date().toISOString().substring(0, 10) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    }
+
+    // Copia un valor al portapapeles y da feedback visual en el elemento
+    async function copyToClipboard(text, el) {
+        try {
+            await navigator.clipboard.writeText(text);
+            if (el) {
+                const orig = el.textContent;
+                el.textContent = '✅ copiado';
+                setTimeout(() => { el.textContent = orig; }, 1200);
+            }
+        } catch (e) {
+            console.warn('[Transparency] Clipboard error:', e.message);
+        }
+    }
+
+    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers, exportMeritsCSV, copyToClipboard };
 })();
 
 window.LBW_Transparency = LBW_Transparency;
