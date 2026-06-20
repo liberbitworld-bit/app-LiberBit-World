@@ -1,0 +1,9 @@
+{
+  "name": "lbw-treasury-sync",
+  "private": true,
+  "type": "module",
+  "description": "Worker que firma NIP-98 con la nsec de la wallet Liberbitworld@coinos.io y guarda balance + movimientos en Supabase. Corre en GitHub Actions (NO en Vercel — @noble crashea el lambda).",
+  "dependencies": {
+    "@noble/curves": "^1.4.0"
+  }
+}

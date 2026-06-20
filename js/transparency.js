@@ -596,12 +596,39 @@ const LBW_Transparency = (() => {
             return _walletData;
         }
         try {
+            // 1. Perfil público de coinos (lightning address, avatar, etc.)
             const r = await fetch('/api/transparency/wallet', { cache: 'no-store' });
             const data = await r.json();
             if (!r.ok && data && !data.configured) {
                 _walletData = null;
                 _walletError = data;
                 return null;
+            }
+            // 2. Snapshot de balance + movimientos desde Supabase
+            //    (poblada por GitHub Action treasury-sync cada 15 min).
+            //    Si existe, sobrescribimos balance/movements y desactivamos
+            //    authNotSupported para que el render use la tabla blockchain.
+            try {
+                if (typeof supabaseClient !== 'undefined') {
+                    const { data: snaps } = await supabaseClient
+                        .from('treasury_snapshots')
+                        .select('balance, total_in, total_out, tx_count, movements, fetched_at')
+                        .order('fetched_at', { ascending: false })
+                        .limit(1);
+                    if (snaps && snaps.length > 0) {
+                        const s = snaps[0];
+                        data.balance = s.balance || 0;
+                        data.totalIn = s.total_in || 0;
+                        data.totalOut = s.total_out || 0;
+                        data.txCount = s.tx_count || 0;
+                        data.movements = Array.isArray(s.movements) ? s.movements : [];
+                        data.snapshotAt = s.fetched_at;
+                        data.authNotSupported = false;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Transparency] snapshot treasury fallo:', e && e.message);
+                // Seguimos con el perfil público — la UI lo soporta vía authNotSupported
             }
             _walletData = data;
             _walletDataAt = Date.now();
@@ -731,9 +758,17 @@ const LBW_Transparency = (() => {
         const lnAddr = data.lightning || '';
         const username = data.username || '';
 
+        // Edad del snapshot (worker treasury-sync corre cada 15 min)
+        let snapshotAgeMin = null;
+        if (data.snapshotAt) {
+            const ageMs = Date.now() - new Date(data.snapshotAt).getTime();
+            snapshotAgeMin = Math.max(0, Math.floor(ageMs / 60000));
+        }
         const staleBadge = data.stale
             ? `<span title="${_esc(data.error || '')}" style="font-size:0.65rem;background:rgba(255,77,79,0.15);color:#ff4d4f;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(255,77,79,0.3);">⚠ datos viejos</span>`
-            : `<span style="font-size:0.65rem;background:rgba(81,207,102,0.15);color:#51cf66;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(81,207,102,0.3);">🟢 coinos.io</span>`;
+            : (snapshotAgeMin !== null
+                ? `<span title="Snapshot del worker treasury-sync (cada 15 min)" style="font-size:0.65rem;background:rgba(81,207,102,0.15);color:#51cf66;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(81,207,102,0.3);">🟢 hace ${snapshotAgeMin}m</span>`
+                : `<span style="font-size:0.65rem;background:rgba(81,207,102,0.15);color:#51cf66;padding:0.2rem 0.5rem;border-radius:10px;border:1px solid rgba(81,207,102,0.3);">🟢 coinos.io</span>`);
 
         panel.innerHTML = `
             <div style="background:linear-gradient(135deg,rgba(229,185,92,0.08),rgba(44,95,111,0.08));border:1px solid rgba(229,185,92,0.25);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.25rem;">
