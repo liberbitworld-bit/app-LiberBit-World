@@ -1,30 +1,30 @@
 // ============================================================
 // LiberBit World — Treasury Sync Worker
 //
-// Firma NIP-98 (kind:27235) con la nsec de Liberbitworld@coinos.io,
-// pide /api/me y /api/payments a coinos, y guarda el snapshot en
-// Supabase tabla treasury_snapshots. Pensado para correr en GitHub
-// Actions cada 15 min (NO en Vercel — @noble crashea el lambda).
+// Llama a coinos.io /api/me y /api/payments con un JWT read-only
+// (generado una vez vía GET /api/ro estando logueado como
+// Liberbitworld) y guarda el snapshot en Supabase tabla
+// treasury_snapshots. Se ejecuta en GitHub Actions cada 15 min.
+//
+// Bearer JWT — cero crypto, cero deps. coinos verifica el JWT
+// contra su secret config.jwt; si el id termina en "-ro" solo
+// permite GET /invoice y GET /payments (whitelist en lib/auth.ts
+// de coinos-server). Perfecto para wallet de transparencia.
 //
 // Env vars requeridas:
-//   COINOS_SK            — nsec hex 64 chars de la wallet de tesorería
+//   COINOS_TOKEN         — JWT read-only (sufijo -ro en el id)
 //   SUPABASE_URL         — https://<project>.supabase.co
-//   SUPABASE_SERVICE_KEY — service_role key (escritura)
-//
-// Output: exit 0 si OK + ❌ stderr + exit 1 si error.
+//   SUPABASE_SERVICE_KEY — service_role key
 // ============================================================
-
-import { schnorr } from '@noble/curves/secp256k1';
-import { createHash } from 'node:crypto';
 
 const COINOS_USERNAME = 'Liberbitworld';
 
-const sk = process.env.COINOS_SK;
+const token = process.env.COINOS_TOKEN;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-if (!sk || !/^[0-9a-f]{64}$/i.test(sk)) {
-    console.error('❌ COINOS_SK ausente o inválida (debe ser 64 hex chars)');
+if (!token) {
+    console.error('❌ COINOS_TOKEN ausente');
     process.exit(1);
 }
 if (!supabaseUrl) {
@@ -36,80 +36,12 @@ if (!supabaseKey) {
     process.exit(1);
 }
 
-function hexToBytes(hex) {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-        bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-    }
-    return bytes;
-}
-
-function bytesToHex(bytes) {
-    let s = '';
-    for (let i = 0; i < bytes.length; i++) {
-        s += bytes[i].toString(16).padStart(2, '0');
-    }
-    return s;
-}
-
-const skBytes = hexToBytes(sk);
-
-function sha256Bytes(bytes) {
-    return new Uint8Array(createHash('sha256').update(Buffer.from(bytes)).digest());
-}
-
-// NIP-98 inline: kind:27235, tags [["u",url],["method",method]], sig schnorr BIP-340
-async function nip98Token(url, method) {
-    const pubkeyBytes = schnorr.getPublicKey(skBytes);
-    const pubkey = bytesToHex(pubkeyBytes);
-    const created_at = Math.floor(Date.now() / 1000);
-    const kind = 27235;
-    const tags = [['u', url], ['method', method.toUpperCase()]];
-    const content = '';
-    const serialized = JSON.stringify([0, pubkey, created_at, kind, tags, content]);
-    const idBytes = sha256Bytes(new TextEncoder().encode(serialized));
-    const id = bytesToHex(idBytes);
-    const sigBytes = await schnorr.sign(idBytes, skBytes);
-    const sig = bytesToHex(sigBytes);
-
-    // Self-verify para confirmar que la firma es válida ANTES de mandarla.
-    // Si fallara, es bug en mi serialización o sk corrupta.
-    const valid = schnorr.verify(sigBytes, idBytes, pubkeyBytes);
-    if (!valid) {
-        throw new Error('Self-verify falló — firma inválida localmente. id=' + id);
-    }
-
-    const event = { kind, created_at, tags, content, pubkey, id, sig };
-    const eventJson = JSON.stringify(event);
-    const base64 = Buffer.from(eventJson).toString('base64');
-
-    // Diagnóstico: dump del evento + serialización canónica + curl reproducible
-    console.log('[nip98] url:           ', url);
-    console.log('[nip98] canonical:     ', serialized);
-    console.log('[nip98] id:            ', id);
-    console.log('[nip98] sig valid (local schnorr.verify):', valid);
-    console.log('[nip98] curl -i -H "Authorization: Nostr ' + base64 + '" "' + url + '"');
-
-    return 'Nostr ' + base64;
-}
-
-// Diagnóstico: nuestro pubkey (lo que coinos espera ver firmado)
-{
-    const pubkeyHex = bytesToHex(schnorr.getPublicKey(skBytes));
-    console.log('[treasury-sync] 🔑 pubkey (x-only):', pubkeyHex);
-    console.log('[treasury-sync] 🕐 server time:    ', new Date().toISOString(), '(unix:', Math.floor(Date.now()/1000) + ')');
-}
-
 async function authedGet(url) {
-    const token = await nip98Token(url, 'GET');
-    const r = await fetch(url, { headers: { Authorization: token } });
+    const r = await fetch(url, {
+        headers: { Authorization: 'Bearer ' + token }
+    });
     if (!r.ok) {
         const body = await r.text().catch(() => '');
-        // Diagnóstico extra: decodificar nuestro token para inspección
-        const eventJson = Buffer.from(token.replace(/^Nostr\s+/, ''), 'base64').toString('utf8');
-        console.error('[treasury-sync] ❌ ' + r.status + ' ' + url);
-        console.error('[treasury-sync]    response body:', body.substring(0, 300));
-        console.error('[treasury-sync]    event enviado:', eventJson.substring(0, 400));
         throw new Error(`coinos ${url} → ${r.status}: ${body.substring(0, 200)}`);
     }
     return r.json();
@@ -117,22 +49,27 @@ async function authedGet(url) {
 
 console.log('[treasury-sync] 📡 consultando coinos…');
 
-const [me, payments] = await Promise.all([
-    authedGet('https://coinos.io/api/me'),
+// Nota: el token -ro solo tiene whitelist para GET /invoice y GET /payments
+// (no /me). Para perfil usamos /api/users/<username> que es público y no
+// requiere auth.
+const [profile, payments] = await Promise.all([
+    fetch(`https://coinos.io/api/users/${COINOS_USERNAME}`).then(r => r.json()),
     authedGet('https://coinos.io/api/payments?start=0&end=' + Date.now())
 ]);
 
-console.log('[treasury-sync] 👤 perfil:', me.username, '· balance:', me.balance, 'sats');
+console.log('[treasury-sync] 👤 perfil:', profile.username);
 
 const txs = Array.isArray(payments) ? payments : (payments.payments || []);
 console.log('[treasury-sync] 💸 movimientos crudos:', txs.length);
 
 let totalIn = 0;
 let totalOut = 0;
+let runningBalance = 0;
 const movements = txs.map(p => {
     const amount = Number(p.amount) || 0;
     if (amount > 0) totalIn += amount;
     else totalOut += Math.abs(amount);
+    runningBalance += amount;
     const ts = p.created_at
         ? Math.floor(new Date(p.created_at).getTime() / 1000)
         : (p.timestamp ? Math.floor(p.timestamp / 1000) : 0);
@@ -147,9 +84,12 @@ const movements = txs.map(p => {
     };
 }).sort((a, b) => b.ts - a.ts);
 
+// El balance "real" es la suma neta. Coinos no devuelve balance en /payments,
+// y /me requiere auth no-readonly. La suma de in/out es nuestro mejor cálculo
+// (asume que todos los payments están confirmed y no hay pending).
 const snapshot = {
-    username: me.username || COINOS_USERNAME,
-    balance: Number(me.balance) || 0,
+    username: profile.username || COINOS_USERNAME,
+    balance: runningBalance,
     total_in: totalIn,
     total_out: totalOut,
     tx_count: movements.length,

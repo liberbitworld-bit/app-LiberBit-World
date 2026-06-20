@@ -2,8 +2,6 @@
   "name": "lbw-treasury-sync",
   "private": true,
   "type": "module",
-  "description": "Worker que firma NIP-98 con la nsec de la wallet Liberbitworld@coinos.io y guarda balance + movimientos en Supabase. Corre en GitHub Actions (NO en Vercel — @noble crashea el lambda).",
-  "dependencies": {
-    "@noble/curves": "^1.4.0"
-  }
+  "description": "Worker que llama a coinos /api/payments con un JWT read-only (Bearer auth) y guarda el snapshot en Supabase. Cero dependencias — usa solo fetch built-in.",
+  "dependencies": {}
 }
