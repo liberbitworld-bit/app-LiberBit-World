@@ -161,6 +161,89 @@ const LBW_Transparency = (() => {
     let _supabaseDataCache = null;
     let _supabaseDataCacheAt = 0;
     const SUPABASE_CACHE_TTL_MS = 60 * 1000;
+    let _activityEventsCache = null;
+    let _activityEventsCacheAt = 0;
+
+    // Fetcha los eventos Nostr que cuentan como "actividad" (kind:1
+    // community chat, kind:30402 marketplace, kind:31000 propuestas,
+    // kind:31001 votos) y los convierte en entradas tipo-mérito con
+    // amount=10 y categoría actividad_*. Estos no son emisiones
+    // formales kind:31002, pero se incluyen en el registro inmutable
+    // para reflejar TODO mérito generado en el ecosistema (formal +
+    // actividad). El cap de 300 por usuario solo afecta al total
+    // ponderado del Ledger Maestro, no al registro per-evento de aquí.
+    async function _fetchActivityEvents(force) {
+        if (!force && _activityEventsCache && (Date.now() - _activityEventsCacheAt < SUPABASE_CACHE_TTL_MS)) {
+            return _activityEventsCache;
+        }
+        if (typeof LBW_Nostr === 'undefined' || !LBW_Nostr.subscribe) return [];
+        const events = await new Promise(resolve => {
+            const all = [];
+            const seen = new Set();
+            let done = 0;
+            const TARGET = 4;
+            const timeout = setTimeout(() => resolve(all), 12000);
+            function done1() {
+                done++;
+                if (done >= TARGET) { clearTimeout(timeout); resolve(all); }
+            }
+            function add(event, category, reasonContent) {
+                if (!event || !event.id || seen.has(event.id)) return;
+                seen.add(event.id);
+                all.push({
+                    id: event.id,
+                    dTag: '',
+                    recipient: event.pubkey,
+                    issuer: '',                                // sistema, sin issuer
+                    amount: 10,
+                    category,
+                    reason: (reasonContent || '').toString().substring(0, 80),
+                    created_at: event.created_at || 0,
+                    source: 'actividad'
+                });
+            }
+            // 1. Chat comunitario
+            const sub1 = LBW_Nostr.subscribe(
+                { kinds: [1], '#t': ['liberbit'], limit: 500 },
+                (event) => {
+                    const hasTag = event.tags && event.tags.some(
+                        t => t[0] === 't' && (t[1] === 'liberbit' || t[1] === 'lbw')
+                    );
+                    if (hasTag) add(event, 'actividad_chat', event.content || '');
+                },
+                () => { try { LBW_Nostr.unsubscribe(sub1); } catch(e) {} done1(); }
+            );
+            // 2. Marketplace
+            const sub2 = LBW_Nostr.subscribe(
+                { kinds: [30402], '#t': ['liberbit-market'], limit: 500 },
+                (event) => {
+                    const title = (event.tags && (event.tags.find(t => t[0] === 'title') || [])[1]) || '';
+                    add(event, 'actividad_marketplace', title);
+                },
+                () => { try { LBW_Nostr.unsubscribe(sub2); } catch(e) {} done1(); }
+            );
+            // 3. Propuestas
+            const sub3 = LBW_Nostr.subscribe(
+                { kinds: [31000], '#t': ['lbw-proposal'], limit: 500 },
+                (event) => {
+                    const title = (event.tags && (event.tags.find(t => t[0] === 'title') || [])[1]) || '';
+                    add(event, 'actividad_proposal', title);
+                },
+                () => { try { LBW_Nostr.unsubscribe(sub3); } catch(e) {} done1(); }
+            );
+            // 4. Votos
+            const sub4 = LBW_Nostr.subscribe(
+                { kinds: [31001], '#t': ['lbw-governance'], limit: 500 },
+                (event) => {
+                    add(event, 'actividad_vote', event.content || '');
+                },
+                () => { try { LBW_Nostr.unsubscribe(sub4); } catch(e) {} done1(); }
+            );
+        });
+        _activityEventsCache = events;
+        _activityEventsCacheAt = Date.now();
+        return events;
+    }
 
     async function _fetchSupabaseLedger(force) {
         if (!force && _supabaseDataCache && (Date.now() - _supabaseDataCacheAt < SUPABASE_CACHE_TTL_MS)) {
@@ -218,42 +301,71 @@ const LBW_Transparency = (() => {
         }
 
         // Prefer Supabase (canonical, igual fuente que Ledger Maestro).
-        // Fallback a memoria local si Supabase falla.
+        // Fallback a memoria local si Supabase falla. Además fetcheamos
+        // los eventos de actividad (chat, marketplace, votos, propuestas)
+        // para incluirlos como filas del registro.
         const supa = await _fetchSupabaseLedger(false);
+        const activityEntries = await _fetchActivityEvents(false);
+
         let stats, merits, dataSource;
+        // Combinar formal (Supabase entries) + actividad. Dedup por id.
+        let formalEntries = [];
+        if (supa && supa.entries) {
+            formalEntries = supa.entries;
+        } else if (LBW_Merits && LBW_Merits.getAllMerits) {
+            formalEntries = LBW_Merits.getAllMerits({ limit: 500 });
+        }
+        const seenIds = new Set();
+        const mergedAll = [];
+        for (const e of formalEntries) {
+            if (e && e.id && !seenIds.has(e.id)) { seenIds.add(e.id); mergedAll.push(e); }
+        }
+        for (const e of activityEntries) {
+            if (e && e.id && !seenIds.has(e.id)) { seenIds.add(e.id); mergedAll.push(e); }
+        }
+
+        // byCategory recomputado desde la lista mergeada (incluye formal
+        // + actividad). Así los chips de categoría reflejan TODO.
+        const byCategoryMerged = {};
+        const uniqueRecip = new Set();
+        const uniqueIssuersFormal = new Set();
+        for (const m of mergedAll) {
+            byCategoryMerged[m.category] = (byCategoryMerged[m.category] || 0) + (m.amount || 0);
+            if (m.recipient) uniqueRecip.add(m.recipient);
+            if (m.issuer) uniqueIssuersFormal.add(m.issuer);
+        }
+
         if (supa && supa.stats) {
-            const cats = supa.stats.byCategory || {};
-            // Adaptar formato: byCategory ya viene aggregado por Supabase
-            // (econ, prod, resp, fin, fund). Construimos el shape esperado
-            // por el render (mismo objeto que LBW_Merits.getAllMeritsStats).
-            const totalAmount = supa.stats.totalMerits || 0;
-            const totalEvents = (supa.entries || []).length;
-            const uniqueIssuers = new Set();
-            const uniqueRecipients = new Set();
-            (supa.entries || []).forEach(e => {
-                if (e.issuer) uniqueIssuers.add(e.issuer);
-                if (e.recipient) uniqueRecipients.add(e.recipient);
-            });
+            // Total y users del Ledger Maestro (con cap aplicado por usuario).
+            // No re-sumamos las filas de actividad porque eso ignoraría el cap
+            // de 300 — mantenemos coherencia con el resto de la app.
             stats = {
-                count: totalEvents,
-                total: totalAmount,
-                byCategory: cats,
-                uniqueIssuers: uniqueIssuers.size || supa.stats.totalUsers || 0,
-                uniqueRecipients: supa.stats.totalUsers || uniqueRecipients.size
+                count: mergedAll.length,
+                total: supa.stats.totalMerits || 0,
+                byCategory: byCategoryMerged,
+                uniqueIssuers: uniqueIssuersFormal.size,
+                uniqueRecipients: supa.stats.totalUsers || uniqueRecip.size
             };
-            // Aplicar filtros sobre la lista de Supabase
-            let list = supa.entries.slice();
-            if (_meritFilter.category) list = list.filter(m => m.category === _meritFilter.category);
-            merits = list;
             dataSource = 'supabase';
         } else {
-            stats = LBW_Merits.getAllMeritsStats();
-            merits = LBW_Merits.getAllMerits({
-                category: _meritFilter.category || undefined,
-                limit: 500
-            });
+            const baseStats = LBW_Merits.getAllMeritsStats();
+            stats = {
+                count: mergedAll.length,
+                total: baseStats.total || 0,
+                byCategory: byCategoryMerged,
+                uniqueIssuers: uniqueIssuersFormal.size,
+                uniqueRecipients: uniqueRecip.size
+            };
             dataSource = 'memory';
         }
+
+        // Aplicar filtro de categoría sobre el mergeado
+        let merged = mergedAll;
+        if (_meritFilter.category) {
+            merged = merged.filter(m => m.category === _meritFilter.category);
+        }
+        merged.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+        merits = merged;
 
         const searchQ = (_meritFilter.search || '').toLowerCase();
         const filtered = searchQ
@@ -365,12 +477,15 @@ const LBW_Transparency = (() => {
             ` : `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
                     <div style="font-size:0.78rem;color:var(--color-text-secondary);">
-                        📒 Registro inmutable · ${filtered.length} de ${stats.count} emisiones · más recientes primero
+                        📒 Registro inmutable · ${filtered.length} de ${stats.count} eventos · más recientes primero
                     </div>
                     <button onclick="LBW_Transparency.exportMeritsCSV()"
                         style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">
                         ⬇️ Exportar CSV
                     </button>
+                </div>
+                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;margin-bottom:0.5rem;line-height:1.4;">
+                    💡 Incluye emisiones formales (kind:31002 por Génesis) y eventos de actividad (chat / marketplace / votos / propuestas, +10 pts por acción). El total LBWM mostrado arriba sigue al Ledger Maestro, que aplica un cap de 300 pts de actividad por usuario — por eso la suma de filas individuales puede ser mayor que el total agregado.
                 </div>
                 <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-card);">
                     <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:720px;">
@@ -560,10 +675,12 @@ const LBW_Transparency = (() => {
         switchTab(_currentTab);
     }
 
-    // Fuerza refetch de Supabase y re-render
+    // Fuerza refetch de Supabase + actividad y re-render
     async function refreshMerits() {
         _supabaseDataCache = null;
         _supabaseDataCacheAt = 0;
+        _activityEventsCache = null;
+        _activityEventsCacheAt = 0;
         await renderMeritsPanel();
     }
 
@@ -573,12 +690,19 @@ const LBW_Transparency = (() => {
     }
 
     // Exporta el registro filtrado a CSV. Usa los mismos filtros activos
-    // (categoría + búsqueda) que están aplicados en la vista.
+    // (categoría + búsqueda) que están aplicados en la vista. Incluye
+    // tanto emisiones formales como eventos de actividad.
     async function exportMeritsCSV() {
         const supa = await _fetchSupabaseLedger(false);
-        let entries = (supa && Array.isArray(supa.entries))
+        const activity = await _fetchActivityEvents(false);
+        const formal = (supa && Array.isArray(supa.entries))
             ? supa.entries
             : (LBW_Merits && LBW_Merits.getAllMerits ? LBW_Merits.getAllMerits({ limit: 9999 }) : []);
+        const seen = new Set();
+        let entries = [];
+        for (const e of formal)   { if (e && e.id && !seen.has(e.id)) { seen.add(e.id); entries.push(e); } }
+        for (const e of activity) { if (e && e.id && !seen.has(e.id)) { seen.add(e.id); entries.push(e); } }
+        entries.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
         if (_meritFilter.category) entries = entries.filter(m => m.category === _meritFilter.category);
         if (_meritFilter.search) {
             const q = _meritFilter.search.toLowerCase();
