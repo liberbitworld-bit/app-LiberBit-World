@@ -19,6 +19,8 @@ const LBW_Transparency = (() => {
 
     let _currentTab = 'merits';
     let _meritFilter = { category: '', search: '' };
+    let _showAllUsers = false;
+    const USERS_TOP_DEFAULT = 10;
 
     function _esc(s) {
         if (s === null || s === undefined) return '';
@@ -82,6 +84,64 @@ const LBW_Transparency = (() => {
         else renderWalletPanel();
     }
 
+    // Renderiza el leaderboard de usuarios desde lbwm_user_merits.
+    // Cada entry: rank + nivel emoji + npub corto + total + breakdown
+    // (nostr + actividad). Muestra top 10 por defecto con toggle "Ver
+    // todos". Devuelve cadena vacía si no hay datos Supabase.
+    function _renderUsersLeaderboardHtml(users) {
+        if (!Array.isArray(users) || users.length === 0) return '';
+        const sorted = users.slice().sort((a, b) => (b.total || 0) - (a.total || 0));
+        const total = sorted.length;
+        const visible = _showAllUsers ? sorted : sorted.slice(0, USERS_TOP_DEFAULT);
+
+        const rows = visible.map((u, i) => {
+            const rank = i + 1;
+            const npub = u.npub || (u.pubkey ? _shortNpub(u.pubkey) : '—');
+            const npubShort = (u.npub && u.npub.length > 16)
+                ? u.npub.substring(0, 12) + '…' + u.npub.substring(u.npub.length - 4)
+                : npub;
+            const total = u.total || 0;
+            const nostr = (u.economica||0) + (u.productiva||0) + (u.responsabilidad||0) + (u.financiada||0) + (u.fundacional||0);
+            const act   = u.activity_merits || 0;
+            const lvlEmoji = u.nivel_emoji || '';
+            const lvlName  = u.nivel || '';
+            const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : 'var(--color-text-secondary)';
+            return `
+                <div style="display:grid;grid-template-columns:auto 1fr auto;gap:0.6rem;align-items:center;background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:0.5rem 0.75rem;">
+                    <div style="font-weight:700;color:${rankColor};font-size:0.85rem;min-width:1.8rem;">#${rank}</div>
+                    <div style="min-width:0;">
+                        <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+                            <span title="${_esc(lvlName)}" style="font-size:0.9rem;">${_esc(lvlEmoji)}</span>
+                            <span data-pubkey-slot="${u.pubkey}" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--color-text-primary);overflow:hidden;text-overflow:ellipsis;" title="${_esc(u.pubkey)}">${_esc(npubShort)}</span>
+                        </div>
+                        ${act > 0 ? `<div style="font-size:0.68rem;color:var(--color-text-secondary);opacity:0.75;margin-top:0.1rem;">Nostr ${nostr.toLocaleString('es-ES')} + Actividad ${act.toLocaleString('es-ES')}</div>` : ''}
+                    </div>
+                    <div style="font-weight:700;color:var(--color-gold);font-size:0.95rem;text-align:right;">${total.toLocaleString('es-ES')}</div>
+                </div>
+            `;
+        }).join('');
+
+        const toggleBtn = total > USERS_TOP_DEFAULT
+            ? `<button onclick="LBW_Transparency.toggleAllUsers()"
+                style="margin-top:0.5rem;width:100%;font-size:0.78rem;padding:0.4rem;border-radius:6px;border:1px dashed var(--color-border);background:transparent;color:var(--color-text-secondary);cursor:pointer;">
+                ${_showAllUsers ? `▲ Ver solo top ${USERS_TOP_DEFAULT}` : `▼ Ver los ${total} usuarios`}
+            </button>`
+            : '';
+
+        return `
+            <div style="margin-bottom:1.25rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
+                    <div style="font-size:0.78rem;color:var(--color-text-secondary);font-weight:600;">🏆 Méritos totales por usuario (Nostr + Actividad)</div>
+                    <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;">${total} usuarios</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.35rem;">
+                    ${rows}
+                </div>
+                ${toggleBtn}
+            </div>
+        `;
+    }
+
     function _resolveNameInto(pubkey, slotSelector) {
         if (!pubkey || typeof LBW_Sync === 'undefined' || !LBW_Sync.resolveProfile) return;
         LBW_Sync.resolveProfile(pubkey).then(p => {
@@ -108,11 +168,16 @@ const LBW_Transparency = (() => {
         }
         if (typeof supabaseClient === 'undefined') return null;
         try {
-            // Stats agregadas (mismo getter que usa el Ledger Maestro)
+            // Stats agregadas + leaderboard completo (mismo getter que
+            // usa el Ledger Maestro de la sección Méritos).
             let stats = null;
+            let users = [];
             if (typeof LBW_MeritsSync !== 'undefined' && LBW_MeritsSync.loadSupabaseLedger) {
                 const ledger = await LBW_MeritsSync.loadSupabaseLedger({ limit: 999 });
-                if (ledger && ledger.stats) stats = ledger.stats;
+                if (ledger) {
+                    if (ledger.stats) stats = ledger.stats;
+                    if (Array.isArray(ledger.users)) users = ledger.users;
+                }
             }
             // Lista de emisiones individuales (kind:31002) más recientes
             const { data, error } = await supabaseClient
@@ -122,7 +187,7 @@ const LBW_Transparency = (() => {
                 .limit(500);
             if (error) {
                 console.warn('[Transparency] Supabase lbwm_merit_events error:', error.message);
-                return stats ? { stats, entries: [] } : null;
+                return stats ? { stats, users, entries: [] } : null;
             }
             const entries = (data || []).map(r => ({
                 id: r.id,
@@ -135,7 +200,7 @@ const LBW_Transparency = (() => {
                 created_at: r.nostr_created_at || 0,
                 source: r.source || ''
             }));
-            _supabaseDataCache = { stats, entries };
+            _supabaseDataCache = { stats, users, entries };
             _supabaseDataCacheAt = Date.now();
             return _supabaseDataCache;
         } catch (e) {
@@ -283,6 +348,8 @@ const LBW_Transparency = (() => {
                     </div>
                 </div>` : ''}
 
+            ${_renderUsersLeaderboardHtml(supa && supa.users)}
+
             <div style="margin-bottom:0.75rem;">
                 <input type="text" id="meritSearchInput" placeholder="🔍 Buscar por razón o categoría..."
                     value="${_esc(_meritFilter.search)}"
@@ -327,6 +394,10 @@ const LBW_Transparency = (() => {
         // Resolver nombres async
         const uniquePubkeys = new Set();
         filtered.forEach(m => { if (m.issuer) uniquePubkeys.add(m.issuer); if (m.recipient) uniquePubkeys.add(m.recipient); });
+        // También resuelve nombres de los usuarios del leaderboard
+        if (supa && Array.isArray(supa.users)) {
+            supa.users.forEach(u => { if (u.pubkey) uniquePubkeys.add(u.pubkey); });
+        }
         for (const pk of uniquePubkeys) {
             _resolveNameInto(pk, `[data-pubkey-slot="${pk}"]`);
         }
@@ -423,7 +494,12 @@ const LBW_Transparency = (() => {
         await renderMeritsPanel();
     }
 
-    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits };
+    async function toggleAllUsers() {
+        _showAllUsers = !_showAllUsers;
+        await renderMeritsPanel();
+    }
+
+    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers };
 })();
 
 window.LBW_Transparency = LBW_Transparency;
