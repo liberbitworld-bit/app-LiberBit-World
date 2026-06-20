@@ -4,7 +4,8 @@ name: Treasury Sync
 # a la tabla Supabase treasury_snapshots. Cada 15 min + manual.
 #
 # Secrets requeridos (Settings → Secrets and variables → Actions):
-#   COINOS_SK            — nsec hex 64 chars de la wallet de tesorería
+#   COINOS_TOKEN         — JWT read-only generado desde coinos (GET /api/ro
+#                          estando logueado como Liberbitworld)
 #   SUPABASE_URL         — https://<project>.supabase.co (sin barra final)
 #   SUPABASE_SERVICE_KEY — service_role key de Supabase
 
@@ -37,6 +38,6 @@ jobs:
         working-directory: scripts/treasury-sync
         run: node sync.mjs
         env:
-          COINOS_SK: ${{ secrets.COINOS_SK }}
+          COINOS_TOKEN: ${{ secrets.COINOS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
