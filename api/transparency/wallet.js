@@ -5,20 +5,19 @@
 // como env var COINOS_SK en Vercel y se usa aquí para firmar
 // eventos NIP-98 (kind:27235) que coinos exige como auth.
 //
-// Dependencias mínimas: @noble/secp256k1 (standalone, sin subpath
-// problemático) para schnorr + node:crypto built-in para sha256.
-// Imports dinámicos en el handler para devolver JSON con stack
-// si algo falla al cargar (no HTML genérico de 502).
+// Usamos @noble/secp256k1 v1.7.x — versión single-file (sin subpath
+// exports) con schnorr incluido. Vercel bundlea sin problemas.
+// sha256 vía node:crypto built-in.
 // ============================================================
 
 let _cache = null;
 let _cacheAt = 0;
-const TTL_MS = 30_000;
+const TTL_MS = 30000;
 
 function hexToBytes(hex) {
     const clean = hex.trim().toLowerCase();
     if (!/^[0-9a-f]+$/.test(clean) || clean.length % 2 !== 0) {
-        throw new Error('hex inválido');
+        throw new Error('hex invalido');
     }
     const bytes = new Uint8Array(clean.length / 2);
     for (let i = 0; i < bytes.length; i++) {
@@ -40,7 +39,6 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
 
-    // Cache de proceso (warm lambda)
     if (_cache && Date.now() - _cacheAt < TTL_MS) {
         return res.status(200).json({ ..._cache, cached: true });
     }
@@ -60,23 +58,20 @@ export default async function handler(req, res) {
         if (skBytes.length !== 32) throw new Error('sk debe ser 32 bytes (64 hex chars)');
     } catch (e) {
         return res.status(500).json({
-            error: 'COINOS_SK inválida',
+            error: 'COINOS_SK invalida',
             detail: e.message,
             configured: false
         });
     }
 
-    // Imports dinámicos — si algo no resuelve, devolvemos JSON con el detalle.
-    // schnorr está en @noble/curves/secp256k1 (NO en @noble/secp256k1 v2,
-    // que sólo expone ECDSA).
-    let schnorr, createHash;
+    // Imports dinámicos con diagnóstico JSON si fallan
+    let secp, createHash;
     try {
-        const curves = await import('@noble/curves/secp256k1');
+        secp = await import('@noble/secp256k1');
         const nodeCrypto = await import('node:crypto');
-        schnorr = curves.schnorr;
         createHash = nodeCrypto.createHash;
-        if (!schnorr || typeof schnorr.sign !== 'function') {
-            throw new Error('schnorr.sign no disponible. exports: ' + Object.keys(curves).join(','));
+        if (!secp.schnorr || typeof secp.schnorr.sign !== 'function') {
+            throw new Error('schnorr.sign no disponible. exports: ' + Object.keys(secp).join(','));
         }
     } catch (e) {
         return res.status(500).json({
@@ -93,9 +88,9 @@ export default async function handler(req, res) {
         return new Uint8Array(h.digest());
     }
 
-    // NIP-98 inline: kind:27235, tags [["u",url],["method",method]], sig schnorr
-    function buildNip98Token(url, method) {
-        const pubkeyBytes = schnorr.getPublicKey(skBytes);
+    // NIP-98 inline: kind:27235, tags [["u",url],["method",method]], sig schnorr (BIP-340)
+    async function buildNip98Token(url, method) {
+        const pubkeyBytes = secp.schnorr.getPublicKey(skBytes);
         const pubkey = bytesToHex(pubkeyBytes);
         const created_at = Math.floor(Date.now() / 1000);
         const kind = 27235;
@@ -104,7 +99,8 @@ export default async function handler(req, res) {
         const serialized = JSON.stringify([0, pubkey, created_at, kind, tags, content]);
         const idBytes = sha256Bytes(new TextEncoder().encode(serialized));
         const id = bytesToHex(idBytes);
-        const sigBytes = schnorr.sign(idBytes, skBytes);
+        // En @noble/secp256k1 v1.7.x schnorr.sign es async
+        const sigBytes = await secp.schnorr.sign(idBytes, skBytes);
         const sig = bytesToHex(sigBytes);
         const event = { kind, created_at, tags, content, pubkey, id, sig };
         const base64 = Buffer.from(JSON.stringify(event)).toString('base64');
@@ -112,11 +108,11 @@ export default async function handler(req, res) {
     }
 
     async function authedGet(url) {
-        const token = buildNip98Token(url, 'GET');
+        const token = await buildNip98Token(url, 'GET');
         const r = await fetch(url, { headers: { Authorization: token } });
         if (!r.ok) {
             const body = await r.text().catch(() => '');
-            throw new Error(`coinos ${r.status}: ${body.substring(0, 200)}`);
+            throw new Error('coinos ' + r.status + ': ' + body.substring(0, 200));
         }
         return r.json();
     }
@@ -127,7 +123,6 @@ export default async function handler(req, res) {
             authedGet('https://coinos.io/api/payments?start=0&end=' + Date.now())
         ]);
 
-        // coinos puede devolver payments como array o como { payments: [...] }
         const txs = Array.isArray(payments) ? payments : (payments.payments || []);
 
         let totalIn = 0;
