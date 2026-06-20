@@ -2,9 +2,9 @@
   "name": "liberbit-world",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
   "description": "LiberBit World — Nostr + Lightning SPA. Frontend es vanilla JS sin bundler; este package.json existe solo para las dependencias que necesitan las Vercel serverless functions en api/.",
   "dependencies": {
-    "nostr-tools": "^2.7.2"
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0"
   }
 }

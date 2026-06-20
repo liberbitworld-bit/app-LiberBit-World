@@ -6,9 +6,20 @@
 // vive solo como env var COINOS_SK en Vercel y se usa aquí para
 // firmar eventos NIP-98 (kind:27235) que coinos exige como auth.
 //
+// Implementamos NIP-98 inline con @noble/curves (schnorr) +
+// @noble/hashes (sha256) en vez de depender de nostr-tools, porque
+// los subpath imports de nostr-tools no se resuelven bien en el
+// bundler de Vercel ("Cannot find module" al runtime). @noble/*
+// son las mismas libs que nostr-tools usa por debajo, pero con
+// exports estándar que Vercel sí bundlea.
+//
 // Cache 30s para no martillear coinos cuando varios usuarios
 // abren la sección a la vez.
 // ============================================================
+
+import { schnorr } from '@noble/curves/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
+import { utf8ToBytes } from '@noble/hashes/utils';
 
 let _cache = null;
 let _cacheAt = 0;
@@ -24,6 +35,35 @@ function hexToBytes(hex) {
         bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
     }
     return bytes;
+}
+
+function bytesToHex(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) {
+        s += bytes[i].toString(16).padStart(2, '0');
+    }
+    return s;
+}
+
+// Construye el header Authorization NIP-98 para una petición HTTP.
+// Spec: kind:27235, tags [["u", url], ["method", method]], content="",
+// pubkey x-only, id = sha256(canonical), sig = schnorr(id).
+// Header = "Nostr " + base64(JSON.stringify(event))
+function buildNip98Token(skBytes, url, method) {
+    const pubkeyBytes = schnorr.getPublicKey(skBytes);
+    const pubkey = bytesToHex(pubkeyBytes);
+    const created_at = Math.floor(Date.now() / 1000);
+    const kind = 27235;
+    const tags = [['u', url], ['method', method.toUpperCase()]];
+    const content = '';
+    const serialized = JSON.stringify([0, pubkey, created_at, kind, tags, content]);
+    const idBytes = sha256(utf8ToBytes(serialized));
+    const id = bytesToHex(idBytes);
+    const sigBytes = schnorr.sign(idBytes, skBytes);
+    const sig = bytesToHex(sigBytes);
+    const event = { kind, created_at, tags, content, pubkey, id, sig };
+    const base64 = Buffer.from(JSON.stringify(event)).toString('base64');
+    return 'Nostr ' + base64;
 }
 
 export default async function handler(req, res) {
@@ -57,41 +97,12 @@ export default async function handler(req, res) {
         });
     }
 
-    // Imports dinámicos: si falla la carga, devolvemos JSON con el detalle
-    // en vez de crashear y que el cliente vea el HTML de error de Vercel.
-    let finalizeEvent, nip98;
-    try {
-        const pureMod = await import('nostr-tools/pure');
-        const nip98Mod = await import('nostr-tools/nip98');
-        finalizeEvent = pureMod.finalizeEvent;
-        nip98 = nip98Mod;
-        if (typeof finalizeEvent !== 'function') {
-            throw new Error('finalizeEvent no es función (exports: ' + Object.keys(pureMod).join(',') + ')');
-        }
-        if (!nip98 || typeof nip98.getToken !== 'function') {
-            throw new Error('nip98.getToken no disponible (exports: ' + Object.keys(nip98 || {}).join(',') + ')');
-        }
-    } catch (e) {
-        return res.status(500).json({
-            error: 'fallo cargando nostr-tools',
-            detail: e.message,
-            stack: (e.stack || '').substring(0, 400),
-            configured: true,
-            hint: 'revisar dependencias en Vercel build logs'
-        });
-    }
-
     async function authedGet(url) {
-        const token = await nip98.getToken(
-            url,
-            'GET',
-            (e) => finalizeEvent(e, skBytes),
-            true
-        );
+        const token = buildNip98Token(skBytes, url, 'GET');
         const r = await fetch(url, { headers: { Authorization: token } });
         if (!r.ok) {
             const body = await r.text().catch(() => '');
-            throw new Error(`coinos ${r.status}: ${body.substring(0, 120)}`);
+            throw new Error(`coinos ${r.status}: ${body.substring(0, 200)}`);
         }
         return r.json();
     }
