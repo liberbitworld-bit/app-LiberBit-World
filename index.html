@@ -1040,10 +1040,27 @@
                             </div>
                         </div>
 
-                        <!-- Open wallet button -->
-                        <button onclick="openLightningPayment()" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border: none; border-radius: 12px; cursor: pointer; font-size: 1.1rem; font-weight: 700; color: white; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(255,152,0,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                            ⚡ Abrir Wallet y Enviar Sats
+                        <!-- Mensaje opcional para el zap -->
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display:block;font-size:0.8rem;color:var(--color-text-secondary);margin-bottom:0.5rem;">Mensaje (opcional, va firmado contigo)</label>
+                            <input type="text" id="aportacionMessage" placeholder="ej: para los servidores del próximo mes" maxlength="280" style="width:100%;padding:0.75rem 1rem;border-radius:10px;border:1px solid var(--color-border);background:var(--color-bg-dark);color:var(--color-text-primary);font-size:0.9rem;" onfocus="this.style.borderColor='#CE93D8'" onblur="this.style.borderColor='var(--color-border)'">
+                        </div>
+
+                        <!-- BOTÓN PRINCIPAL: Zap firmado (solo visible si logueado) -->
+                        <button id="payAportacionZapBtn" onclick="payAportacionWithZap()" style="display:none;width:100%;padding:1rem;background:linear-gradient(135deg,#CE93D8 0%,#9C27B0 100%);border:none;border-radius:12px;cursor:pointer;font-size:1.05rem;font-weight:700;color:white;transition:all 0.3s;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.6rem;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(206,147,216,0.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+                            ⚡ Firmar y pagar como zap (auto-atribución)
                         </button>
+                        <div id="payAportacionZapTip" style="display:none;background:rgba(206,147,216,0.08);border:1px solid rgba(206,147,216,0.25);border-radius:10px;padding:0.6rem 0.85rem;margin-bottom:0.6rem;font-size:0.78rem;color:var(--color-text-secondary);line-height:1.45;">
+                            💡 <strong style="color:#CE93D8;">Logueado en LBW + paga como zap NIP-57</strong> = tu aportación aparece identificada con tu npub en la cadena de transparencia. Para activarlo, inicia sesión en la app.
+                        </div>
+
+                        <!-- BOTÓN ALTERNATIVO: Abrir wallet (genérico, sin atribución) -->
+                        <button onclick="openLightningPayment()" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); border: none; border-radius: 12px; cursor: pointer; font-size: 1.05rem; font-weight: 700; color: white; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(255,152,0,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            ⚡ Abrir wallet (anónimo)
+                        </button>
+
+                        <!-- Resultado: invoice + QR + acciones tras firmar el zap -->
+                        <div id="aportacionInvoiceBox" style="display:none;"></div>
                     </div>
                 </div>
 
@@ -3087,7 +3104,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
             integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU"
             crossorigin="anonymous"></script>
-    <script src="js/lightning.js?v=secC1-1"></script>
+    <script src="js/lightning.js?v=zap-1"></script>
     <script src="js/governance.js?v=nip72-5"></script>
     <script src="js/profile.js?v=mute-1"></script>
     <script src="js/nwc.js?v=secA1-1"></script>
