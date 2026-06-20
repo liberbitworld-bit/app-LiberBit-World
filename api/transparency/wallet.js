@@ -10,9 +10,6 @@
 // abren la sección a la vez.
 // ============================================================
 
-import { finalizeEvent } from 'nostr-tools/pure';
-import * as nip98 from 'nostr-tools/nip98';
-
 let _cache = null;
 let _cacheAt = 0;
 const TTL_MS = 30_000;
@@ -57,6 +54,30 @@ export default async function handler(req, res) {
             error: 'COINOS_SK inválida',
             detail: e.message,
             configured: false
+        });
+    }
+
+    // Imports dinámicos: si falla la carga, devolvemos JSON con el detalle
+    // en vez de crashear y que el cliente vea el HTML de error de Vercel.
+    let finalizeEvent, nip98;
+    try {
+        const pureMod = await import('nostr-tools/pure');
+        const nip98Mod = await import('nostr-tools/nip98');
+        finalizeEvent = pureMod.finalizeEvent;
+        nip98 = nip98Mod;
+        if (typeof finalizeEvent !== 'function') {
+            throw new Error('finalizeEvent no es función (exports: ' + Object.keys(pureMod).join(',') + ')');
+        }
+        if (!nip98 || typeof nip98.getToken !== 'function') {
+            throw new Error('nip98.getToken no disponible (exports: ' + Object.keys(nip98 || {}).join(',') + ')');
+        }
+    } catch (e) {
+        return res.status(500).json({
+            error: 'fallo cargando nostr-tools',
+            detail: e.message,
+            stack: (e.stack || '').substring(0, 400),
+            configured: true,
+            hint: 'revisar dependencias en Vercel build logs'
         });
     }
 
