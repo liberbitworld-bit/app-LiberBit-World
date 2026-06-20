@@ -180,6 +180,39 @@ const LBW_Merits = (() => {
                 });
                 console.log(`[Merits] 📂 ${_merits.size} usuarios cargados de caché`);
 
+                // [transparency-2] Bootstrap: si la lista plana _allMerits
+                // está vacía pero hay records cacheados en el Map,
+                // reconstruirla con la info parcial que tenemos. El issuer
+                // y reason no se guardaron en versiones anteriores, así
+                // que quedan vacíos hasta que un evento fresco del relay
+                // los rellene vía _processMerit normal.
+                if (_allMerits.length === 0 && _merits.size > 0) {
+                    let bootstrapped = 0;
+                    _merits.forEach((userData, recipientPubkey) => {
+                        if (!userData.records) return;
+                        for (const rec of userData.records) {
+                            if (!rec.id) continue;
+                            if (_allMerits.findIndex(m => m.id === rec.id) !== -1) continue;
+                            _allMerits.push({
+                                id: rec.id,
+                                dTag: rec.dTag || '',
+                                recipient: recipientPubkey,
+                                issuer: '',                  // info perdida en cache legacy
+                                amount: rec.amount || 0,
+                                category: rec.category || '',
+                                reason: '',                  // info perdida en cache legacy
+                                created_at: rec.created_at || 0,
+                                source: rec.source || 'cache-bootstrap'
+                            });
+                            bootstrapped++;
+                        }
+                    });
+                    if (bootstrapped > 0) {
+                        console.log(`[Merits] 🔄 ${bootstrapped} méritos reconstruidos en flat list desde records cacheados (issuer/reason vacíos hasta próximo refresh del relay)`);
+                        _persistMeritsToStorage();
+                    }
+                }
+
                 // If MY merits were in the cache, schedule a deferred profile refresh
                 // so the profile shows the correct level without waiting for the relay.
                 const _myPkCache = LBW_Nostr.isLoggedIn() ? LBW_Nostr.getPubkey() : null;
