@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   try {
     const response = await fetch(
-      'https://coinos.io/.well-known/lnurlp/germanliberbit'
+      'https://coinos.io/.well-known/lnurlp/Liberbitworld'
     );
     const data = await response.json();
     

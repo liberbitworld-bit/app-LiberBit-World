@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   try {
     const queryString = new URLSearchParams(req.query).toString();
     const response = await fetch(
-      `https://coinos.io/lnurlp/germanliberbit/callback?${queryString}`
+      `https://coinos.io/lnurlp/Liberbitworld/callback?${queryString}`
     );
     const data = await response.json();
     
