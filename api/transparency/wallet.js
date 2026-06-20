@@ -66,15 +66,17 @@ export default async function handler(req, res) {
         });
     }
 
-    // Imports dinámicos — si algo no resuelve, devolvemos JSON con el detalle
+    // Imports dinámicos — si algo no resuelve, devolvemos JSON con el detalle.
+    // schnorr está en @noble/curves/secp256k1 (NO en @noble/secp256k1 v2,
+    // que sólo expone ECDSA).
     let schnorr, createHash;
     try {
-        const secp = await import('@noble/secp256k1');
+        const curves = await import('@noble/curves/secp256k1');
         const nodeCrypto = await import('node:crypto');
-        schnorr = secp.schnorr;
+        schnorr = curves.schnorr;
         createHash = nodeCrypto.createHash;
         if (!schnorr || typeof schnorr.sign !== 'function') {
-            throw new Error('schnorr.sign no disponible. exports: ' + Object.keys(secp).join(','));
+            throw new Error('schnorr.sign no disponible. exports: ' + Object.keys(curves).join(','));
         }
     } catch (e) {
         return res.status(500).json({
