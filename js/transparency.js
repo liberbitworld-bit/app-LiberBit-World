@@ -21,6 +21,8 @@ const LBW_Transparency = (() => {
     let _meritFilter = { category: '', search: '' };
     let _showAllUsers = false;
     const USERS_TOP_DEFAULT = 10;
+    let _meritsPage = 1;
+    const MERITS_PAGE_SIZE = 25;
 
     function _esc(s) {
         if (s === null || s === undefined) return '';
@@ -354,6 +356,13 @@ const LBW_Transparency = (() => {
             dataSource = 'memory';
         }
 
+        // Asignar nº de bloque a TODOS los merits antes de filtrar.
+        // El bloque #1 es el más antiguo (génesis), el #N el más reciente.
+        // Así el número se mantiene estable aunque el usuario filtre.
+        const sortedAsc = mergedAll.slice().sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
+        sortedAsc.forEach((m, i) => { m._blockNum = i + 1; });
+        const totalBlocks = sortedAsc.length;
+
         // Aplicar filtro de categoría sobre el mergeado
         let merged = mergedAll;
         if (_meritFilter.category) {
@@ -369,6 +378,14 @@ const LBW_Transparency = (() => {
                 (m.category || '').toLowerCase().includes(searchQ)
               )
             : merits;
+
+        // Paginación: clamp page al rango válido
+        const totalPages = Math.max(1, Math.ceil(filtered.length / MERITS_PAGE_SIZE));
+        if (_meritsPage > totalPages) _meritsPage = totalPages;
+        if (_meritsPage < 1) _meritsPage = 1;
+        const pageStart = (_meritsPage - 1) * MERITS_PAGE_SIZE;
+        const pageEnd = pageStart + MERITS_PAGE_SIZE;
+        const pageRows = filtered.slice(pageStart, pageEnd);
 
         // Render
         const catEntries = Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]);
@@ -471,54 +488,86 @@ const LBW_Transparency = (() => {
                 </div>
             ` : `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
-                    <div style="font-size:0.78rem;color:var(--color-text-secondary);">
-                        📒 Registro inmutable · ${filtered.length} de ${stats.count} eventos · más recientes primero
+                    <div style="font-size:0.78rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:0.4rem;">
+                        <span style="color:var(--color-gold);font-weight:700;">⛓️</span>
+                        <span>Cadena de méritos · <strong style="color:var(--color-text-primary);">${totalBlocks.toLocaleString('es-ES')}</strong> bloques · más recientes primero</span>
                     </div>
                     <button onclick="LBW_Transparency.exportMeritsCSV()"
                         style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:10px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:pointer;">
-                        ⬇️ Exportar CSV
+                        ⬇️ Exportar CSV (todos)
                     </button>
                 </div>
-                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;margin-bottom:0.5rem;line-height:1.4;">
-                    💡 Incluye emisiones formales (kind:31002 por Génesis) y eventos de actividad (chat / marketplace / votos / propuestas, +10 pts por acción). El total LBWM mostrado arriba sigue al Ledger Maestro, que aplica un cap de 300 pts de actividad por usuario — por eso la suma de filas individuales puede ser mayor que el total agregado.
+                <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.7;margin-bottom:0.6rem;line-height:1.4;">
+                    💡 Cada bloque es un evento Nostr firmado e inmutable. El hash de la izquierda es el <code style="font-family:var(--font-mono);font-size:0.68rem;background:rgba(44,95,111,0.18);padding:0.05rem 0.3rem;border-radius:3px;">event.id</code> (SHA-256 del payload canónico). El bloque #1 es el génesis del registro. Incluye emisiones formales kind:31002 + eventos de actividad. El total LBWM aplica un cap de 300 pts de actividad por usuario, por eso la suma de filas puede superar el total agregado.
                 </div>
-                <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-card);">
-                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:720px;">
+                <div style="overflow-x:auto;border:1px solid var(--color-border);border-radius:10px;background:linear-gradient(180deg,rgba(13,23,30,0.6) 0%,rgba(13,23,30,0.35) 100%);box-shadow:inset 0 0 0 1px rgba(229,185,92,0.05);">
+                    <table style="width:100%;border-collapse:collapse;font-size:0.78rem;color:var(--color-text-primary);min-width:880px;font-family:var(--font-mono);">
                         <thead>
-                            <tr style="background:rgba(13,23,30,0.6);border-bottom:1px solid var(--color-border);">
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Fecha</th>
-                                <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">LBWM</th>
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Categoría</th>
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Emisor</th>
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Destinatario</th>
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Motivo</th>
-                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.7rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Event ID</th>
+                            <tr style="background:linear-gradient(180deg,rgba(229,185,92,0.06),rgba(13,23,30,0.55));border-bottom:1px solid rgba(229,185,92,0.25);">
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-gold);text-transform:uppercase;letter-spacing:0.08em;border-right:1px solid rgba(229,185,92,0.1);">Bloque</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Hash</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Timestamp</th>
+                                <th style="text-align:right;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">LBWM</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Categoría</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Emisor → Destinatario</th>
+                                <th style="text-align:left;padding:0.55rem 0.7rem;font-size:0.66rem;font-weight:700;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.08em;">Memo</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${filtered.map((m, idx) => `
-                                <tr style="border-bottom:1px solid rgba(44,95,111,0.15);${idx % 2 === 0 ? 'background:rgba(13,23,30,0.25);' : ''}">
-                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);color:var(--color-text-secondary);font-size:0.72rem;">${_formatDate(m.created_at)}</td>
-                                    <td style="padding:0.5rem 0.7rem;text-align:right;font-weight:700;color:var(--color-gold);white-space:nowrap;">+${m.amount.toLocaleString('es-ES')}</td>
-                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;">
-                                        <span style="font-size:0.7rem;background:rgba(64,196,255,0.12);color:#40C4FF;padding:0.15rem 0.5rem;border-radius:10px;border:1px solid rgba(64,196,255,0.25);">${_esc(m.category)}</span>
+                            ${pageRows.map((m, idx) => {
+                                const blockNum = m._blockNum || 0;
+                                const isGenesis = blockNum === 1;
+                                const isLatest = blockNum === totalBlocks;
+                                const blockLabel = '#' + String(blockNum).padStart(4, '0');
+                                const hashShort = m.id ? (m.id.substring(0, 10) + '…' + m.id.substring(m.id.length - 6)) : '—';
+                                const blockBg = idx % 2 === 0 ? 'rgba(13,23,30,0.35)' : 'rgba(13,23,30,0.15)';
+                                const issuerHtml = m.issuer
+                                    ? `<span data-pubkey-slot="${m.issuer}" title="${_esc(m.issuer)}" style="color:var(--color-text-primary);">${_shortNpub(m.issuer)}</span>`
+                                    : `<span style="color:#51cf66;opacity:0.85;" title="Sistema (evento de actividad)">⚙ sistema</span>`;
+                                const recipHtml = `<span data-pubkey-slot="${m.recipient}" title="${_esc(m.recipient)}" style="color:var(--color-gold);">${_shortNpub(m.recipient)}</span>`;
+                                return `
+                                <tr style="border-bottom:1px solid rgba(44,95,111,0.18);background:${blockBg};border-left:3px solid ${isGenesis ? 'var(--color-gold)' : (isLatest ? '#51cf66' : 'rgba(229,185,92,0.18)')};">
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;border-right:1px solid rgba(229,185,92,0.08);">
+                                        <div style="display:flex;flex-direction:column;gap:0.15rem;">
+                                            <span style="font-weight:700;color:var(--color-gold);font-size:0.82rem;letter-spacing:0.02em;">${blockLabel}</span>
+                                            ${isGenesis ? '<span style="font-size:0.6rem;color:var(--color-gold);opacity:0.8;text-transform:uppercase;letter-spacing:0.1em;">génesis</span>' : ''}
+                                            ${isLatest && !isGenesis ? '<span style="font-size:0.6rem;color:#51cf66;text-transform:uppercase;letter-spacing:0.1em;">latest</span>' : ''}
+                                        </div>
                                     </td>
-                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);">
-                                        <span data-pubkey-slot="${m.issuer}" title="${_esc(m.issuer)}">${_shortNpub(m.issuer)}</span>
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;font-size:0.68rem;">
+                                        <span title="${_esc(m.id)} (click para copiar el hash completo)" onclick="LBW_Transparency.copyToClipboard('${_esc(m.id)}', this)" style="cursor:pointer;color:var(--color-text-secondary);background:rgba(44,95,111,0.15);padding:0.2rem 0.5rem;border-radius:4px;border:1px solid rgba(44,95,111,0.3);">⛓ ${hashShort}</span>
                                     </td>
-                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);">
-                                        <span data-pubkey-slot="${m.recipient}" title="${_esc(m.recipient)}">${_shortNpub(m.recipient)}</span>
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;color:var(--color-text-secondary);font-size:0.72rem;">${_formatDate(m.created_at)}</td>
+                                    <td style="padding:0.55rem 0.7rem;text-align:right;font-weight:700;color:var(--color-gold);white-space:nowrap;">+${m.amount.toLocaleString('es-ES')}</td>
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;">
+                                        <span style="font-size:0.68rem;background:rgba(64,196,255,0.12);color:#40C4FF;padding:0.18rem 0.55rem;border-radius:10px;border:1px solid rgba(64,196,255,0.25);font-family:var(--font-display);">${_esc(m.category)}</span>
                                     </td>
-                                    <td style="padding:0.5rem 0.7rem;max-width:240px;color:var(--color-text-secondary);font-style:italic;">
+                                    <td style="padding:0.55rem 0.7rem;white-space:nowrap;font-size:0.72rem;">
+                                        ${issuerHtml} <span style="color:var(--color-text-secondary);opacity:0.5;">→</span> ${recipHtml}
+                                    </td>
+                                    <td style="padding:0.55rem 0.7rem;max-width:260px;color:var(--color-text-secondary);font-style:italic;font-family:var(--font-display);font-size:0.76rem;">
                                         ${m.reason ? `"${_sanitizeReason(m.reason, 80)}"` : '<span style="opacity:0.4;">—</span>'}
                                     </td>
-                                    <td style="padding:0.5rem 0.7rem;white-space:nowrap;font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-secondary);opacity:0.75;">
-                                        <span title="${_esc(m.id)} (click para copiar)" onclick="LBW_Transparency.copyToClipboard('${_esc(m.id)}', this)" style="cursor:pointer;">${m.id ? m.id.substring(0, 8) + '…' : '—'}</span>
-                                    </td>
                                 </tr>
-                            `).join('')}
+                            `;}).join('')}
                         </tbody>
                     </table>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.6rem;flex-wrap:wrap;gap:0.5rem;">
+                    <div style="font-size:0.72rem;color:var(--color-text-secondary);">
+                        Mostrando <strong style="color:var(--color-text-primary);">${(pageStart + 1).toLocaleString('es-ES')}</strong>–<strong style="color:var(--color-text-primary);">${Math.min(pageEnd, filtered.length).toLocaleString('es-ES')}</strong> de <strong style="color:var(--color-text-primary);">${filtered.length.toLocaleString('es-ES')}</strong> bloques${(_meritFilter.category || _meritFilter.search) ? ` (filtrado de ${totalBlocks.toLocaleString('es-ES')})` : ''}
+                    </div>
+                    <div style="display:flex;gap:0.3rem;align-items:center;">
+                        <button onclick="LBW_Transparency.goToMeritsPage(1)" ${_meritsPage <= 1 ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.55rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_meritsPage <= 1 ? 'not-allowed' : 'pointer'};opacity:${_meritsPage <= 1 ? '0.35' : '1'};font-family:var(--font-mono);" title="Primera página">⏮</button>
+                        <button onclick="LBW_Transparency.goToMeritsPage(${_meritsPage - 1})" ${_meritsPage <= 1 ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.65rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_meritsPage <= 1 ? 'not-allowed' : 'pointer'};opacity:${_meritsPage <= 1 ? '0.35' : '1'};font-family:var(--font-mono);">◀ Prev</button>
+                        <span style="font-size:0.72rem;color:var(--color-text-primary);padding:0 0.55rem;font-family:var(--font-mono);">Página <strong style="color:var(--color-gold);">${_meritsPage}</strong> / ${totalPages}</span>
+                        <button onclick="LBW_Transparency.goToMeritsPage(${_meritsPage + 1})" ${_meritsPage >= totalPages ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.65rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_meritsPage >= totalPages ? 'not-allowed' : 'pointer'};opacity:${_meritsPage >= totalPages ? '0.35' : '1'};font-family:var(--font-mono);">Next ▶</button>
+                        <button onclick="LBW_Transparency.goToMeritsPage(${totalPages})" ${_meritsPage >= totalPages ? 'disabled' : ''}
+                            style="font-size:0.72rem;padding:0.3rem 0.55rem;border-radius:6px;background:transparent;border:1px solid var(--color-border);color:var(--color-text-secondary);cursor:${_meritsPage >= totalPages ? 'not-allowed' : 'pointer'};opacity:${_meritsPage >= totalPages ? '0.35' : '1'};font-family:var(--font-mono);" title="Última página">⏭</button>
+                    </div>
                 </div>
             `}
         `;
@@ -610,11 +659,13 @@ const LBW_Transparency = (() => {
 
     function setMeritCategoryFilter(cat) {
         _meritFilter.category = cat || '';
+        _meritsPage = 1;
         renderMeritsPanel();
     }
 
     function setMeritSearch(val) {
         _meritFilter.search = (val || '').trim();
+        _meritsPage = 1;
         // Re-render del panel — preservar el cursor del input es overkill
         // aquí, dejamos que el usuario re-focusee si quiere seguir tipeando.
         renderMeritsPanel();
@@ -624,6 +675,18 @@ const LBW_Transparency = (() => {
             input.focus();
             const len = input.value.length;
             input.setSelectionRange(len, len);
+        }
+    }
+
+    function goToMeritsPage(n) {
+        const next = parseInt(n, 10);
+        if (!Number.isFinite(next) || next < 1) return;
+        _meritsPage = next;
+        renderMeritsPanel();
+        // Scroll suave al tope de la tabla
+        const panel = document.getElementById('transparencyMeritsPanel');
+        if (panel) {
+            try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
         }
     }
 
@@ -753,7 +816,7 @@ const LBW_Transparency = (() => {
         }
     }
 
-    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers, exportMeritsCSV, copyToClipboard };
+    return { init, switchTab, setMeritCategoryFilter, setMeritSearch, renderMeritsPanel, renderWalletPanel, refreshMerits, toggleAllUsers, exportMeritsCSV, copyToClipboard, goToMeritsPage };
 })();
 
 window.LBW_Transparency = LBW_Transparency;
