@@ -120,7 +120,38 @@ const LBW_Transparency = (() => {
         // Render
         const catEntries = Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]);
 
+        // Bloque "Tu actividad personal" — solo current user, los activity
+        // merits son client-side (no se publican como kind:31002).
+        let myActivityHtml = '';
+        try {
+            if (typeof getUnifiedMerits === 'function' && typeof LBW_Nostr !== 'undefined' && LBW_Nostr.isLoggedIn()) {
+                const u = getUnifiedMerits();
+                if (u && u.activityMerits >= 0) {
+                    const a = u.activity || {};
+                    myActivityHtml = `
+                        <div style="background:rgba(81,207,102,0.06);border:1px solid rgba(81,207,102,0.25);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+                                <div style="font-weight:700;color:#51cf66;font-size:0.92rem;">🏃 Tu actividad personal</div>
+                                <div style="font-size:0.78rem;color:var(--color-text-secondary);">Nostr <strong style="color:var(--color-gold);">${(u.nostrMerits||0).toLocaleString('es-ES')}</strong> + Actividad <strong style="color:#51cf66;">${(u.activityMerits||0).toLocaleString('es-ES')}</strong> = <strong>${(u.total||0).toLocaleString('es-ES')}</strong></div>
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;font-size:0.78rem;color:var(--color-text-primary);">
+                                <span style="background:rgba(13,23,30,0.6);padding:0.25rem 0.6rem;border-radius:14px;">💬 ${a.posts||0} mensajes</span>
+                                <span style="background:rgba(13,23,30,0.6);padding:0.25rem 0.6rem;border-radius:14px;">🛍️ ${a.offers||0} ofertas</span>
+                                <span style="background:rgba(13,23,30,0.6);padding:0.25rem 0.6rem;border-radius:14px;">🗳️ ${a.votes||0} votos</span>
+                                <span style="background:rgba(13,23,30,0.6);padding:0.25rem 0.6rem;border-radius:14px;">📋 ${a.proposals||0} propuestas</span>
+                            </div>
+                            <div style="font-size:0.7rem;color:var(--color-text-secondary);opacity:0.75;margin-top:0.5rem;line-height:1.4;">
+                                Cada acción cuenta 10 pts (cap ${u.activityCap||300} pts). Esta cifra se calcula en tu cliente — no se publica como evento Nostr y por eso solo se ve la tuya, no la de otros usuarios. Las emisiones formales kind:31002 de los Génesis sí son públicas y aparecen abajo.
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } catch (e) {}
+
         panel.innerHTML = `
+            ${myActivityHtml}
+            <div style="font-size:0.78rem;color:var(--color-text-secondary);margin-bottom:0.5rem;font-weight:600;">📜 Emisiones formales (kind:31002 por Génesis)</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.25rem;">
                 <div class="stat-card" style="background:rgba(229,185,92,0.08);border:1px solid rgba(229,185,92,0.25);border-radius:10px;padding:0.85rem;text-align:center;">
                     <div style="font-size:1.6rem;font-weight:700;color:var(--color-gold);">${stats.total.toLocaleString('es-ES')}</div>
